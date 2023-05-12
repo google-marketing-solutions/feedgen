@@ -79,6 +79,13 @@ We also suggest the following:
 *  Use **size**, **color**, and **gender / age group** for title generation, if available.
 *  Do **NOT** use model numbers or promotional text in titles.
 
+### Vertex AI Pricing and Quotas
+
+Please refer to the Vertex AI
+[Pricing](https://cloud.google.com/vertex-ai/pricing#generative_ai_models) and
+[Quotas and Limits](https://cloud.google.com/vertex-ai/docs/quotas#request_quotas)
+guides for more information.
+
 ## Get Started
 
 The quickest way to get started with FeedGen is to load the `feedgen.ipynb`
