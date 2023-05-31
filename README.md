@@ -28,6 +28,11 @@ foundational models with your own proprietary data. Find out how to fine-tune
 models with Vertex AI, along with the benefits of doing so, at this
 [guide](https://cloud.google.com/vertex-ai/docs/generative-ai/models/tune-models).
 
+> Note: Vertex PaLM API's Public Preview
+[only supports English](https://cloud.google.com/vertex-ai/docs/generative-ai/learn/models#language_support).
+For non-English language generation, please reach out to your Google Sales /
+gTech representative to have the FeedGen team generate the output for you.
+
 ## Challenges
 
 Optimising Shopping feeds is a goal for every advertiser working with Google
