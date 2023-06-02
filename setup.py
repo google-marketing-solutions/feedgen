@@ -60,9 +60,7 @@ _REQUIREMENTS = _parse_requirements(
 setup(
     name="feedgen",
     version=_VERSION,
-    description=(
-        "Package for Google Shopping feed optimisation with Generative AI"
-    ),
+    description="Package for Shopping Ads feed optimisation with Generative AI",
     long_description="\n".join([_README]),
     long_description_content_type="text/markdown",
     author="Google LLC",
