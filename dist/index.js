@@ -100,11 +100,11 @@ class SheetsService {
             .getValues()[0]
             .filter((cell) => cell !== '');
     }
-    totalRows(sheetName) {
+    getTotalRows(sheetName) {
         const sheet = this.spreadsheet_.getSheetByName(sheetName);
         if (!sheet)
             return;
-        return sheet.getDataRange().getLastRow() - 1;
+        return sheet.getDataRange().getLastRow();
     }
     getNonEmptyRows(sheet) {
         return sheet
@@ -237,7 +237,6 @@ const ATTRIBUTES_PROMPT = 'product attributes values:';
 const TITLE_PROMPT = 'Generated title based on all product attributes (100-130 characters):';
 const SEPARATOR = '|';
 const projectId = SheetsService.getInstance().getCellValue(CONFIG.sheets.config.name, CONFIG.sheets.config.fields.projectId.row, CONFIG.sheets.config.fields.projectId.col);
-console.log('Project ID', projectId);
 function onOpen() {
     SpreadsheetApp.getUi()
         .createMenu('FeedGen')
@@ -248,13 +247,6 @@ function showSidebar() {
     const html = HtmlService.createTemplateFromFile('static/index').evaluate();
     html.setTitle('FeedGen');
     SpreadsheetApp.getUi().showSidebar(html);
-}
-function prepareGeneratedSheet() {
-    const generatedSheet = SpreadsheetApp.getActive().getSheetByName(CONFIG.sheets.generated.name);
-    if (!generatedSheet)
-        return;
-    generatedSheet.getDataRange().clearContent();
-    generatedSheet.appendRow(CONFIG.sheets.generated.headers);
 }
 function generateNextRow() {
     const inputSheet = SpreadsheetApp.getActive().getSheetByName(CONFIG.sheets.input.name);
@@ -278,11 +270,17 @@ function generateNextRow() {
     }
     return lastProcessedRow;
 }
-function totalInputRows() {
-    return SheetsService.getInstance().totalRows(CONFIG.sheets.input.name);
+function getTotalInputRows() {
+    const totalRows = SheetsService.getInstance().getTotalRows(CONFIG.sheets.input.name);
+    return typeof totalRows === 'undefined'
+        ? 0
+        : totalRows - CONFIG.sheets.input.startRow;
 }
-function totalGeneratedRows() {
-    return SheetsService.getInstance().totalRows(CONFIG.sheets.generated.name);
+function getTotalGeneratedRows() {
+    const totalRows = SheetsService.getInstance().getTotalRows(CONFIG.sheets.generated.name);
+    return typeof totalRows === 'undefined'
+        ? 0
+        : totalRows - CONFIG.sheets.generated.startRow;
 }
 function getHallucinationMetrics(data, genTitle, genAttributes) {
     const inputContextWords = Util.splitWords(data.join(' '));
@@ -440,10 +438,12 @@ function writeApprovedRows(rows) {
 function clearApprovedRows() {
     SheetsService.getInstance().clearDefinedRange(CONFIG.sheets.output.name, CONFIG.sheets.output.startRow + 1, 1);
 }
+function clearGeneratedRows() {
+    SheetsService.getInstance().clearDefinedRange(CONFIG.sheets.generated.name, CONFIG.sheets.generated.startRow + 1, 1);
+}
 function approveFiltered() {
     const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.sheets.generated.name);
     const rows = getGeneratedRows();
-    console.log('selectedGeneratedRows', rows);
     if (!sheet || !rows)
         return;
     rows.map((row, index) => {
@@ -452,7 +452,6 @@ function approveFiltered() {
             : true;
         return row;
     });
-    console.log('mapped', rows);
     writeGeneratedRows(rows);
 }
 function exportApproved() {

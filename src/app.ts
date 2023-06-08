@@ -59,17 +59,6 @@ export function showSidebar() {
   SpreadsheetApp.getUi().showSidebar(html);
 }
 
-export function prepareGeneratedSheet() {
-  const generatedSheet = SpreadsheetApp.getActive().getSheetByName(
-    CONFIG.sheets.generated.name
-  );
-
-  if (!generatedSheet) return;
-
-  generatedSheet.getDataRange().clearContent();
-  generatedSheet.appendRow(CONFIG.sheets.generated.headers);
-}
-
 export function generateNextRow() {
   const inputSheet = SpreadsheetApp.getActive().getSheetByName(
     CONFIG.sheets.input.name
@@ -101,12 +90,34 @@ export function generateNextRow() {
   return lastProcessedRow;
 }
 
-export function totalInputRows() {
-  return SheetsService.getInstance().totalRows(CONFIG.sheets.input.name);
+/**
+ * Get total number of data rows in 'Input' Sheet.
+ *
+ * @returns {number}
+ */
+export function getTotalInputRows() {
+  const totalRows = SheetsService.getInstance().getTotalRows(
+    CONFIG.sheets.input.name
+  );
+
+  return typeof totalRows === 'undefined'
+    ? 0
+    : totalRows - CONFIG.sheets.input.startRow;
 }
 
-export function totalGeneratedRows() {
-  return SheetsService.getInstance().totalRows(CONFIG.sheets.generated.name);
+/**
+ * Get total number of data rows in 'Generated' Sheet.
+ *
+ * @returns {number}
+ */
+export function getTotalGeneratedRows() {
+  const totalRows = SheetsService.getInstance().getTotalRows(
+    CONFIG.sheets.generated.name
+  );
+
+  return typeof totalRows === 'undefined'
+    ? 0
+    : totalRows - CONFIG.sheets.generated.startRow;
 }
 
 function getHallucinationMetrics(
@@ -163,12 +174,12 @@ function optimizeRow(headers: string[], data: string[]): string[] {
   const itemId = data[0];
   const origTitle = data[1];
 
-  // build context object
+  // Build context object
   const dataObj = Object.fromEntries(
     data.map((item, index) => [headers[index], item])
   );
 
-  // gnerate title with all available context
+  // Generate title with all available context
   const res = generateTitle(dataObj);
   console.log(res);
 
@@ -231,10 +242,22 @@ function optimizeRow(headers: string[], data: string[]): string[] {
   ];
 }
 
+/**
+ * Count characters in string.
+ *
+ * @param {string} inputString
+ * @returns {number}
+ */
 function charCount(inputString: string) {
   return inputString.trim().length;
 }
 
+/**
+ * Count words in string.
+ *
+ * @param {string} inputString
+ * @returns {number}
+ */
 function wordCount(inputString: string) {
   return inputString.trim().split(' ').length;
 }
@@ -345,6 +368,11 @@ function getApprovedData() {
   );
 }
 
+/**
+ * Write rows to 'Approved' Sheet.
+ *
+ * @param {string[][]} rows
+ */
 function writeApprovedRows(rows: string[][]) {
   SheetsService.getInstance().setValuesInDefinedRange(
     CONFIG.sheets.output.name,
@@ -366,6 +394,17 @@ function clearApprovedRows() {
 }
 
 /**
+ * Clear all data rows from 'Supplemental Feed' sheet.
+ */
+export function clearGeneratedRows() {
+  SheetsService.getInstance().clearDefinedRange(
+    CONFIG.sheets.generated.name,
+    CONFIG.sheets.generated.startRow + 1,
+    1
+  );
+}
+
+/**
  * Set status for title and descrition to 'Approved' for rows.
  * Depending on current status.
  */
@@ -378,8 +417,6 @@ export function approveFiltered() {
   // Load 'Generated' rows
   //const rows = getSelectedGeneratedRows();
   const rows = getGeneratedRows();
-
-  console.log('selectedGeneratedRows', rows);
 
   if (!sheet || !rows) return;
 
@@ -395,25 +432,9 @@ export function approveFiltered() {
     return row;
   });
 
-  console.log('mapped', rows);
-
   // Write back to 'FeedGen' sheet
   writeGeneratedRows(rows);
 }
-
-/*function getSelectedGeneratedRows() {
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(
-    CONFIG.sheets.generated.name
-  );
-
-  if (!sheet) return [[]];
-
-  const rows = getGeneratedRows();
-
-  return rows.filter((row, index) => {
-    return !sheet.isRowHiddenByFilter(index + 1 + 1);
-  });
-}*/
 
 /**
  * Merge title and description from 'FeedGen' to 'Approved' sheet.

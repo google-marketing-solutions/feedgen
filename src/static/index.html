@@ -143,7 +143,8 @@ limitations under the License.
 
     let startTime = Date.now();
     let processedRowsCount = 1;
-    let interval;
+    let cancelled = false;
+    //let interval;
 
     function setStatus(status, error = undefined, customText = undefined) {
       const statusElem = document.getElementById('status');
@@ -151,7 +152,7 @@ limitations under the License.
       statusElem.className = status.className;
 
       document
-        .querySelectorAll('button:not(.back)')
+        .querySelectorAll('button:not(.back):not(#stop-generating)')
         .forEach(elem => (elem.disabled = status.type === STATUS.running.type));
 
       const errorElem = document.getElementById('error');
@@ -185,49 +186,65 @@ limitations under the License.
       document.getElementById('content').appendChild(node);
     }
 
-    //window.onload = async () => {
-    async function generate() {
+    async function startGenerating(clear = true) {
+      setStatus(STATUS.running);
+
+      // Hide 'Start' button
+      document.querySelectorAll('#start-generating, #continue-generating').forEach(elem => (elem.classList.add('hidden')));
+
+      // Show 'Stop' button
+      document.getElementById('stop-generating').classList.remove('hidden');
+
+      cancelled = false;
       startTime = Date.now();
+
+      if (clear) {
+        // Clear Generated Rows
+        await new Promise((resolve, reject) => {
+          google.script.run
+            .withSuccessHandler(res => resolve(res))
+            .withFailureHandler(err => log(err))
+            .clearGeneratedRows();
+        });
+      }
+
+      // Get input rows count
       let totalRows = await new Promise((resolve, reject) => {
+        google.script.run
+          .withSuccessHandler(res => resolve(res))
+          .withFailureHandler(err => log(err))
+          .getTotalInputRows();
+      });
+
+      // Get generated rows count
+      let currentlyProcessedRow = await new Promise((resolve, reject) => {
           google.script.run
-            .withSuccessHandler(res => resolve(res))
+            .withSuccessHandler(res => resolve(res + 1))
             .withFailureHandler(err => log(err))
-            .totalInputRows();
+            .getTotalGeneratedRows();
         });
 
-      let processedRowNumber = await new Promise((resolve, reject) => {
-          google.script.run
-            .withSuccessHandler(res => resolve(res))
+      do {
+        // Update status
+        setStatus(STATUS.running, null, `Processing row ${currentlyProcessedRow}/${totalRows}...`)
+
+        // Generate next row
+        currentlyProcessedRow = await new Promise((resolve, reject) => {
+            google.script.run
+            .withSuccessHandler(res => resolve(res + 1))
             .withFailureHandler(err => log(err))
-            .totalGeneratedRows();
-        });
+            .generateNextRow();
+          });
 
-      let rowsToProcess = totalRows - processedRowNumber;
-      processedRowsCount = 1;
+        processedRowsCount++;
+      } while (currentlyProcessedRow <= totalRows && !cancelled);
 
-      setText('status',`Processing row ${processedRowNumber}/${totalRows}...`);
-
-      interval = setInterval(updateElapsed, 1000);
-
-      google.script.run
-        .withSuccessHandler(async res => {
-          do {
-            setText('status',`Processing row ${processedRowNumber}/${totalRows}...`);
-            processedRowNumber = await new Promise((resolve, reject) => {
-                google.script.run
-                .withSuccessHandler(res => resolve(res))
-                .withFailureHandler(err => log(err))
-                .generateNextRow();
-              })
-            processedRowsCount++;
-          } while (processedRowNumber > 0);
-
-          const elapsedSeconds = Math.floor((Date.now() - startTime) / 1000);
-          setText('summary', `Done! ${rowsToProcess} rows processed in ${elapsedSeconds} seconds`);
-          setText('close', 'Close')
-          clearInterval(interval)
-      })
-      .prepareGeneratedSheet();
+      //const elapsedSeconds = Math.floor((Date.now() - startTime) / 1000);
+      //setText('summary', `Done! ${processedRowsCount} rows processed in ${elapsedSeconds} seconds`);
+      //setText('close', 'Close')
+      //clearInterval(interval)
+      
+      stopGenerating();
     }
 
     function approveFiltered() {
@@ -263,8 +280,17 @@ limitations under the License.
         .debug()
     }
 
-    function cancelGeneration() {
-      clearInterval(interval);
+    function stopGenerating() {
+      cancelled = true;
+
+      // Show 'Start' button
+      document.querySelectorAll('#start-generating, #continue-generating').forEach(elem => (elem.classList.remove('hidden')));
+
+      // Hide 'Stop' button
+      document.getElementById('stop-generating').classList.add('hidden');
+
+      setStatus(STATUS.idle);
+      //clearInterval(interval);
     }
 
     function openSection(sectionId) {
@@ -290,20 +316,24 @@ limitations under the License.
   
   <div id='content'>
     <section id='main'>
-      <button id="open-generate" onclick='openSection("generate"); generate()'>Generate</button>
+      <button id='start-generating' onclick='startGenerating()'>Start Generating</button>
+      <button id='continue-generating' onclick='startGenerating(false)'>Continue Generating</button>
+      <button id='stop-generating' class='hidden' onclick='stopGenerating()'>Stop Generating</button>
       <button onclick='approveFiltered()'>Approve Filtered</button>
       <button onclick='exportApproved()'>Export Approved</button>
       <button onclick='debug()'>Debug</button>
     </section>
 
-    <section id='generate'>
+    <!--<section id='generate'>
+      <button class="back" onclick="goBack()">&larr; Back</button>
       <div id='metrics'>Starting to process Input Data</div>
       <div id='current'></div>
       <div id='summary'></div>
   
+      <button id='close' onclick='startGeneration()'>Start</button>
       <button id='close' onclick='cancelGeneration()'>Cancel</button>
     </section>
-  </div>
+  </div>-->
 
   <div id='error' class='error-message'></div>
 </body>

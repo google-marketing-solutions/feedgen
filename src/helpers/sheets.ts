@@ -48,12 +48,12 @@ export class SheetsService {
       .filter((cell: string) => cell !== '') as string[];
   }
 
-  totalRows(sheetName: string) {
+  getTotalRows(sheetName: string) {
     const sheet = this.spreadsheet_.getSheetByName(sheetName);
 
     if (!sheet) return;
 
-    return sheet.getDataRange().getLastRow() - 1;
+    return sheet.getDataRange().getLastRow();
   }
 
   getNonEmptyRows(sheet: GoogleAppsScript.Spreadsheet.Sheet) {
