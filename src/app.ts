@@ -51,6 +51,7 @@ const vertexAiLocation = getConfigSheetValue(
 const vertexAiModelId = getConfigSheetValue(
   CONFIG.sheets.config.fields.vertexAiModelId
 );
+const GENERIC_WORDS = new Set(['in', 'of', 'for', 'then', 'also', 'if']);
 
 /**
  * Handle 'onOpen' Sheets event to show menu.
