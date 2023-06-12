@@ -42,6 +42,7 @@ const projectId = SheetsService.getInstance().getCellValue(
   CONFIG.sheets.config.fields.projectId.row,
   CONFIG.sheets.config.fields.projectId.col
 );
+const GENERIC_WORDS = new Set(['in', 'of', 'for', 'then', 'also', 'if']);
 
 /**
  * Handle 'onOpen' Sheets event to show menu.
@@ -147,26 +148,60 @@ function getHallucinationMetrics(
 const getGenerationMetrics = (
   origTitle: string,
   genTitle: string,
-  origAttributes: string[],
-  genAttributes: string[]
+  origAttributes: Set<string>,
+  genAttributes: Set<string>,
+  genAttributeValues: Set<string>
 ) => {
   const origCharCount = charCount(origTitle);
   const genCharCount = charCount(genTitle);
   const origWordCount = wordCount(origTitle);
   const genWordCount = wordCount(genTitle);
-  const titleChangeScore =
+  const titleDeltaScore =
     Math.abs(genCharCount - origCharCount) +
     Math.abs(genWordCount - origWordCount);
   const isTitleChanged = Number(origTitle !== genTitle);
+  const attributesInOrigTitleCount = Util.countSetOccurencesInString(
+    genAttributeValues,
+    origTitle
+  );
+  const attributesInGenTitleCount = Util.countSetOccurencesInString(
+    genAttributeValues,
+    genTitle
+  );
+  const genericWordsInGenTitleCount = Util.countSetOccurencesInString(
+    GENERIC_WORDS,
+    genTitle
+  );
+  //those will have range 0-1
+  const genCharLimitScore = genCharCount <= 30 || genCharCount >= 130 ? 0 : 1;
+  const genAttrUsageScore = attributesInGenTitleCount / genAttributeValues.size;
+  const addedAttributes = Util.getSetDifference(genAttributes, origAttributes);
+  const addedAttributesCount = addedAttributes.length;
+  const addedAttributesScore = Math.min(
+    addedAttributesCount / origAttributes.size,
+    1
+  );
+  const genericWordsScore =
+    1 - genericWordsInGenTitleCount / GENERIC_WORDS.size;
+  const totalGenTitleScore =
+    genCharLimitScore *
+    genAttrUsageScore *
+    addedAttributesScore *
+    genericWordsScore;
   return [
     origCharCount,
     genCharCount,
     origWordCount,
     genWordCount,
-    origAttributes.length,
-    genAttributes.length,
-    titleChangeScore,
+    origAttributes.size,
+    genAttributes.size,
+    totalGenTitleScore,
+    titleDeltaScore,
     isTitleChanged,
+    genCharLimitScore,
+    genAttrUsageScore,
+    addedAttributesScore,
+    genericWordsScore,
   ];
 };
 
@@ -234,7 +269,8 @@ function optimizeRow(headers: string[], data: string[]): string[] {
     origTitle,
     genTitle,
     origAttributes,
-    genAttributes
+    genAttributes,
+    genAttributeValues
   );
 
   return [
