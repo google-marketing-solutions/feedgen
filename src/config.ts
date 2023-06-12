@@ -49,7 +49,8 @@ export const CONFIG = {
     },
   },
   vertexAi: {
-    endpoint: 'us-central1-autopush-aiplatform.sandbox.googleapis.com',
-    modelId: 'text-bison@001',
+    endpoint: 'aiplatform.googleapis.com',
+    modelId: 'text-bison',
+    quotaLimitDelay: 30 * 1000, //30s
   },
 };
