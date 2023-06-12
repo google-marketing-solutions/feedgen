@@ -280,7 +280,7 @@ function generateTitle(data: Record<string, unknown>) {
     ${CATEGORY_PROMPT} Guitars
     ${TEMPLATE_PROMPT} brand ${SEPARATOR} model ${SEPARATOR} product ${SEPARATOR} color ${SEPARATOR} design
     ${ATTRIBUTES_PROMPT} Seymour Duncan ${SEPARATOR} SM-1 ${SEPARATOR} Mini Humbucker ${SEPARATOR} Chrome ${SEPARATOR} Vintage
-    ${TITLE_PROMPT} Seymour Duncan SM-1 Mini Humbucker Pickup in Chrome 
+    ${TITLE_PROMPT} Seymour Duncan SM-1 Mini Humbucker Pickup in Chrome
 
     Context:
     {
@@ -298,7 +298,7 @@ function generateTitle(data: Record<string, unknown>) {
     ${CATEGORY_PROMPT} Drums
     ${TEMPLATE_PROMPT} brand ${SEPARATOR} product ${SEPARATOR} material ${SEPARATOR} edition ${SEPARATOR} size
     ${ATTRIBUTES_PROMPT} Gretsch Drums ${SEPARATOR} Snare + Bag ${SEPARATOR} Ahorn ${SEPARATOR} 140th Anniversary ${SEPARATOR} 14"x7"
-    ${TITLE_PROMPT} Gretsch Snare Drums + Bag aus Ahorn, 140th Anniversary edition 
+    ${TITLE_PROMPT} Gretsch Snare Drums + Bag aus Ahorn, 140th Anniversary edition
 
     Context:
     {
@@ -323,7 +323,7 @@ function generateTitle(data: Record<string, unknown>) {
 
     `;
 
-  return Util.executeWithRetry(10, 6000, () =>
+  return Util.executeWithRetry(3, 0, () =>
     VertexHelper.getInstance(projectId).predict(prompt)
   );
 }

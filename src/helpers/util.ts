@@ -28,7 +28,9 @@ export class Util {
         const error = err as Error;
         console.log(`Error occurred: ${error.message}`);
         retryCount++;
-        Utilities.sleep(delayMillies);
+        if (delayMillies) {
+          Utilities.sleep(delayMillies);
+        }
       }
     }
 

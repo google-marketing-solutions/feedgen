@@ -36,25 +36,31 @@ export class VertexHelper {
     return Object.assign({ payload: JSON.stringify(params) }, baseParams);
   }
 
-  fetchJson(url: string, params: Record<string, unknown>) {
-    return JSON.parse(UrlFetchApp.fetch(url, params).getContentText());
+  fetchJson(url: string, params: Record<string, unknown>): any {
+    const response = UrlFetchApp.fetch(url, params);
+
+    if (response.getResponseCode() === 429) {
+      Utilities.sleep(CONFIG.vertexAi.quotaLimitDelay);
+      return this.fetchJson(url, params);
+    }
+    return JSON.parse(response.getContentText());
   }
 
   predict(prompt: string) {
-    Utilities.sleep(1000); // respect rate limitations
     console.log(`Prompt: ${prompt}`);
 
-    const predictEndpoint = `https://${CONFIG.vertexAi.endpoint}/v1/projects/${this.projectId}/locations/us-central1/publishers/google/models/${CONFIG.vertexAi.modelId}:predict`;
+    const predictEndpoint = `https://us-central1-${CONFIG.vertexAi.endpoint}/v1/projects/${this.projectId}/locations/us-central1/publishers/google/models/${CONFIG.vertexAi.modelId}:predict`;
 
     const res = this.fetchJson(
       predictEndpoint,
       this.addAuth({
         instances: [{ content: prompt }],
+        // Refer to https://cloud.google.com/vertex-ai/docs/generative-ai/learn/models#text_model_parameters
         parameters: {
-          temperature: 0.1, // make it more deterministic to reduce hallucinating
-          maxOutputTokens: 1024, // 0 is default
-          topP: 0.8, // Workaround, not public!!! Otherwise "request quota exceeded for text-bison" occurs very often
-          topK: 1001,
+          temperature: 0.1,
+          maxOutputTokens: 1024,
+          topK: 1,
+          topP: 0.8,
         },
       })
     );
