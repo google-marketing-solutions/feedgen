@@ -19,8 +19,28 @@ export const CONFIG = {
     config: {
       name: 'Config',
       fields: {
-        projectId: {
+        vertexAiProjectId: {
           row: 1,
+          col: 2,
+        },
+        vertexAiLocation: {
+          row: 2,
+          col: 2,
+        },
+        vertexAiEndpoint: {
+          row: 3,
+          col: 2,
+        },
+        vertexAiModelId: {
+          row: 4,
+          col: 2,
+        },
+        itemIdColumnName: {
+          row: 5,
+          col: 2,
+        },
+        titleColumnName: {
+          row: 6,
           col: 2,
         },
       },
@@ -33,10 +53,11 @@ export const CONFIG = {
       name: 'Generated Title Validation',
       startRow: 1,
       cols: {
-        titleStatus: 0,
-        id: 1,
-        titleOriginal: 2,
-        titleGenerated: 3,
+        approval: 0,
+        status: 1,
+        id: 2,
+        titleOriginal: 3,
+        titleGenerated: 4,
       },
     },
     output: {
@@ -47,10 +68,14 @@ export const CONFIG = {
         title: 1,
       },
     },
+    log: {
+      startRow: 0,
+      name: 'Log',
+    },
   },
   vertexAi: {
     endpoint: 'aiplatform.googleapis.com',
-    modelId: 'text-bison',
-    quotaLimitDelay: 30 * 1000, //30s
+    maxRetries: 3,
+    quotaLimitDelay: 30 * 1000, // 30s
   },
 };
