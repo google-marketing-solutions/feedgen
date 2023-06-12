@@ -48,8 +48,6 @@ const vertexAiLocation = getConfigSheetValue(
   CONFIG.sheets.config.fields.vertexAiLocation
 );
 
-const vertexAiEndpoint = CONFIG.vertexAi.endpoint;
-
 const vertexAiModelId = getConfigSheetValue(
   CONFIG.sheets.config.fields.vertexAiModelId
 );
@@ -394,7 +392,6 @@ function generateTitle(data: Record<string, unknown>) {
     VertexHelper.getInstance(
       vertexAiProjectId,
       vertexAiLocation,
-      vertexAiEndpoint,
       vertexAiModelId
     ).predict(prompt)
   );

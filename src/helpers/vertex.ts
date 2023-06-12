@@ -31,18 +31,11 @@ export class VertexHelper {
   private static instance: VertexHelper;
   private projectId: string;
   private location: string;
-  private endpoint: string;
   private modelId: string;
 
-  constructor(
-    projectId: string,
-    location: string,
-    endpoint: string,
-    modelId: string
-  ) {
+  constructor(projectId: string, location: string, modelId: string) {
     this.projectId = projectId;
     this.location = location;
-    this.endpoint = endpoint;
     this.modelId = modelId;
   }
 
@@ -72,7 +65,7 @@ export class VertexHelper {
   predict(prompt: string) {
     MultiLogger.getInstance().log(`Prompt: ${prompt}`);
 
-    const predictEndpoint = `https://${this.location}-${this.endpoint}/v1/projects/${this.projectId}/locations/${this.location}/publishers/google/models/${this.modelId}:predict`;
+    const predictEndpoint = `https://${this.location}-${CONFIG.vertexAi.endpoint}/v1/projects/${this.projectId}/locations/${this.location}/publishers/google/models/${this.modelId}:predict`;
 
     const res = this.fetchJson(
       predictEndpoint,
@@ -108,14 +101,9 @@ export class VertexHelper {
    * @param {string} modelId
    * @returns {!VertexHelper} The initialized SheetsService instance
    */
-  static getInstance(
-    projectId: string,
-    location: string,
-    endpoint: string,
-    modelId: string
-  ) {
+  static getInstance(projectId: string, location: string, modelId: string) {
     if (typeof this.instance === 'undefined') {
-      this.instance = new VertexHelper(projectId, location, endpoint, modelId);
+      this.instance = new VertexHelper(projectId, location, modelId);
     }
     return this.instance;
   }
