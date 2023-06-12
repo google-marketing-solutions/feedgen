@@ -1,3 +1,5 @@
+import { MultiLogger } from './logger';
+
 /**
  * Copyright 2023 Google LLC
  *
@@ -26,7 +28,7 @@ export class Util {
         return fn();
       } catch (err) {
         const error = err as Error;
-        console.log(`Error occurred: ${error.message}`);
+        MultiLogger.getInstance().log(`Error: ${error.message}`);
         retryCount++;
         if (delayMillies) {
           Utilities.sleep(delayMillies);
