@@ -50,11 +50,12 @@ export class VertexHelper {
       predictEndpoint,
       this.addAuth({
         instances: [{ content: prompt }],
+        // Refer to https://cloud.google.com/vertex-ai/docs/generative-ai/learn/models#text_model_parameters
         parameters: {
-          temperature: 0.1, // make it more deterministic to reduce hallucinating
-          maxOutputTokens: 1024, // 0 is default
-          topP: 0.8, // Workaround, not public!!! Otherwise "request quota exceeded for text-bison" occurs very often
-          topK: 1001,
+          temperature: 0.1,
+          maxOutputTokens: 1024,
+          topK: 1,
+          topP: 0.8,
         },
       })
     );
