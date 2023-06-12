@@ -18,6 +18,7 @@
 /* eslint-disable no-useless-escape */
 
 import { CONFIG } from './config';
+import { MultiLogger } from './helpers/logger';
 import { SheetsService } from './helpers/sheets';
 import { Util } from './helpers/util';
 import { VertexHelper } from './helpers/vertex';
@@ -37,10 +38,26 @@ const ATTRIBUTES_PROMPT = 'product attributes values:';
 const TITLE_PROMPT =
   'Generated title based on all product attributes (100-130 characters):';
 const SEPARATOR = '|';
-const projectId = SheetsService.getInstance().getCellValue(
-  CONFIG.sheets.config.name,
-  CONFIG.sheets.config.fields.projectId.row,
-  CONFIG.sheets.config.fields.projectId.col
+
+// Get Vertex AI config info
+const vertexAiProjectId = getConfigSheetValue(
+  CONFIG.sheets.config.fields.vertexAiProjectId
+);
+
+const vertexAiLocation = getConfigSheetValue(
+  CONFIG.sheets.config.fields.vertexAiLocation
+);
+
+const vertexAiEndpoint = CONFIG.vertexAi.endpoint;
+
+const vertexAiModelId = getConfigSheetValue(
+  CONFIG.sheets.config.fields.vertexAiModelId
+);
+
+const vertexAiEndpoint = CONFIG.vertexAi.endpoint;
+
+const vertexAiModelId = getConfigSheetValue(
+  CONFIG.sheets.config.fields.vertexAiModelId
 );
 const GENERIC_WORDS = new Set(['in', 'of', 'for', 'then', 'also', 'if']);
 
@@ -54,12 +71,24 @@ export function onOpen() {
     .addToUi();
 }
 
+function logSummary() {
+  MultiLogger.getInstance().log('Summary: ');
+}
+
+/**
+ * Open sidebar.
+ */
 export function showSidebar() {
   const html = HtmlService.createTemplateFromFile('static/index').evaluate();
   html.setTitle('FeedGen');
   SpreadsheetApp.getUi().showSidebar(html);
 }
 
+/**
+ * Generate content for next row.
+ *
+ * @returns {null}
+ */
 export function generateNextRow() {
   const inputSheet = SpreadsheetApp.getActive().getSheetByName(
     CONFIG.sheets.input.name
@@ -74,6 +103,8 @@ export function generateNextRow() {
 
   if (lastProcessedRow >= inputSheet.getLastRow()) return;
 
+  MultiLogger.getInstance().log(`Generating for row ${lastProcessedRow}`);
+
   const row = inputSheet
     .getRange(lastProcessedRow + 1, 1, 1, inputSheet.getMaxColumns())
     .getValues()[0];
@@ -81,11 +112,17 @@ export function generateNextRow() {
   try {
     const inputHeaders = SheetsService.getInstance().getHeaders(inputSheet);
     const optimizedRow = optimizeRow(inputHeaders, row);
-    console.log('optimizedRow', optimizedRow);
 
-    generatedSheet.appendRow([false, ...optimizedRow]);
+    generatedSheet.appendRow(optimizedRow);
+    MultiLogger.getInstance().log('Success');
   } catch (e) {
-    generatedSheet.appendRow([false, ...row, `ERROR: ${e}`]);
+    MultiLogger.getInstance().log(`Error: ${e}`);
+    row[CONFIG.sheets.generated.cols.status] = `Error: ${e}`;
+
+    const failedRow = [];
+    failedRow[CONFIG.sheets.generated.cols.status] =
+      'Failed. See log for more details.';
+    generatedSheet.appendRow(failedRow);
   }
 
   return lastProcessedRow;
@@ -205,18 +242,38 @@ const getGenerationMetrics = (
   ];
 };
 
+function getConfigSheetValue(field: { row: number; col: number }) {
+  return SheetsService.getInstance().getCellValue(
+    CONFIG.sheets.config.name,
+    field.row,
+    field.col
+  );
+}
+
+/**
+ * Use Vertex AI to optimize row.
+ *
+ * @param {string[]} headers
+ * @param {string[]} data
+ * @returns {string[]}
+ */
 function optimizeRow(headers: string[], data: string[]): string[] {
   // Build context object
   const dataObj = Object.fromEntries(
     data.map((item, index) => [headers[index], item])
   );
 
-  const itemId = dataObj.id;
-  const origTitle = dataObj.title;
+  const itemIdColumnName = getConfigSheetValue(
+    CONFIG.sheets.config.fields.itemIdColumnName
+  );
+  const titleColumnName = getConfigSheetValue(
+    CONFIG.sheets.config.fields.titleColumnName
+  );
+  const itemId = dataObj[itemIdColumnName];
+  const origTitle = dataObj[titleColumnName];
 
   // Generate title with all available context
   const res = generateTitle(dataObj);
-  console.log(res);
 
   const [
     origTemplateRow,
@@ -273,10 +330,16 @@ function optimizeRow(headers: string[], data: string[]): string[] {
     genAttributeValues
   );
 
+  const row: Array<string | boolean> = [];
+
+  row[CONFIG.sheets.generated.cols.approval] = false;
+  row[CONFIG.sheets.generated.cols.status] = 'Success';
+  row[CONFIG.sheets.generated.cols.id] = itemId;
+  row[CONFIG.sheets.generated.cols.titleOriginal] = origTitle;
+  row[CONFIG.sheets.generated.cols.titleGenerated] = genTitle;
+
   return [
-    itemId,
-    origTitle,
-    genTitle,
+    ...row,
     genTemplate,
     origTemplate,
     genCategory,
@@ -369,9 +432,16 @@ function generateTitle(data: Record<string, unknown>) {
 
     `;
 
-  return Util.executeWithRetry(3, 0, () =>
-    VertexHelper.getInstance(projectId).predict(prompt)
+  const res = Util.executeWithRetry(CONFIG.vertexAi.maxRetries, 0, () =>
+    VertexHelper.getInstance(
+      vertexAiProjectId,
+      vertexAiLocation,
+      vertexAiEndpoint,
+      vertexAiModelId
+    ).predict(prompt)
   );
+
+  return res;
 }
 
 /**
@@ -420,6 +490,7 @@ function getApprovedData() {
  * @param {string[][]} rows
  */
 function writeApprovedRows(rows: string[][]) {
+  MultiLogger.getInstance().log('Writing approved rows...');
   SheetsService.getInstance().setValuesInDefinedRange(
     CONFIG.sheets.output.name,
     CONFIG.sheets.output.startRow + 1,
@@ -432,6 +503,7 @@ function writeApprovedRows(rows: string[][]) {
  * Clear all data rows from 'Supplemental Feed' sheet.
  */
 function clearApprovedRows() {
+  MultiLogger.getInstance().log('Clearing approved rows...');
   SheetsService.getInstance().clearDefinedRange(
     CONFIG.sheets.output.name,
     CONFIG.sheets.output.startRow + 1,
@@ -443,6 +515,8 @@ function clearApprovedRows() {
  * Clear all data rows from 'Supplemental Feed' sheet.
  */
 export function clearGeneratedRows() {
+  MultiLogger.getInstance().log('Clearing generated rows...');
+  MultiLogger.getInstance().clear();
   SheetsService.getInstance().clearDefinedRange(
     CONFIG.sheets.generated.name,
     CONFIG.sheets.generated.startRow + 1,
@@ -455,6 +529,7 @@ export function clearGeneratedRows() {
  * Depending on current status.
  */
 export function approveFiltered() {
+  MultiLogger.getInstance().log('Approving filtered rows...');
   // Load 'Generated' sheet
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(
     CONFIG.sheets.generated.name
@@ -469,10 +544,10 @@ export function approveFiltered() {
   // Update status to 'Approved'
   rows.map((row, index) => {
     // Update title status
-    row[CONFIG.sheets.generated.cols.titleStatus] = sheet.isRowHiddenByFilter(
+    row[CONFIG.sheets.generated.cols.approval] = sheet.isRowHiddenByFilter(
       index + 1 + 1
     )
-      ? row[CONFIG.sheets.generated.cols.titleStatus]
+      ? row[CONFIG.sheets.generated.cols.approval]
       : true;
 
     return row;
@@ -480,23 +555,23 @@ export function approveFiltered() {
 
   // Write back to 'FeedGen' sheet
   writeGeneratedRows(rows);
+
+  MultiLogger.getInstance().log('Writing approved rows...');
 }
 
 /**
  * Merge title and description from 'FeedGen' to 'Approved' sheet.
  */
 export function exportApproved() {
+  MultiLogger.getInstance().log('Exporting approved rows...');
+
   // Load approved 'FeedGen' rows
   const feedGenRows = getGeneratedRows().filter(row => {
-    return row[CONFIG.sheets.generated.cols.titleStatus] === true;
+    return row[CONFIG.sheets.generated.cols.approval] === true;
   });
-
-  console.log('feedGenRows', feedGenRows);
 
   // Load 'Approved' sheet
   const approvedRows = getApprovedData();
-
-  console.log('approvedRows', approvedRows);
 
   // Generate id-keyed object from approved rows
   const approvedRowsMap = arrayToMap(
@@ -516,7 +591,7 @@ export function exportApproved() {
 
     // Determine and add title
     resRow[CONFIG.sheets.output.cols.title] =
-      row[CONFIG.sheets.generated.cols.titleStatus] === true
+      row[CONFIG.sheets.generated.cols.approval] === true
         ? row[CONFIG.sheets.generated.cols.titleGenerated]
         : row[CONFIG.sheets.generated.cols.titleOriginal];
 
@@ -527,8 +602,6 @@ export function exportApproved() {
   const merged = Object.values(
     Object.assign(approvedRowsMap, feedGenApprovedRowsMap)
   );
-
-  console.log('merged', merged);
 
   // Clear 'Approved' sheet
   clearApprovedRows();
