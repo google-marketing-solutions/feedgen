@@ -171,13 +171,13 @@ const getGenerationMetrics = (
 };
 
 function optimizeRow(headers: string[], data: string[]): string[] {
-  const itemId = data[0];
-  const origTitle = data[1];
-
   // Build context object
   const dataObj = Object.fromEntries(
     data.map((item, index) => [headers[index], item])
   );
+
+  const itemId = dataObj.id;
+  const origTitle = dataObj.title;
 
   // Generate title with all available context
   const res = generateTitle(dataObj);
@@ -195,11 +195,12 @@ function optimizeRow(headers: string[], data: string[]): string[] {
 
   const genAttributes = genTemplateRow
     .replace(TEMPLATE_PROMPT, '')
-    .split(SEPARATOR);
+    .split(SEPARATOR)
+    .map((x: string) => `${x.trim()}`);
 
   const genTemplate = genAttributes
     .map((x: string) => `<${x.trim()}>`)
-    .join(', ');
+    .join(' ');
 
   const origAttributes = origTemplateRow
     .replace(ORIGINAL_TITLE_TEMPLATE_PROMPT, '')
@@ -207,14 +208,23 @@ function optimizeRow(headers: string[], data: string[]): string[] {
 
   const origTemplate = origAttributes
     .map((x: string) => `<${x.trim()}>`)
-    .join(', ');
+    .join(' ');
 
   const genAttributeValues = genAttributesRow
     .replace(ATTRIBUTES_PROMPT, '')
     .split(SEPARATOR)
     .map((x: string) => x.trim());
 
-  const genTitle = genTitleRow.replace(TITLE_PROMPT, '').trim();
+  // Collect all title features with priority on user provided data
+  // (use generated only when user provided data is not available)
+  const titleFeatures = genAttributes.map(
+    (attribute: string, index: number) =>
+      dataObj[attribute] || genAttributeValues[index]
+  );
+
+  // create title solely based on titleFeatures to reduce hallucination potential
+  const genTitle = titleFeatures.join(' ');
+
   const hallucinationMetrics = getHallucinationMetrics(
     data,
     genTitle,
