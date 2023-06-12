@@ -27,10 +27,6 @@ export const CONFIG = {
           row: 2,
           col: 2,
         },
-        vertexAiEndpoint: {
-          row: 3,
-          col: 2,
-        },
         vertexAiModelId: {
           row: 4,
           col: 2,
