@@ -330,32 +330,25 @@ function getTotalGeneratedRows() {
         ? 0
         : totalRows - CONFIG.sheets.generated.startRow;
 }
-function getHallucinationMetrics(data, genTitle, genAttributes) {
-    const inputContextWords = Util.splitWords(data.join(' '));
-    const genTitleWords = Util.splitWords(genTitle);
-    const missingGenAttributesInGenTitle = genAttributes.filter(attr => !genTitle.includes(attr));
-    const newWordsNotFoundInContext = Util.getSetDifference(genTitleWords, inputContextWords);
-    const hallucinationScore = missingGenAttributesInGenTitle.length + newWordsNotFoundInContext.length;
-    return [
-        newWordsNotFoundInContext.join(', '),
-        missingGenAttributesInGenTitle.join(', '),
-        hallucinationScore,
-    ];
-}
-const getGenerationMetrics = (origTitle, genTitle, origAttributes, genAttributes) => {
+const getGenerationMetrics = (origTitle, genTitle, origAttributes, genAttributes, inputWords) => {
     const isTitleChanged = origTitle !== genTitle;
     const attributesAdded = genAttributes.size > origAttributes.size;
+    const newWordsAdded = genTitle.split(' ').some((genTitleWord) => {
+        return !inputWords.has(genTitleWord);
+    });
     const genAttributeValuesAdded = true;
     return {
         attributesAreAdded: attributesAdded,
         generatedValuesAdded: genAttributeValuesAdded,
         titleChanged: isTitleChanged,
+        newWordsAdded: newWordsAdded,
         scores: () => {
             return [
                 (Number(attributesAdded) +
                     Number(genAttributeValuesAdded) +
-                    Number(isTitleChanged)) /
-                    3,
+                    Number(isTitleChanged) +
+                    Number(newWordsAdded)) /
+                    4,
             ];
         },
     };
@@ -391,8 +384,13 @@ function optimizeRow(headers, data) {
         .map((x) => x.trim());
     const titleFeatures = genAttributes.map((attribute, index) => dataObj[attribute] || genAttributeValues[index]);
     const genTitle = titleFeatures.join(' ');
-    const hallucinationMetrics = getHallucinationMetrics(data, genTitle, genAttributeValues);
-    const generationMetrics = getGenerationMetrics(origTitle, genTitle, origAttributes, genAttributes);
+    const inputWords = new Set();
+    data.forEach((field) => {
+        field.split(' ').forEach((word) => {
+            inputWords.add(word);
+        });
+    });
+    const generationMetrics = getGenerationMetrics(origTitle, genTitle, origAttributes, genAttributes, inputWords);
     const row = [];
     row[CONFIG.sheets.generated.cols.approval] = false;
     row[CONFIG.sheets.generated.cols.status] = 'Success';
@@ -405,17 +403,10 @@ function optimizeRow(headers, data) {
         origTemplate,
         genCategory,
         genAttributeValues.join(', '),
-        ...hallucinationMetrics,
         ...generationMetrics.scores(),
         res,
         JSON.stringify(dataObj),
     ];
-}
-function charCount(inputString) {
-    return inputString.trim().length;
-}
-function wordCount(inputString) {
-    return inputString.trim().split(' ').length;
 }
 function generateTitle(data) {
     const prompt = `
