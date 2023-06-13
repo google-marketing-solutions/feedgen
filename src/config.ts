@@ -47,7 +47,7 @@ export const CONFIG = {
     },
     generated: {
       name: 'Generated Title Validation',
-      startRow: 1,
+      startRow: 5,
       cols: {
         approval: 0,
         status: 1,

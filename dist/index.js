@@ -47,7 +47,7 @@ const CONFIG = {
         },
         generated: {
             name: 'Generated Title Validation',
-            startRow: 1,
+            startRow: 5,
             cols: {
                 approval: 0,
                 status: 1,
@@ -282,7 +282,6 @@ const SEPARATOR = '|';
 const vertexAiProjectId = getConfigSheetValue(CONFIG.sheets.config.fields.vertexAiProjectId);
 const vertexAiLocation = getConfigSheetValue(CONFIG.sheets.config.fields.vertexAiLocation);
 const vertexAiModelId = getConfigSheetValue(CONFIG.sheets.config.fields.vertexAiModelId);
-const GENERIC_WORDS = new Set(['in', 'of', 'for', 'then', 'also', 'if']);
 function onOpen() {
     SpreadsheetApp.getUi()
         .createMenu('FeedGen')
@@ -302,7 +301,7 @@ function generateNextRow() {
     const generatedSheet = SpreadsheetApp.getActive().getSheetByName(CONFIG.sheets.generated.name);
     if (!inputSheet || !generatedSheet)
         return;
-    const lastProcessedRow = generatedSheet.getLastRow();
+    const lastProcessedRow = generatedSheet.getLastRow() - (CONFIG.sheets.generated.startRow - 1);
     if (lastProcessedRow >= inputSheet.getLastRow())
         return;
     MultiLogger.getInstance().log(`Generating for row ${lastProcessedRow}`);

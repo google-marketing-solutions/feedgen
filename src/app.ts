@@ -51,7 +51,6 @@ const vertexAiLocation = getConfigSheetValue(
 const vertexAiModelId = getConfigSheetValue(
   CONFIG.sheets.config.fields.vertexAiModelId
 );
-const GENERIC_WORDS = new Set(['in', 'of', 'for', 'then', 'also', 'if']);
 
 type GenerationMetrics = {
   titleChanged: boolean;
@@ -99,7 +98,8 @@ export function generateNextRow() {
 
   if (!inputSheet || !generatedSheet) return;
 
-  const lastProcessedRow = generatedSheet.getLastRow();
+  const lastProcessedRow =
+    generatedSheet.getLastRow() - (CONFIG.sheets.generated.startRow - 1);
 
   if (lastProcessedRow >= inputSheet.getLastRow()) return;
 
