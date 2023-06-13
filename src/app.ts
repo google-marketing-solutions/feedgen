@@ -53,12 +53,13 @@ const vertexAiModelId = getConfigSheetValue(
 );
 const GENERIC_WORDS = new Set(['in', 'of', 'for', 'then', 'also', 'if']);
 
-const vertexAiEndpoint = CONFIG.vertexAi.endpoint;
+type GenerationMetrics = {
+  titleChanged: boolean;
+  attributesAreAdded: boolean;
+  generatedValuesAdded: boolean;
 
-const vertexAiModelId = getConfigSheetValue(
-  CONFIG.sheets.config.fields.vertexAiModelId
-);
-const GENERIC_WORDS = new Set(['in', 'of', 'for', 'then', 'also', 'if']);
+  scores: () => [number];
+};
 
 /**
  * Handle 'onOpen' Sheets event to show menu.
@@ -187,15 +188,8 @@ const getGenerationMetrics = (
   origAttributes: Set<string>,
   genAttributes: Set<string>,
   genAttributeValues: Set<string>
-) => {
-  const origCharCount = charCount(origTitle);
-  const genCharCount = charCount(genTitle);
-  const origWordCount = wordCount(origTitle);
-  const genWordCount = wordCount(genTitle);
-  const titleDeltaScore =
-    Math.abs(genCharCount - origCharCount) +
-    Math.abs(genWordCount - origWordCount);
-  const isTitleChanged = Number(origTitle !== genTitle);
+): GenerationMetrics => {
+  const isTitleChanged = origTitle !== genTitle;
   const attributesInOrigTitleCount = Util.countSetOccurencesInString(
     genAttributeValues,
     origTitle
@@ -204,41 +198,22 @@ const getGenerationMetrics = (
     genAttributeValues,
     genTitle
   );
-  const genericWordsInGenTitleCount = Util.countSetOccurencesInString(
-    GENERIC_WORDS,
-    genTitle
-  );
-  //those will have range 0-1
-  const genCharLimitScore = genCharCount <= 30 || genCharCount >= 130 ? 0 : 1;
-  const genAttrUsageScore = attributesInGenTitleCount / genAttributeValues.size;
-  const addedAttributes = Util.getSetDifference(genAttributes, origAttributes);
-  const addedAttributesCount = addedAttributes.length;
-  const addedAttributesScore = Math.min(
-    addedAttributesCount / origAttributes.size,
-    1
-  );
-  const genericWordsScore =
-    1 - genericWordsInGenTitleCount / GENERIC_WORDS.size;
-  const totalGenTitleScore =
-    genCharLimitScore *
-    genAttrUsageScore *
-    addedAttributesScore *
-    genericWordsScore;
-  return [
-    origCharCount,
-    genCharCount,
-    origWordCount,
-    genWordCount,
-    origAttributes.size,
-    genAttributes.size,
-    totalGenTitleScore,
-    titleDeltaScore,
-    isTitleChanged,
-    genCharLimitScore,
-    genAttrUsageScore,
-    addedAttributesScore,
-    genericWordsScore,
-  ];
+  const attributesAdded =
+    attributesInGenTitleCount > attributesInOrigTitleCount;
+  const genAttributeValuesAdded = genAttributeValues.size > 0;
+  return {
+    attributesAreAdded: attributesAdded,
+    generatedValuesAdded: genAttributeValuesAdded,
+    titleChanged: isTitleChanged,
+    scores: () => {
+      return [
+        (Number(attributesAdded) +
+          Number(genAttributeValuesAdded) +
+          Number(isTitleChanged)) /
+          3,
+      ];
+    },
+  };
 };
 
 function getConfigSheetValue(field: { row: number; col: number }) {
@@ -344,7 +319,7 @@ function optimizeRow(headers: string[], data: string[]): string[] {
     genCategory,
     genAttributeValues.join(', '),
     ...hallucinationMetrics,
-    ...generationMetrics,
+    ...generationMetrics.scores(),
     res,
     JSON.stringify(dataObj),
   ];

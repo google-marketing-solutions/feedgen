@@ -27,20 +27,16 @@ const CONFIG = {
                     row: 2,
                     col: 2,
                 },
-                vertexAiEndpoint: {
+                vertexAiModelId: {
                     row: 3,
                     col: 2,
                 },
-                vertexAiModelId: {
+                itemIdColumnName: {
                     row: 4,
                     col: 2,
                 },
-                itemIdColumnName: {
-                    row: 5,
-                    col: 2,
-                },
                 titleColumnName: {
-                    row: 6,
+                    row: 5,
                     col: 2,
                 },
             },
@@ -214,13 +210,18 @@ class Util {
     static getSetDifference(set1, set2) {
         return [...[...set1].filter(element => !set2.has(element))];
     }
+    static countSetOccurencesInString(words, text) {
+        const wordsArray = Array.from(words);
+        return wordsArray.reduce((matchCount, value) => {
+            return text.includes(value) ? matchCount + 1 : matchCount;
+        }, 0);
+    }
 }
 
 class VertexHelper {
-    constructor(projectId, location, endpoint, modelId) {
+    constructor(projectId, location, modelId) {
         this.projectId = projectId;
         this.location = location;
-        this.endpoint = endpoint;
         this.modelId = modelId;
     }
     addAuth(params) {
@@ -244,7 +245,7 @@ class VertexHelper {
     }
     predict(prompt) {
         MultiLogger.getInstance().log(`Prompt: ${prompt}`);
-        const predictEndpoint = `https://${this.location}-${this.endpoint}/v1/projects/${this.projectId}/locations/${this.location}/publishers/google/models/${this.modelId}:predict`;
+        const predictEndpoint = `https://${this.location}-${CONFIG.vertexAi.endpoint}/v1/projects/${this.projectId}/locations/${this.location}/publishers/google/models/${this.modelId}:predict`;
         const res = this.fetchJson(predictEndpoint, this.addAuth({
             instances: [{ content: prompt }],
             parameters: {
@@ -263,9 +264,9 @@ class VertexHelper {
         }
         return res.predictions[0].content;
     }
-    static getInstance(projectId, location, endpoint, modelId) {
+    static getInstance(projectId, location, modelId) {
         if (typeof this.instance === 'undefined') {
-            this.instance = new VertexHelper(projectId, location, endpoint, modelId);
+            this.instance = new VertexHelper(projectId, location, modelId);
         }
         return this.instance;
     }
@@ -280,8 +281,8 @@ const TITLE_PROMPT = 'Generated title based on all product attributes (100-130 c
 const SEPARATOR = '|';
 const vertexAiProjectId = getConfigSheetValue(CONFIG.sheets.config.fields.vertexAiProjectId);
 const vertexAiLocation = getConfigSheetValue(CONFIG.sheets.config.fields.vertexAiLocation);
-const vertexAiEndpoint = CONFIG.vertexAi.endpoint;
 const vertexAiModelId = getConfigSheetValue(CONFIG.sheets.config.fields.vertexAiModelId);
+const GENERIC_WORDS = new Set(['in', 'of', 'for', 'then', 'also', 'if']);
 function onOpen() {
     SpreadsheetApp.getUi()
         .createMenu('FeedGen')
@@ -348,24 +349,25 @@ function getHallucinationMetrics(data, genTitle, genAttributes) {
         hallucinationScore,
     ];
 }
-const getGenerationMetrics = (origTitle, genTitle, origAttributes, genAttributes) => {
-    const origCharCount = charCount(origTitle);
-    const genCharCount = charCount(genTitle);
-    const origWordCount = wordCount(origTitle);
-    const genWordCount = wordCount(genTitle);
-    const titleChangeScore = Math.abs(genCharCount - origCharCount) +
-        Math.abs(genWordCount - origWordCount);
-    const isTitleChanged = Number(origTitle !== genTitle);
-    return [
-        origCharCount,
-        genCharCount,
-        origWordCount,
-        genWordCount,
-        origAttributes.length,
-        genAttributes.length,
-        titleChangeScore,
-        isTitleChanged,
-    ];
+const getGenerationMetrics = (origTitle, genTitle, origAttributes, genAttributes, genAttributeValues) => {
+    const isTitleChanged = origTitle !== genTitle;
+    const attributesInOrigTitleCount = Util.countSetOccurencesInString(genAttributeValues, origTitle);
+    const attributesInGenTitleCount = Util.countSetOccurencesInString(genAttributeValues, genTitle);
+    const attributesAdded = attributesInGenTitleCount > attributesInOrigTitleCount;
+    const genAttributeValuesAdded = genAttributeValues.size > 0;
+    return {
+        attributesAreAdded: attributesAdded,
+        generatedValuesAdded: genAttributeValuesAdded,
+        titleChanged: isTitleChanged,
+        scores: () => {
+            return [
+                (Number(attributesAdded) +
+                    Number(genAttributeValuesAdded) +
+                    Number(isTitleChanged)) /
+                    3,
+            ];
+        },
+    };
 };
 function getConfigSheetValue(field) {
     return SheetsService.getInstance().getCellValue(CONFIG.sheets.config.name, field.row, field.col);
@@ -381,23 +383,25 @@ function optimizeRow(headers, data) {
     const genCategory = genCategoryRow.replace(CATEGORY_PROMPT, '').trim();
     const genAttributes = genTemplateRow
         .replace(TEMPLATE_PROMPT, '')
-        .split(SEPARATOR);
+        .split(SEPARATOR)
+        .map((x) => `${x.trim()}`);
     const genTemplate = genAttributes
         .map((x) => `<${x.trim()}>`)
-        .join(', ');
+        .join(' ');
     const origAttributes = origTemplateRow
         .replace(ORIGINAL_TITLE_TEMPLATE_PROMPT, '')
         .split(SEPARATOR);
     const origTemplate = origAttributes
         .map((x) => `<${x.trim()}>`)
-        .join(', ');
+        .join(' ');
     const genAttributeValues = genAttributesRow
         .replace(ATTRIBUTES_PROMPT, '')
         .split(SEPARATOR)
         .map((x) => x.trim());
-    const genTitle = genTitleRow.replace(TITLE_PROMPT, '').trim();
+    const titleFeatures = genAttributes.map((attribute, index) => dataObj[attribute] || genAttributeValues[index]);
+    const genTitle = titleFeatures.join(' ');
     const hallucinationMetrics = getHallucinationMetrics(data, genTitle, genAttributeValues);
-    const generationMetrics = getGenerationMetrics(origTitle, genTitle, origAttributes, genAttributes);
+    const generationMetrics = getGenerationMetrics(origTitle, genTitle, origAttributes, genAttributes, genAttributeValues);
     const row = [];
     row[CONFIG.sheets.generated.cols.approval] = false;
     row[CONFIG.sheets.generated.cols.status] = 'Success';
@@ -411,7 +415,7 @@ function optimizeRow(headers, data) {
         genCategory,
         genAttributeValues.join(', '),
         ...hallucinationMetrics,
-        ...generationMetrics,
+        ...generationMetrics.scores(),
         res,
         JSON.stringify(dataObj),
     ];
@@ -482,7 +486,7 @@ function generateTitle(data) {
     ${JSON.stringify(data, null, 2)}
 
     `;
-    const res = Util.executeWithRetry(CONFIG.vertexAi.maxRetries, 0, () => VertexHelper.getInstance(vertexAiProjectId, vertexAiLocation, vertexAiEndpoint, vertexAiModelId).predict(prompt));
+    const res = Util.executeWithRetry(CONFIG.vertexAi.maxRetries, 0, () => VertexHelper.getInstance(vertexAiProjectId, vertexAiLocation, vertexAiModelId).predict(prompt));
     return res;
 }
 function getGeneratedRows() {
