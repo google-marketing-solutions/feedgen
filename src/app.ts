@@ -53,6 +53,14 @@ const vertexAiModelId = getConfigSheetValue(
 );
 const GENERIC_WORDS = new Set(['in', 'of', 'for', 'then', 'also', 'if']);
 
+type GenerationMetrics = {
+  titleChanged: boolean;
+  attributesAreAdded: boolean;
+  generatedValuesAdded: boolean;
+
+  scores: () => [number];
+};
+
 /**
  * Handle 'onOpen' Sheets event to show menu.
  */
@@ -177,27 +185,35 @@ function getHallucinationMetrics(
 const getGenerationMetrics = (
   origTitle: string,
   genTitle: string,
-  origAttributes: string[],
-  genAttributes: string[]
-) => {
-  const origCharCount = charCount(origTitle);
-  const genCharCount = charCount(genTitle);
-  const origWordCount = wordCount(origTitle);
-  const genWordCount = wordCount(genTitle);
-  const titleChangeScore =
-    Math.abs(genCharCount - origCharCount) +
-    Math.abs(genWordCount - origWordCount);
-  const isTitleChanged = Number(origTitle !== genTitle);
-  return [
-    origCharCount,
-    genCharCount,
-    origWordCount,
-    genWordCount,
-    origAttributes.length,
-    genAttributes.length,
-    titleChangeScore,
-    isTitleChanged,
-  ];
+  origAttributes: Set<string>,
+  genAttributes: Set<string>,
+  genAttributeValues: Set<string>
+): GenerationMetrics => {
+  const isTitleChanged = origTitle !== genTitle;
+  const attributesInOrigTitleCount = Util.countSetOccurencesInString(
+    genAttributeValues,
+    origTitle
+  );
+  const attributesInGenTitleCount = Util.countSetOccurencesInString(
+    genAttributeValues,
+    genTitle
+  );
+  const attributesAdded =
+    attributesInGenTitleCount > attributesInOrigTitleCount;
+  const genAttributeValuesAdded = genAttributeValues.size > 0;
+  return {
+    attributesAreAdded: attributesAdded,
+    generatedValuesAdded: genAttributeValuesAdded,
+    titleChanged: isTitleChanged,
+    scores: () => {
+      return [
+        (Number(attributesAdded) +
+          Number(genAttributeValuesAdded) +
+          Number(isTitleChanged)) /
+          3,
+      ];
+    },
+  };
 };
 
 function getConfigSheetValue(field: { row: number; col: number }) {
@@ -284,7 +300,8 @@ function optimizeRow(headers: string[], data: string[]): string[] {
     origTitle,
     genTitle,
     origAttributes,
-    genAttributes
+    genAttributes,
+    genAttributeValues
   );
 
   const row: Array<string | boolean> = [];
@@ -302,7 +319,7 @@ function optimizeRow(headers: string[], data: string[]): string[] {
     genCategory,
     genAttributeValues.join(', '),
     ...hallucinationMetrics,
-    ...generationMetrics,
+    ...generationMetrics.scores(),
     res,
     JSON.stringify(dataObj),
   ];
