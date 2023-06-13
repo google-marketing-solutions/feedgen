@@ -28,15 +28,15 @@ export const CONFIG = {
           col: 2,
         },
         vertexAiModelId: {
-          row: 4,
+          row: 3,
           col: 2,
         },
         itemIdColumnName: {
-          row: 5,
+          row: 4,
           col: 2,
         },
         titleColumnName: {
-          row: 6,
+          row: 5,
           col: 2,
         },
       },
