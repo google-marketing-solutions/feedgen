@@ -56,7 +56,7 @@ type GenerationMetrics = {
   titleChanged: boolean;
   attributesAreAdded: boolean;
   generatedValuesAdded: boolean;
-
+  newWordsAdded: boolean;
   scores: () => [number];
 };
 
@@ -158,49 +158,31 @@ export function getTotalGeneratedRows() {
     : totalRows - CONFIG.sheets.generated.startRow;
 }
 
-function getHallucinationMetrics(
-  data: string[],
-  genTitle: string,
-  genAttributes: string[]
-) {
-  // Get words
-  const inputContextWords = Util.splitWords(data.join(' '));
-  const genTitleWords = Util.splitWords(genTitle);
-  const missingGenAttributesInGenTitle = genAttributes.filter(
-    attr => !genTitle.includes(attr)
-  );
-  const newWordsNotFoundInContext = Util.getSetDifference(
-    genTitleWords,
-    inputContextWords
-  );
-  const hallucinationScore =
-    missingGenAttributesInGenTitle.length + newWordsNotFoundInContext.length;
-  return [
-    newWordsNotFoundInContext.join(', '),
-    missingGenAttributesInGenTitle.join(', '),
-    hallucinationScore,
-  ];
-}
-
 const getGenerationMetrics = (
   origTitle: string,
   genTitle: string,
   origAttributes: Set<string>,
-  genAttributes: Set<string>
+  genAttributes: Set<string>,
+  inputWords: Set<string>
 ): GenerationMetrics => {
   const isTitleChanged = origTitle !== genTitle;
   const attributesAdded = genAttributes.size > origAttributes.size;
+  const newWordsAdded = genTitle.split(' ').some((genTitleWord: string) => {
+    return !inputWords.has(genTitleWord);
+  });
   const genAttributeValuesAdded = true;
   return {
     attributesAreAdded: attributesAdded,
     generatedValuesAdded: genAttributeValuesAdded,
     titleChanged: isTitleChanged,
+    newWordsAdded: newWordsAdded,
     scores: () => {
       return [
         (Number(attributesAdded) +
           Number(genAttributeValuesAdded) +
-          Number(isTitleChanged)) /
-          3,
+          Number(isTitleChanged) +
+          Number(newWordsAdded)) /
+          4,
       ];
     },
   };
@@ -281,16 +263,19 @@ function optimizeRow(headers: string[], data: string[]): string[] {
   // create title solely based on titleFeatures to reduce hallucination potential
   const genTitle = titleFeatures.join(' ');
 
-  const hallucinationMetrics = getHallucinationMetrics(
-    data,
-    genTitle,
-    genAttributeValues
-  );
+  const inputWords = new Set<string>();
+  data.forEach((field: string) => {
+    field.split(' ').forEach((word: string) => {
+      inputWords.add(word);
+    });
+  });
+
   const generationMetrics = getGenerationMetrics(
     origTitle,
     genTitle,
     origAttributes,
-    genAttributes
+    genAttributes,
+    inputWords
   );
 
   const row: Array<string | boolean> = [];
@@ -307,31 +292,10 @@ function optimizeRow(headers: string[], data: string[]): string[] {
     origTemplate,
     genCategory,
     genAttributeValues.join(', '),
-    ...hallucinationMetrics,
     ...generationMetrics.scores(),
     res,
     JSON.stringify(dataObj),
   ];
-}
-
-/**
- * Count characters in string.
- *
- * @param {string} inputString
- * @returns {number}
- */
-function charCount(inputString: string) {
-  return inputString.trim().length;
-}
-
-/**
- * Count words in string.
- *
- * @param {string} inputString
- * @returns {number}
- */
-function wordCount(inputString: string) {
-  return inputString.trim().split(' ').length;
 }
 
 function generateTitle(data: Record<string, unknown>) {
