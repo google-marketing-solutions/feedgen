@@ -14,13 +14,29 @@
  * limitations under the License.
  */
 import { CONFIG } from '../config';
+import { MultiLogger } from './logger';
+
+interface VertexAiPrediction {
+  content: string;
+  safetyAttributes: {
+    blocked: boolean;
+  };
+}
+
+interface VertexAiResponse {
+  predictions: VertexAiPrediction[];
+}
 
 export class VertexHelper {
   private static instance: VertexHelper;
   private projectId: string;
+  private location: string;
+  private modelId: string;
 
-  constructor(projectId: string) {
+  constructor(projectId: string, location: string, modelId: string) {
     this.projectId = projectId;
+    this.location = location;
+    this.modelId = modelId;
   }
 
   addAuth(params: Record<string, unknown>) {
@@ -36,7 +52,7 @@ export class VertexHelper {
     return Object.assign({ payload: JSON.stringify(params) }, baseParams);
   }
 
-  fetchJson(url: string, params: Record<string, unknown>): any {
+  fetchJson(url: string, params: Record<string, unknown>): VertexAiResponse {
     const response = UrlFetchApp.fetch(url, params);
 
     if (response.getResponseCode() === 429) {
@@ -47,9 +63,9 @@ export class VertexHelper {
   }
 
   predict(prompt: string) {
-    console.log(`Prompt: ${prompt}`);
+    MultiLogger.getInstance().log(`Prompt: ${prompt}`);
 
-    const predictEndpoint = `https://us-central1-${CONFIG.vertexAi.endpoint}/v1/projects/${this.projectId}/locations/us-central1/publishers/google/models/${CONFIG.vertexAi.modelId}:predict`;
+    const predictEndpoint = `https://${this.location}-${CONFIG.vertexAi.endpoint}/v1/projects/${this.projectId}/locations/${this.location}/publishers/google/models/${this.modelId}:predict`;
 
     const res = this.fetchJson(
       predictEndpoint,
@@ -65,7 +81,13 @@ export class VertexHelper {
       })
     );
 
-    console.log(JSON.stringify(res, null, 2));
+    MultiLogger.getInstance().log(res);
+
+    if (res.predictions[0].safetyAttributes.blocked) {
+      throw new Error('Blocked for safety reasons.');
+    } else if (!res.predictions[0].content) {
+      throw new Error('No content');
+    }
 
     return res.predictions[0].content;
   }
@@ -73,11 +95,15 @@ export class VertexHelper {
   /**
    * Returns the VertexHelper instance, initializing it if it does not exist yet.
    *
+   * @param {string} projectId
+   * @param {string} location
+   * @param {string} endpoint
+   * @param {string} modelId
    * @returns {!VertexHelper} The initialized SheetsService instance
    */
-  static getInstance(projectId: string) {
+  static getInstance(projectId: string, location: string, modelId: string) {
     if (typeof this.instance === 'undefined') {
-      this.instance = new VertexHelper(projectId);
+      this.instance = new VertexHelper(projectId, location, modelId);
     }
     return this.instance;
   }

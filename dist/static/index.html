@@ -186,66 +186,7 @@ limitations under the License.
       document.getElementById('content').appendChild(node);
     }
 
-    async function startGeneratingLegacy() {
-      setStatus(STATUS.running);
-
-      // Hide 'Start' button
-      document.getElementById('start-generating').classList.add('hidden');
-
-      // Show 'Stop' button
-      document.getElementById('stop-generating').classList.remove('hidden');
-
-      cancelled = false;
-      startTime = Date.now();
-      let totalRows = await new Promise((resolve, reject) => {
-          google.script.run
-            .withSuccessHandler(res => resolve(res))
-            .withFailureHandler(err => log(err))
-            .getTotalInputRows();
-        });
-
-      let processedRowNumber = await new Promise((resolve, reject) => {
-          google.script.run
-            .withSuccessHandler(res => resolve(res))
-            .withFailureHandler(err => log(err))
-            .getTotalGeneratedRows();
-        });
-
-      let rowsToProcess = totalRows - processedRowNumber;
-      processedRowsCount = 1;
-
-      //setText('status',`Processing row ${processedRowNumber}/${totalRows}...`);
-
-      //interval = setInterval(updateElapsed, 1000);
-
-      google.script.run
-        .withSuccessHandler(async res => {
-          do {
-            // Update status
-            setStatus(STATUS.running, null, `Processing row ${processedRowNumber}/${totalRows}...`)
-
-            // Generate next row
-            processedRowNumber = await new Promise((resolve, reject) => {
-                google.script.run
-                .withSuccessHandler(res => resolve(res))
-                .withFailureHandler(err => log(err))
-                .generateNextRow();
-              });
-
-            processedRowsCount++;
-          } while (processedRowNumber > 0 && !cancelled);
-
-          //const elapsedSeconds = Math.floor((Date.now() - startTime) / 1000);
-          //setText('summary', `Done! ${processedRowsCount} rows processed in ${elapsedSeconds} seconds`);
-          //setText('close', 'Close')
-          //clearInterval(interval)
-          
-          stopGenerating();
-      })
-      .prepareGeneratedSheet();
-    }
-
-    async function startGenerating(clear = true) {
+    async function startGenerating(resume = false) {
       setStatus(STATUS.running);
 
       // Hide 'Start' button
@@ -257,7 +198,7 @@ limitations under the License.
       cancelled = false;
       startTime = Date.now();
 
-      if (clear) {
+      if (!resume) {
         // Clear Generated Rows
         await new Promise((resolve, reject) => {
           google.script.run

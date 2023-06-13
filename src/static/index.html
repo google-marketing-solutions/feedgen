@@ -186,7 +186,7 @@ limitations under the License.
       document.getElementById('content').appendChild(node);
     }
 
-    async function startGenerating(clear = true) {
+    async function startGenerating(resume = false) {
       setStatus(STATUS.running);
 
       // Hide 'Start' button
@@ -198,7 +198,7 @@ limitations under the License.
       cancelled = false;
       startTime = Date.now();
 
-      if (clear) {
+      if (!resume) {
         // Clear Generated Rows
         await new Promise((resolve, reject) => {
           google.script.run
