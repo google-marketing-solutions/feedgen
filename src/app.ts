@@ -186,21 +186,11 @@ const getGenerationMetrics = (
   origTitle: string,
   genTitle: string,
   origAttributes: Set<string>,
-  genAttributes: Set<string>,
-  genAttributeValues: Set<string>
+  genAttributes: Set<string>
 ): GenerationMetrics => {
   const isTitleChanged = origTitle !== genTitle;
-  const attributesInOrigTitleCount = Util.countSetOccurencesInString(
-    genAttributeValues,
-    origTitle
-  );
-  const attributesInGenTitleCount = Util.countSetOccurencesInString(
-    genAttributeValues,
-    genTitle
-  );
-  const attributesAdded =
-    attributesInGenTitleCount > attributesInOrigTitleCount;
-  const genAttributeValuesAdded = genAttributeValues.size > 0;
+  const attributesAdded = genAttributes.size > origAttributes.size;
+  const genAttributeValuesAdded = true;
   return {
     attributesAreAdded: attributesAdded,
     generatedValuesAdded: genAttributeValuesAdded,
@@ -300,8 +290,7 @@ function optimizeRow(headers: string[], data: string[]): string[] {
     origTitle,
     genTitle,
     origAttributes,
-    genAttributes,
-    genAttributeValues
+    genAttributes
   );
 
   const row: Array<string | boolean> = [];

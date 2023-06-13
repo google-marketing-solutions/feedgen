@@ -348,12 +348,10 @@ function getHallucinationMetrics(data, genTitle, genAttributes) {
         hallucinationScore,
     ];
 }
-const getGenerationMetrics = (origTitle, genTitle, origAttributes, genAttributes, genAttributeValues) => {
+const getGenerationMetrics = (origTitle, genTitle, origAttributes, genAttributes) => {
     const isTitleChanged = origTitle !== genTitle;
-    const attributesInOrigTitleCount = Util.countSetOccurencesInString(genAttributeValues, origTitle);
-    const attributesInGenTitleCount = Util.countSetOccurencesInString(genAttributeValues, genTitle);
-    const attributesAdded = attributesInGenTitleCount > attributesInOrigTitleCount;
-    const genAttributeValuesAdded = genAttributeValues.size > 0;
+    const attributesAdded = genAttributes.size > origAttributes.size;
+    const genAttributeValuesAdded = true;
     return {
         attributesAreAdded: attributesAdded,
         generatedValuesAdded: genAttributeValuesAdded,
@@ -400,7 +398,7 @@ function optimizeRow(headers, data) {
     const titleFeatures = genAttributes.map((attribute, index) => dataObj[attribute] || genAttributeValues[index]);
     const genTitle = titleFeatures.join(' ');
     const hallucinationMetrics = getHallucinationMetrics(data, genTitle, genAttributeValues);
-    const generationMetrics = getGenerationMetrics(origTitle, genTitle, origAttributes, genAttributes, genAttributeValues);
+    const generationMetrics = getGenerationMetrics(origTitle, genTitle, origAttributes, genAttributes);
     const row = [];
     row[CONFIG.sheets.generated.cols.approval] = false;
     row[CONFIG.sheets.generated.cols.status] = 'Success';
