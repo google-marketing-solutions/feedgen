@@ -50,11 +50,4 @@ export class Util {
   static getSetDifference(set1: Set<string>, set2: Set<string>) {
     return [...[...set1].filter(element => !set2.has(element))];
   }
-
-  static countSetOccurencesInString(words: Set<string>, text: string) {
-    const wordsArray = Array.from(words);
-    return wordsArray.reduce((matchCount, value) => {
-      return text.includes(value) ? matchCount + 1 : matchCount;
-    }, 0);
-  }
 }

@@ -210,12 +210,6 @@ class Util {
     static getSetDifference(set1, set2) {
         return [...[...set1].filter(element => !set2.has(element))];
     }
-    static countSetOccurencesInString(words, text) {
-        const wordsArray = Array.from(words);
-        return wordsArray.reduce((matchCount, value) => {
-            return text.includes(value) ? matchCount + 1 : matchCount;
-        }, 0);
-    }
 }
 
 class VertexHelper {
