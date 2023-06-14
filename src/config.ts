@@ -39,6 +39,14 @@ export const CONFIG = {
           row: 5,
           col: 2,
         },
+        promptPrefix: {
+          row: 6,
+          col: 2,
+        },
+        promptExamplesStart: {
+          row: 13,
+          col: 1,
+        },
       },
     },
     input: {

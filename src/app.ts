@@ -35,8 +35,6 @@ const ORIGINAL_TITLE_TEMPLATE_PROMPT =
 const CATEGORY_PROMPT = 'product category:';
 const TEMPLATE_PROMPT = 'product attribute keys:';
 const ATTRIBUTES_PROMPT = 'product attributes values:';
-const TITLE_PROMPT =
-  'Generated title based on all product attributes (100-130 characters):';
 const SEPARATOR = '|';
 const WORD_MATCH_REGEX = /(\w|\s)*\w(?=")|\w+/g;
 
@@ -52,6 +50,12 @@ const vertexAiLocation = getConfigSheetValue(
 const vertexAiModelId = getConfigSheetValue(
   CONFIG.sheets.config.fields.vertexAiModelId
 );
+
+const promptPrefix = getConfigSheetValue(
+  CONFIG.sheets.config.fields.promptPrefix
+);
+
+const examplesData = getExamplesData();
 
 /**
  * Handle 'onOpen' Sheets event to show menu.
@@ -184,6 +188,36 @@ function getConfigSheetValue(field: { row: number; col: number }) {
   );
 }
 
+function getConfigSheetDataRange(startCell: { row: number; col: number }) {
+  const sheets = SheetsService.getInstance();
+  const totalConfigRows = sheets.getTotalRows(CONFIG.sheets.config.name) || 0;
+  const totalConfigColumns =
+    sheets.getTotalColumns(CONFIG.sheets.config.name) || 0;
+  return sheets.getRangeData(
+    CONFIG.sheets.config.name,
+    startCell.row,
+    startCell.col,
+    totalConfigRows - startCell.row + 1,
+    totalConfigColumns - startCell.col + 1
+  );
+}
+
+function getExamplesData() {
+  const examplesDataRange = getConfigSheetDataRange(
+    CONFIG.sheets.config.fields.promptExamplesStart
+  ).filter(row => row[0] !== '');
+  const [headers, ...data] = examplesDataRange;
+
+  const examples = data.map(row => {
+    return row.reduce((acc, value, i) => {
+      const key = headers[i];
+      if (key === '') return acc;
+      return { ...acc, [key]: value };
+    }, {});
+  });
+  return examples;
+}
+
 /**
  * Use Vertex AI to optimize row.
  *
@@ -210,7 +244,7 @@ function optimizeRow(
   const origTitle = dataObj[titleColumnName];
 
   // Generate title with all available context
-  const res = generateTitle(dataObj);
+  const res = generateEntry(dataObj);
 
   const [origTemplateRow, genCategoryRow, genTemplateRow, genAttributesRow] =
     res.split('\n');
@@ -292,67 +326,19 @@ function optimizeRow(
   ];
 }
 
-function generateTitle(data: Record<string, unknown>): string {
-  const prompt = `
-    Context:
-    {
-      "item_id": "220837",
-      "title": "Seymour Duncan SM-1 Mini Humbucker B CHR",
-      "description": "Seymour Duncan SM-1 Mini Humbucker B CHR Vintage Fire-bird Mini Humbucker, 2 - adrig, Bridge Position, Finish Chrome Cover",
-      "brand": "Seymour Duncan",
-      "color": "Chrome Cover",
-      "product_type": "Gitarren und Bässe > Pickups und Tonabnehmer > Tonabnehmer für E-Gitarre > Sonstige Tonabnehmer für E-Gitarre",
-      "impressions_7d": 13,
-      "clicks_7d": 0
-    }
-
-    ${ORIGINAL_TITLE_TEMPLATE_PROMPT} brand ${SEPARATOR} model ${SEPARATOR} product
-    ${CATEGORY_PROMPT} Guitars
-    ${TEMPLATE_PROMPT} brand ${SEPARATOR} model ${SEPARATOR} product ${SEPARATOR} color ${SEPARATOR} design
-    ${ATTRIBUTES_PROMPT} Seymour Duncan ${SEPARATOR} SM-1 ${SEPARATOR} Mini Humbucker ${SEPARATOR} Chrome ${SEPARATOR} Vintage
-    ${TITLE_PROMPT} Seymour Duncan SM-1 Mini Humbucker Pickup in Chrome
-
-    Context:
-    {
-      "item_id": "565119",
-      "title": "Gretsch Drums 14\"\"x7\"\" 140th Anniversary Snare",
-      "description": "Gretsch Drums 140th Anniversary Snare + Bag; Farbe: Natur; Hochglanz lackiert; Ahorn Kessel; 16 Einzelböckchen; Nickel Hardware; Figured Ash Außenlage; Micro Sensitive Anhebung; Snap-in Stimmschlüsselhalter; inkluseive 140th Anniversary Tasche; Zertifikat unterzeichnet von allen Produktionsmitarbeitern; 140 Stück limitiert",
-      "brand": "Gretsch Drums",
-      "color": "Natur",
-      "product_type": "Drums und Percussion > Akustik-Drums > Snaredrums mit Holzkessel > 14\"\" Holz Snaredrums",
-      "impressions_7d": 84,
-      "clicks_7d": 1
-    }
-
-    ${ORIGINAL_TITLE_TEMPLATE_PROMPT} brand ${SEPARATOR} size ${SEPARATOR} edition ${SEPARATOR} product
-    ${CATEGORY_PROMPT} Drums
-    ${TEMPLATE_PROMPT} brand ${SEPARATOR} product ${SEPARATOR} material ${SEPARATOR} edition ${SEPARATOR} size
-    ${ATTRIBUTES_PROMPT} Gretsch Drums ${SEPARATOR} Snare + Bag ${SEPARATOR} Ahorn ${SEPARATOR} 140th Anniversary ${SEPARATOR} 14"x7"
-    ${TITLE_PROMPT} Gretsch Snare Drums + Bag aus Ahorn, 140th Anniversary edition
-
-    Context:
-    {
-      "item_id": "302293",
-      "title": "Thon CD Player Case American Audio",
-      "description": "Thon CD Player Case American Audio, maßgefertigtes Haubencase für American Audio Radius 1000, 2000 und 3000, aus 7mm Multiplex, 25 x 25 mm Alukante, Schaumstoffpolsterung, 2x Butterfly-Verschlüsse, 1 Koffergriff, Gummifüße, Platz für Netzkabel, Stahlkugelecken, hergestellt in Deutschland, Außenmaße (BxTxH): ca. 34 x 50 x 19,4 cm, Gewicht: ca. 4,9 kg, Gewicht mit Radius: ca. 8,7 kg",
-      "brand": "Thon",
-      "color": "Phenol Braun",
-      "product_type": "DJ-Equipment > Zubehör für DJs > DJ Player Cases/Bags",
-      "impressions_7d": 15,
-      "clicks_7d": 0
-    }
-
-    ${ORIGINAL_TITLE_TEMPLATE_PROMPT} brand ${SEPARATOR} product ${SEPARATOR} compatibility
-    ${CATEGORY_PROMPT} DJ Equimpent
-    ${TEMPLATE_PROMPT} brand ${SEPARATOR} product ${SEPARATOR} weight ${SEPARATOR} compatibility ${SEPARATOR} color
-    ${ATTRIBUTES_PROMPT} Thon ${SEPARATOR} CD Player Case ${SEPARATOR} 4,9 kg ${SEPARATOR} American Audio ${SEPARATOR} braun
-    ${TITLE_PROMPT} Thon CD PlayerCase, 4,9 kg, American Audio, braun
-
-    Context:
-    ${JSON.stringify(data, null, 2)}
-
-    `;
-
+function generateEntry(data: Record<string, unknown>): string {
+  const promptExamples = examplesData
+    .map(example => {
+      let examplePart = '';
+      for (const k in example) {
+        examplePart += `${k}: ${example[k]}\n`;
+      }
+      return examplePart;
+    })
+    .join('\n');
+  const dataContext = `${JSON.stringify(data)}`;
+  const prompt =
+    promptPrefix + '\n' + promptExamples + '\nContext:\n' + dataContext;
   const res = Util.executeWithRetry(CONFIG.vertexAi.maxRetries, 0, () =>
     VertexHelper.getInstance(
       vertexAiProjectId,
