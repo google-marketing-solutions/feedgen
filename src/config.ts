@@ -54,6 +54,8 @@ export const CONFIG = {
         id: 2,
         titleOriginal: 3,
         titleGenerated: 4,
+        gapAttributes: 13,
+        originalInput: 15,
       },
     },
     output: {
@@ -62,6 +64,10 @@ export const CONFIG = {
       cols: {
         id: 0,
         title: 1,
+        modificationTimestamp: 2,
+        gapCols: {
+          start: 3,
+        },
       },
     },
     log: {
