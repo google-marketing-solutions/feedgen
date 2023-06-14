@@ -17,7 +17,7 @@
 //@OnlyCurrentDoc
 /* eslint-disable no-useless-escape */
 
-import { CONFIG } from './config';
+import { CONFIG, Status } from './config';
 import { MultiLogger } from './helpers/logger';
 import { SheetsService } from './helpers/sheets';
 import { Util } from './helpers/util';
@@ -71,12 +71,62 @@ export function onOpen() {
 }
 
 /**
+ * Find first row index for cell matching conditions.
+ *
+ * @param {string} sheetName
+ * @param {string} searchValues
+ * @param {number} column
+ * @param {number} offset
+ * @param {boolean} negate
+ * @returns {number}
+ */
+function findRowIndex(
+  sheetName: string,
+  searchValues: string[],
+  column: number,
+  offset = 0,
+  negate = false
+) {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(sheetName);
+  const range = sheet?.getRange(offset, column, sheet.getMaxRows(), 1);
+
+  if (!range) return -1;
+
+  const data = range.getValues();
+
+  const rowIndex = data.flat().findIndex(cell => {
+    if (negate) {
+      return !searchValues.includes(cell);
+    } else {
+      return searchValues.includes(cell);
+    }
+  });
+
+  return rowIndex >= 0 ? rowIndex : -1;
+}
+
+/**
  * Open sidebar.
  */
 export function showSidebar() {
   const html = HtmlService.createTemplateFromFile('static/index').evaluate();
   html.setTitle('FeedGen');
   SpreadsheetApp.getUi().showSidebar(html);
+}
+
+/**
+ * Get index of row to be generated next.
+ *
+ * @returns {number}
+ */
+export function getNextRowIndexToBeGenerated() {
+  return findRowIndex(
+    CONFIG.sheets.generated.name,
+    [Status.SUCCESS],
+    CONFIG.sheets.generated.cols.status + 1,
+    CONFIG.sheets.generated.startRow + 1,
+    true
+  );
 }
 
 /**
@@ -94,23 +144,34 @@ export function generateNextRow() {
 
   if (!inputSheet || !generatedSheet) return;
 
-  const lastProcessedRow =
-    generatedSheet.getLastRow() - (CONFIG.sheets.generated.startRow - 1);
+  // Get row to be processed
+  const rowIndex = getNextRowIndexToBeGenerated();
 
-  if (lastProcessedRow >= inputSheet.getLastRow()) return;
+  if (rowIndex >= inputSheet.getLastRow()) return;
 
-  MultiLogger.getInstance().log(`Generating for row ${lastProcessedRow}`);
+  MultiLogger.getInstance().log(`Generating for row ${rowIndex}`);
 
   const row = inputSheet
-    .getRange(lastProcessedRow + 1, 1, 1, inputSheet.getMaxColumns())
+    .getRange(
+      CONFIG.sheets.input.startRow + 1 + rowIndex,
+      1,
+      1,
+      inputSheet.getMaxColumns()
+    )
     .getValues()[0];
 
   try {
     const inputHeaders = SheetsService.getInstance().getHeaders(inputSheet);
     const optimizedRow = optimizeRow(inputHeaders, row);
 
-    generatedSheet.appendRow(optimizedRow);
-    MultiLogger.getInstance().log('Success');
+    SheetsService.getInstance().setValuesInDefinedRange(
+      CONFIG.sheets.generated.name,
+      CONFIG.sheets.generated.startRow + 1 + rowIndex,
+      1,
+      [optimizedRow]
+    );
+
+    MultiLogger.getInstance().log(Status.SUCCESS);
   } catch (e) {
     MultiLogger.getInstance().log(`Error: ${e}`);
     row[CONFIG.sheets.generated.cols.status] = `Error: ${e}`;
@@ -121,7 +182,7 @@ export function generateNextRow() {
     generatedSheet.appendRow(failedRow);
   }
 
-  return lastProcessedRow;
+  return rowIndex;
 }
 
 /**

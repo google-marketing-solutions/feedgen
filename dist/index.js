@@ -14,6 +14,11 @@
  * limitations under the License.
  */
 
+var Status;
+(function (Status) {
+    Status["SUCCESS"] = "Success";
+    Status["FAILED"] = "Failed";
+})(Status || (Status = {}));
 const CONFIG = {
     sheets: {
         config: {
@@ -54,6 +59,8 @@ const CONFIG = {
                 id: 2,
                 titleOriginal: 3,
                 titleGenerated: 4,
+                gapAttributes: 10,
+                originalInput: 12,
             },
         },
         output: {
@@ -62,6 +69,10 @@ const CONFIG = {
             cols: {
                 id: 0,
                 title: 1,
+                modificationTimestamp: 2,
+                gapCols: {
+                    start: 3,
+                },
             },
         },
         log: {
@@ -168,6 +179,14 @@ class SheetsService {
             return null;
         const cell = sheet.getRange(row, col);
         return cell.getValue();
+    }
+    setCellValue(row, col, val, sheetName) {
+        const sheet = sheetName
+            ? this.getSpreadsheet().getSheetByName(sheetName)
+            : this.getSpreadsheet().getActiveSheet();
+        if (!sheet)
+            return;
+        sheet.getRange(row, col).setValue(val);
     }
     getSpreadsheet() {
         return this.spreadsheet_;
@@ -282,31 +301,47 @@ function onOpen() {
         .addItem('Launch', 'showSidebar')
         .addToUi();
 }
-function logSummary() {
-    MultiLogger.getInstance().log('Summary: ');
+function findRowIndex(sheetName, searchValues, column, offset = 0, negate = false) {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(sheetName);
+    const range = sheet?.getRange(offset, column, sheet.getMaxRows(), 1);
+    if (!range)
+        return -1;
+    const data = range.getValues();
+    const rowIndex = data.flat().findIndex(cell => {
+        if (negate) {
+            return !searchValues.includes(cell);
+        }
+        else {
+            return searchValues.includes(cell);
+        }
+    });
+    return rowIndex >= 0 ? rowIndex : -1;
 }
 function showSidebar() {
     const html = HtmlService.createTemplateFromFile('static/index').evaluate();
     html.setTitle('FeedGen');
     SpreadsheetApp.getUi().showSidebar(html);
 }
+function getNextRowIndexToBeGenerated() {
+    return findRowIndex(CONFIG.sheets.generated.name, [Status.SUCCESS], CONFIG.sheets.generated.cols.status + 1, CONFIG.sheets.generated.startRow + 1, true);
+}
 function generateNextRow() {
     const inputSheet = SpreadsheetApp.getActive().getSheetByName(CONFIG.sheets.input.name);
     const generatedSheet = SpreadsheetApp.getActive().getSheetByName(CONFIG.sheets.generated.name);
     if (!inputSheet || !generatedSheet)
         return;
-    const lastProcessedRow = generatedSheet.getLastRow() - (CONFIG.sheets.generated.startRow - 1);
-    if (lastProcessedRow >= inputSheet.getLastRow())
+    const rowIndex = getNextRowIndexToBeGenerated();
+    if (rowIndex >= inputSheet.getLastRow())
         return;
-    MultiLogger.getInstance().log(`Generating for row ${lastProcessedRow}`);
+    MultiLogger.getInstance().log(`Generating for row ${rowIndex}`);
     const row = inputSheet
-        .getRange(lastProcessedRow + 1, 1, 1, inputSheet.getMaxColumns())
+        .getRange(CONFIG.sheets.input.startRow + 1 + rowIndex, 1, 1, inputSheet.getMaxColumns())
         .getValues()[0];
     try {
         const inputHeaders = SheetsService.getInstance().getHeaders(inputSheet);
         const optimizedRow = optimizeRow(inputHeaders, row);
-        generatedSheet.appendRow(optimizedRow);
-        MultiLogger.getInstance().log('Success');
+        SheetsService.getInstance().setValuesInDefinedRange(CONFIG.sheets.generated.name, CONFIG.sheets.generated.startRow + 1 + rowIndex, 1, [optimizedRow]);
+        MultiLogger.getInstance().log(Status.SUCCESS);
     }
     catch (e) {
         MultiLogger.getInstance().log(`Error: ${e}`);
@@ -316,7 +351,7 @@ function generateNextRow() {
             'Failed. See log for more details.';
         generatedSheet.appendRow(failedRow);
     }
-    return lastProcessedRow;
+    return rowIndex;
 }
 function getTotalInputRows() {
     const totalRows = SheetsService.getInstance().getTotalRows(CONFIG.sheets.input.name);
@@ -363,18 +398,19 @@ function optimizeRow(headers, data) {
     const itemId = dataObj[itemIdColumnName];
     const origTitle = dataObj[titleColumnName];
     const res = generateTitle(dataObj);
-    const [origTemplateRow, genCategoryRow, genTemplateRow, genAttributesRow, genTitleRow,] = res.split('\n');
+    const [origTemplateRow, genCategoryRow, genTemplateRow, genAttributesRow] = res.split('\n');
     const genCategory = genCategoryRow.replace(CATEGORY_PROMPT, '').trim();
     const genAttributes = genTemplateRow
         .replace(TEMPLATE_PROMPT, '')
         .split(SEPARATOR)
-        .map((x) => `${x.trim()}`);
+        .map((x) => x.trim());
     const genTemplate = genAttributes
         .map((x) => `<${x.trim()}>`)
         .join(' ');
     const origAttributes = origTemplateRow
         .replace(ORIGINAL_TITLE_TEMPLATE_PROMPT, '')
-        .split(SEPARATOR);
+        .split(SEPARATOR)
+        .map((x) => x.trim());
     const origTemplate = origAttributes
         .map((x) => `<${x.trim()}>`)
         .join(' ');
@@ -382,15 +418,24 @@ function optimizeRow(headers, data) {
         .replace(ATTRIBUTES_PROMPT, '')
         .split(SEPARATOR)
         .map((x) => x.trim());
-    const titleFeatures = genAttributes.map((attribute, index) => dataObj[attribute] || genAttributeValues[index]);
+    const titleFeatures = [];
+    const gapAttributesAndValues = {};
+    genAttributes.forEach((attribute, index) => {
+        if (!dataObj[attribute]) {
+            gapAttributesAndValues[attribute] = genAttributeValues[index];
+        }
+        titleFeatures.push(dataObj[attribute] || genAttributeValues[index]);
+    });
     const genTitle = titleFeatures.join(' ');
     const inputWords = new Set();
     data.forEach((field) => {
-        field.split(' ').forEach((word) => {
+        String(field)
+            .split(' ')
+            .forEach((word) => {
             inputWords.add(word);
         });
     });
-    const generationMetrics = getGenerationMetrics(origTitle, genTitle, origAttributes, genAttributes, inputWords);
+    const generationMetrics = getGenerationMetrics(origTitle, genTitle, new Set(origAttributes), new Set(genAttributes), inputWords);
     const row = [];
     row[CONFIG.sheets.generated.cols.approval] = false;
     row[CONFIG.sheets.generated.cols.status] = 'Success';
@@ -399,11 +444,12 @@ function optimizeRow(headers, data) {
     row[CONFIG.sheets.generated.cols.titleGenerated] = genTitle;
     return [
         ...row,
-        genTemplate,
         origTemplate,
+        genTemplate,
         genCategory,
         genAttributeValues.join(', '),
         ...generationMetrics.scores(),
+        JSON.stringify(gapAttributesAndValues),
         res,
         JSON.stringify(dataObj),
     ];
@@ -478,15 +524,14 @@ function writeGeneratedRows(rows, withHeader = false) {
     const offset = withHeader ? 0 : 1;
     SheetsService.getInstance().setValuesInDefinedRange(CONFIG.sheets.generated.name, CONFIG.sheets.generated.startRow + offset, 1, rows);
 }
-function getApprovedData() {
-    return SheetsService.getInstance().getRangeData(CONFIG.sheets.output.name, CONFIG.sheets.output.startRow + 1, 1);
-}
-function writeApprovedRows(rows) {
-    MultiLogger.getInstance().log('Writing approved rows...');
+function writeApprovedData(header, rows) {
+    MultiLogger.getInstance().log('Writing approved data...');
+    SheetsService.getInstance().setValuesInDefinedRange(CONFIG.sheets.output.name, CONFIG.sheets.output.startRow, CONFIG.sheets.output.cols.gapCols.start + 1, [header]);
     SheetsService.getInstance().setValuesInDefinedRange(CONFIG.sheets.output.name, CONFIG.sheets.output.startRow + 1, 1, rows);
 }
-function clearApprovedRows() {
-    MultiLogger.getInstance().log('Clearing approved rows...');
+function clearApprovedData() {
+    MultiLogger.getInstance().log('Clearing approved data...');
+    SheetsService.getInstance().clearDefinedRange(CONFIG.sheets.output.name, CONFIG.sheets.output.startRow, CONFIG.sheets.output.cols.gapCols.start + 1);
     SheetsService.getInstance().clearDefinedRange(CONFIG.sheets.output.name, CONFIG.sheets.output.startRow + 1, 1);
 }
 function clearGeneratedRows() {
@@ -514,9 +559,12 @@ function exportApproved() {
     const feedGenRows = getGeneratedRows().filter(row => {
         return row[CONFIG.sheets.generated.cols.approval] === true;
     });
-    const approvedRows = getApprovedData();
-    const approvedRowsMap = arrayToMap(approvedRows, CONFIG.sheets.output.cols.id);
-    const feedGenApprovedRowsMap = {};
+    const filledInGapAttributes = [
+        ...new Set(feedGenRows
+            .map(row => Object.keys(JSON.parse(row[CONFIG.sheets.generated.cols.gapAttributes])))
+            .flat(1)),
+    ];
+    const rowsToWrite = [];
     for (const row of feedGenRows) {
         const resRow = [];
         resRow[CONFIG.sheets.output.cols.id] = row[CONFIG.sheets.generated.cols.id];
@@ -524,20 +572,19 @@ function exportApproved() {
             row[CONFIG.sheets.generated.cols.approval] === true
                 ? row[CONFIG.sheets.generated.cols.titleGenerated]
                 : row[CONFIG.sheets.generated.cols.titleOriginal];
-        feedGenApprovedRowsMap[row[CONFIG.sheets.generated.cols.id]] = resRow;
+        resRow[CONFIG.sheets.output.cols.modificationTimestamp] =
+            new Date().toISOString();
+        const gapAttributesAndValues = JSON.parse(row[CONFIG.sheets.generated.cols.gapAttributes]);
+        const gapAttributesKeys = Object.keys(gapAttributesAndValues);
+        const originalInput = JSON.parse(row[CONFIG.sheets.generated.cols.originalInput]);
+        filledInGapAttributes.forEach((attribute, index) => (resRow[CONFIG.sheets.output.cols.gapCols.start + index] =
+            gapAttributesKeys.includes(attribute)
+                ? gapAttributesAndValues[attribute]
+                : originalInput[attribute]));
+        rowsToWrite.push(resRow);
     }
-    const merged = Object.values(Object.assign(approvedRowsMap, feedGenApprovedRowsMap));
-    clearApprovedRows();
-    writeApprovedRows(merged);
-}
-function arrayToMap(arr, keyCol) {
-    const map = {};
-    for (const row of arr) {
-        if (!row[keyCol])
-            continue;
-        map[row[keyCol]] = row;
-    }
-    return map;
+    clearApprovedData();
+    writeApprovedData(filledInGapAttributes, rowsToWrite);
 }
 
 app;
