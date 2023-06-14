@@ -16,8 +16,8 @@
 
 var Status;
 (function (Status) {
-    Status["SUCCESS"] = "Success";
-    Status["FAILED"] = "Failed";
+  Status['SUCCESS'] = 'Success';
+  Status['FAILED'] = 'Failed';
 })(Status || (Status = {}));
 const CONFIG = {
   sheets: {
@@ -114,94 +114,99 @@ class MultiLogger {
 }
 
 class SheetsService {
-    constructor(spreadsheetId) {
-        let spreadsheet;
-        if (spreadsheetId) {
-            try {
-                spreadsheet = SpreadsheetApp.openById(spreadsheetId);
-            }
-            catch (e) {
-                console.error(e);
-                throw new Error(`Unable to identify spreadsheet with provided ID: ${spreadsheetId}!`);
-            }
-        }
-        else {
-            spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
-        }
-        this.spreadsheet_ = spreadsheet;
+  constructor(spreadsheetId) {
+    let spreadsheet;
+    if (spreadsheetId) {
+      try {
+        spreadsheet = SpreadsheetApp.openById(spreadsheetId);
+      } catch (e) {
+        console.error(e);
+        throw new Error(
+          `Unable to identify spreadsheet with provided ID: ${spreadsheetId}!`
+        );
+      }
+    } else {
+      spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
     }
-    getHeaders(sheet) {
-        return sheet
-            .getRange(1, 1, 1, sheet.getMaxColumns())
-            .getValues()[0]
-            .filter((cell) => cell !== '');
+    this.spreadsheet_ = spreadsheet;
+  }
+  getHeaders(sheet) {
+    return sheet
+      .getRange(1, 1, 1, sheet.getMaxColumns())
+      .getValues()[0]
+      .filter(cell => cell !== '');
+  }
+  getTotalRows(sheetName) {
+    const sheet = this.spreadsheet_.getSheetByName(sheetName);
+    if (!sheet) return;
+    return sheet.getDataRange().getLastRow();
+  }
+  getNonEmptyRows(sheet) {
+    return sheet
+      .getDataRange()
+      .getValues()
+      .filter(row => row.join('').length > 0);
+  }
+  getRangeData(sheetName, startRow, startCol, numRows = 0, numCols = 0) {
+    const sheet = this.getSpreadsheet().getSheetByName(sheetName);
+    if (!sheet || numRows + sheet.getLastRow() - startRow + 1 === 0) {
+      return [[]];
     }
-    getTotalRows(sheetName) {
-        const sheet = this.spreadsheet_.getSheetByName(sheetName);
-        if (!sheet)
-            return;
-        return sheet.getDataRange().getLastRow();
+    return sheet
+      .getRange(
+        startRow,
+        startCol,
+        numRows || sheet.getLastRow() - startRow + 1,
+        numCols || sheet.getLastColumn() - startCol + 1
+      )
+      .getValues();
+  }
+  setValuesInDefinedRange(sheetName, row, col, values) {
+    const sheet = this.getSpreadsheet().getSheetByName(sheetName);
+    if (!sheet) return;
+    if (values[0]) {
+      sheet
+        .getRange(row, col, values.length, values[0].length)
+        .setValues(values);
     }
-    getNonEmptyRows(sheet) {
-        return sheet
-            .getDataRange()
-            .getValues()
-            .filter((row) => row.join('').length > 0);
+  }
+  clearDefinedRange(sheetName, row, col, numRows = 0, numCols = 0) {
+    const sheet = this.getSpreadsheet().getSheetByName(sheetName);
+    if (!sheet) return;
+    sheet
+      .getRange(
+        row,
+        col,
+        numRows || sheet.getLastRow(),
+        numCols || sheet.getLastColumn()
+      )
+      .clear();
+  }
+  getCellValue(sheetName, row, col) {
+    const sheet = this.getSpreadsheet().getSheetByName(sheetName);
+    if (!sheet) return null;
+    const cell = sheet.getRange(row, col);
+    return cell.getValue();
+  }
+  setCellValue(row, col, val, sheetName) {
+    const sheet = sheetName
+      ? this.getSpreadsheet().getSheetByName(sheetName)
+      : this.getSpreadsheet().getActiveSheet();
+    if (!sheet) return;
+    sheet.getRange(row, col).setValue(val);
+  }
+  getSpreadsheet() {
+    return this.spreadsheet_;
+  }
+  getSpreadsheetApp() {
+    return SpreadsheetApp;
+  }
+  static getInstance(spreadsheetId) {
+    if (typeof this.instance === 'undefined') {
+      this.instance = new SheetsService(spreadsheetId);
     }
-    getRangeData(sheetName, startRow, startCol, numRows = 0, numCols = 0) {
-        const sheet = this.getSpreadsheet().getSheetByName(sheetName);
-        if (!sheet || numRows + sheet.getLastRow() - startRow + 1 === 0) {
-            return [[]];
-        }
-        return sheet
-            .getRange(startRow, startCol, numRows || sheet.getLastRow() - startRow + 1, numCols || sheet.getLastColumn() - startCol + 1)
-            .getValues();
-    }
-    setValuesInDefinedRange(sheetName, row, col, values) {
-        const sheet = this.getSpreadsheet().getSheetByName(sheetName);
-        if (!sheet)
-            return;
-        if (values[0]) {
-            sheet
-                .getRange(row, col, values.length, values[0].length)
-                .setValues(values);
-        }
-    }
-    clearDefinedRange(sheetName, row, col, numRows = 0, numCols = 0) {
-        const sheet = this.getSpreadsheet().getSheetByName(sheetName);
-        if (!sheet)
-            return;
-        sheet
-            .getRange(row, col, numRows || sheet.getLastRow(), numCols || sheet.getLastColumn())
-            .clear();
-    }
-    getCellValue(sheetName, row, col) {
-        const sheet = this.getSpreadsheet().getSheetByName(sheetName);
-        if (!sheet)
-            return null;
-        const cell = sheet.getRange(row, col);
-        return cell.getValue();
-    }
-    setCellValue(row, col, val, sheetName) {
-        const sheet = sheetName
-            ? this.getSpreadsheet().getSheetByName(sheetName)
-            : this.getSpreadsheet().getActiveSheet();
-        if (!sheet)
-            return;
-        sheet.getRange(row, col).setValue(val);
-    }
-    getSpreadsheet() {
-        return this.spreadsheet_;
-    }
-    getSpreadsheetApp() {
-        return SpreadsheetApp;
-    }
-    static getInstance(spreadsheetId) {
-        if (typeof this.instance === 'undefined') {
-            this.instance = new SheetsService(spreadsheetId);
-        }
-        return this.instance;
-    }
+    return this.instance;
+  }
 }
 
 class Util {
@@ -308,33 +313,43 @@ const vertexAiModelId = getConfigSheetValue(
   CONFIG.sheets.config.fields.vertexAiModelId
 );
 function onOpen() {
-    SpreadsheetApp.getUi()
-        .createMenu('FeedGen')
-        .addItem('Launch', 'showSidebar')
-        .addToUi();
+  SpreadsheetApp.getUi()
+    .createMenu('FeedGen')
+    .addItem('Launch', 'showSidebar')
+    .addToUi();
 }
-function findRowIndex(sheetName, searchValues, column, offset = 0, negate = false) {
-    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(sheetName);
-    if (!sheet) {
-        throw new Error(`Sheet ${sheetName} not found`);
+function findRowIndex(
+  sheetName,
+  searchValues,
+  column,
+  offset = 0,
+  negate = false
+) {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(sheetName);
+  if (!sheet) {
+    throw new Error(`Sheet ${sheetName} not found`);
+  }
+  if (sheet.getLastRow() - offset === 0) {
+    return 0;
+  }
+  const range = sheet?.getRange(
+    offset,
+    column,
+    sheet.getLastRow() - offset + 1,
+    1
+  );
+  if (!range) {
+    throw new Error('Invalid range');
+  }
+  const data = range.getValues();
+  const rowIndex = data.flat().findIndex(cell => {
+    if (negate) {
+      return !searchValues.includes(cell);
+    } else {
+      return searchValues.includes(cell);
     }
-    if (sheet.getLastRow() - offset === 0) {
-        return 0;
-    }
-    const range = sheet?.getRange(offset, column, sheet.getLastRow() - offset + 1, 1);
-    if (!range) {
-        throw new Error('Invalid range');
-    }
-    const data = range.getValues();
-    const rowIndex = data.flat().findIndex(cell => {
-        if (negate) {
-            return !searchValues.includes(cell);
-        }
-        else {
-            return searchValues.includes(cell);
-        }
-    });
-    return rowIndex >= 0 ? rowIndex : -1;
+  });
+  return rowIndex >= 0 ? rowIndex : -1;
 }
 function showSidebar() {
   const html = HtmlService.createTemplateFromFile('static/index').evaluate();
@@ -342,44 +357,64 @@ function showSidebar() {
   SpreadsheetApp.getUi().showSidebar(html);
 }
 function getNextRowIndexToBeGenerated() {
-    const index = findRowIndex(CONFIG.sheets.generated.name, [Status.SUCCESS], CONFIG.sheets.generated.cols.status + 1, CONFIG.sheets.generated.startRow + 1, true);
-    if (index < 0) {
-        const totalGeneratedRows = SheetsService.getInstance().getTotalRows(CONFIG.sheets.generated.name);
-        if (typeof totalGeneratedRows === 'undefined') {
-            throw new Error('Error reading generated rows');
-        }
-        return totalGeneratedRows - CONFIG.sheets.generated.startRow;
+  const index = findRowIndex(
+    CONFIG.sheets.generated.name,
+    [Status.SUCCESS],
+    CONFIG.sheets.generated.cols.status + 1,
+    CONFIG.sheets.generated.startRow + 1,
+    true
+  );
+  if (index < 0) {
+    const totalGeneratedRows = SheetsService.getInstance().getTotalRows(
+      CONFIG.sheets.generated.name
+    );
+    if (typeof totalGeneratedRows === 'undefined') {
+      throw new Error('Error reading generated rows');
     }
-    return index;
+    return totalGeneratedRows - CONFIG.sheets.generated.startRow;
+  }
+  return index;
 }
 function generateNextRow() {
-    const inputSheet = SpreadsheetApp.getActive().getSheetByName(CONFIG.sheets.input.name);
-    const generatedSheet = SpreadsheetApp.getActive().getSheetByName(CONFIG.sheets.generated.name);
-    if (!inputSheet || !generatedSheet)
-        return;
-    const rowIndex = getNextRowIndexToBeGenerated();
-    if (rowIndex >= inputSheet.getLastRow() - CONFIG.sheets.input.startRow) {
-        return -1;
-    }
-    MultiLogger.getInstance().log(`Generating for row ${rowIndex}`);
-    const row = inputSheet
-        .getRange(CONFIG.sheets.input.startRow + 1 + rowIndex, 1, 1, inputSheet.getLastColumn())
-        .getValues()[0];
-    try {
-        const inputHeaders = SheetsService.getInstance().getHeaders(inputSheet);
-        const optimizedRow = optimizeRow(inputHeaders, row);
-        SheetsService.getInstance().setValuesInDefinedRange(CONFIG.sheets.generated.name, CONFIG.sheets.generated.startRow + 1 + rowIndex, 1, [optimizedRow]);
-        MultiLogger.getInstance().log(Status.SUCCESS);
-    }
-    catch (e) {
-        MultiLogger.getInstance().log(`Error: ${e}`);
-        row[CONFIG.sheets.generated.cols.status] = `Error: ${e}`;
-        const failedRow = [];
-        failedRow[CONFIG.sheets.generated.cols.status] =
-            'Failed. See log for more details.';
-        generatedSheet.appendRow(failedRow);
-    }
-    return rowIndex;
+  const inputSheet = SpreadsheetApp.getActive().getSheetByName(
+    CONFIG.sheets.input.name
+  );
+  const generatedSheet = SpreadsheetApp.getActive().getSheetByName(
+    CONFIG.sheets.generated.name
+  );
+  if (!inputSheet || !generatedSheet) return;
+  const rowIndex = getNextRowIndexToBeGenerated();
+  if (rowIndex >= inputSheet.getLastRow() - CONFIG.sheets.input.startRow) {
+    return -1;
+  }
+  MultiLogger.getInstance().log(`Generating for row ${rowIndex}`);
+  const row = inputSheet
+    .getRange(
+      CONFIG.sheets.input.startRow + 1 + rowIndex,
+      1,
+      1,
+      inputSheet.getLastColumn()
+    )
+    .getValues()[0];
+  try {
+    const inputHeaders = SheetsService.getInstance().getHeaders(inputSheet);
+    const optimizedRow = optimizeRow(inputHeaders, row);
+    SheetsService.getInstance().setValuesInDefinedRange(
+      CONFIG.sheets.generated.name,
+      CONFIG.sheets.generated.startRow + 1 + rowIndex,
+      1,
+      [optimizedRow]
+    );
+    MultiLogger.getInstance().log(Status.SUCCESS);
+  } catch (e) {
+    MultiLogger.getInstance().log(`Error: ${e}`);
+    row[CONFIG.sheets.generated.cols.status] = `Error: ${e}`;
+    const failedRow = [];
+    failedRow[CONFIG.sheets.generated.cols.status] =
+      'Failed. See log for more details.';
+    generatedSheet.appendRow(failedRow);
+  }
+  return rowIndex;
 }
 function getTotalInputRows() {
   const totalRows = SheetsService.getInstance().getTotalRows(
