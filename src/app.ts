@@ -76,6 +76,27 @@ export function showSidebar() {
   SpreadsheetApp.getUi().showSidebar(html);
 }
 
+export function fetchContextByItemId(itemId: string) {
+  const inputSheet = SpreadsheetApp.getActive().getSheetByName(
+    CONFIG.sheets.input.name
+  );
+  const itemIdColumnName = getConfigSheetValue(
+    CONFIG.sheets.config.fields.itemIdColumnName
+  );
+
+  if (!inputSheet) return;
+
+  const [headers, ...rows] = inputSheet
+    .getRange(1, 1, inputSheet.getLastRow(), inputSheet.getMaxColumns())
+    .getValues();
+
+  const itemIdIndex = headers.indexOf(itemIdColumnName);
+  const selectedRow = rows.filter(row => row[itemIdIndex] === itemId)[0];
+  const contextObject = Object.fromEntries(
+    headers.map((key: string, index: number) => [key, selectedRow[index]])
+  );
+  return JSON.stringify(contextObject);
+}
 /**
  * Generate content for next row.
  *

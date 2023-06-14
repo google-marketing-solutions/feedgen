@@ -309,6 +309,19 @@ function showSidebar() {
     html.setTitle('FeedGen');
     SpreadsheetApp.getUi().showSidebar(html);
 }
+function fetchContextByItemId(itemId) {
+    const inputSheet = SpreadsheetApp.getActive().getSheetByName(CONFIG.sheets.input.name);
+    const itemIdColumnName = getConfigSheetValue(CONFIG.sheets.config.fields.itemIdColumnName);
+    if (!inputSheet)
+        return;
+    const [headers, ...rows] = inputSheet
+        .getRange(1, 1, inputSheet.getLastRow(), inputSheet.getMaxColumns())
+        .getValues();
+    const itemIdIndex = headers.indexOf(itemIdColumnName);
+    const selectedRow = rows.filter(row => row[itemIdIndex] === itemId)[0];
+    const contextObject = Object.fromEntries(headers.map((key, index) => [key, selectedRow[index]]));
+    return JSON.stringify(contextObject);
+}
 function generateNextRow() {
     const inputSheet = SpreadsheetApp.getActive().getSheetByName(CONFIG.sheets.input.name);
     const generatedSheet = SpreadsheetApp.getActive().getSheetByName(CONFIG.sheets.generated.name);
