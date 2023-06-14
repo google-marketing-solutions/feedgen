@@ -20,95 +20,97 @@ var Status;
     Status["FAILED"] = "Failed";
 })(Status || (Status = {}));
 const CONFIG = {
-    sheets: {
-        config: {
-            name: 'Config',
-            fields: {
-                vertexAiProjectId: {
-                    row: 1,
-                    col: 2,
-                },
-                vertexAiLocation: {
-                    row: 2,
-                    col: 2,
-                },
-                vertexAiModelId: {
-                    row: 3,
-                    col: 2,
-                },
-                itemIdColumnName: {
-                    row: 4,
-                    col: 2,
-                },
-                titleColumnName: {
-                    row: 5,
-                    col: 2,
-                },
-            },
+  sheets: {
+    config: {
+      name: 'Config',
+      fields: {
+        vertexAiProjectId: {
+          row: 1,
+          col: 2,
         },
-        input: {
-            name: 'Input Feed',
-            startRow: 1,
+        vertexAiLocation: {
+          row: 2,
+          col: 2,
         },
-        generated: {
-            name: 'Generated Title Validation',
-            startRow: 5,
-            cols: {
-                approval: 0,
-                status: 1,
-                id: 2,
-                titleOriginal: 3,
-                titleGenerated: 4,
-                gapAttributes: 10,
-                originalInput: 12,
-            },
+        vertexAiModelId: {
+          row: 3,
+          col: 2,
         },
-        output: {
-            startRow: 1,
-            name: 'Output Feed',
-            cols: {
-                id: 0,
-                title: 1,
-                modificationTimestamp: 2,
-                gapCols: {
-                    start: 3,
-                },
-            },
+        itemIdColumnName: {
+          row: 4,
+          col: 2,
         },
-        log: {
-            startRow: 0,
-            name: 'Log',
+        titleColumnName: {
+          row: 5,
+          col: 2,
         },
+      },
     },
-    vertexAi: {
-        endpoint: 'aiplatform.googleapis.com',
-        maxRetries: 3,
-        quotaLimitDelay: 30 * 1000,
+    input: {
+      name: 'Input Feed',
+      startRow: 1,
     },
+    generated: {
+      name: 'Generated Title Validation',
+      startRow: 5,
+      cols: {
+        approval: 0,
+        status: 1,
+        id: 2,
+        titleOriginal: 3,
+        titleGenerated: 4,
+        gapAttributes: 13,
+        originalInput: 15,
+      },
+    },
+    output: {
+      startRow: 1,
+      name: 'Output Feed',
+      cols: {
+        id: 0,
+        title: 1,
+        modificationTimestamp: 2,
+        gapCols: {
+          start: 3,
+        },
+      },
+    },
+    log: {
+      startRow: 0,
+      name: 'Log',
+    },
+  },
+  vertexAi: {
+    endpoint: 'aiplatform.googleapis.com',
+    maxRetries: 3,
+    quotaLimitDelay: 30 * 1000,
+  },
 };
 
 class MultiLogger {
-    constructor() {
-        this.sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.sheets.log.name);
+  constructor() {
+    this.sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(
+      CONFIG.sheets.log.name
+    );
+  }
+  clear() {
+    this.sheet?.clear();
+    SpreadsheetApp.flush();
+  }
+  log(...messages) {
+    const msg = messages
+      .map(m => (typeof m === 'object' ? JSON.stringify(m) : m))
+      .join(' ');
+    Logger.log(msg);
+    this.sheet?.appendRow([JSON.stringify(msg)]);
+    SpreadsheetApp.flush();
+  }
+  static getInstance() {
+    if (typeof this.instance === 'undefined') {
+      this.instance = new MultiLogger();
     }
-    clear() {
-        this.sheet?.clear();
-        SpreadsheetApp.flush();
-    }
-    log(...messages) {
-        const msg = messages
-            .map(m => (typeof m === 'object' ? JSON.stringify(m) : m))
-            .join(' ');
-        Logger.log(msg);
-        this.sheet?.appendRow([JSON.stringify(msg)]);
-        SpreadsheetApp.flush();
-    }
-    static getInstance() {
-        if (typeof this.instance === 'undefined') {
-            this.instance = new MultiLogger();
-        }
-        return this.instance;
-    }
+    return this.instance;
+  }
 }
 
 class SheetsService {
@@ -203,100 +205,108 @@ class SheetsService {
 }
 
 class Util {
-    static executeWithRetry(maxRetries, delayMillies, fn) {
-        let retryCount = 0;
-        while (retryCount < maxRetries) {
-            try {
-                return fn();
-            }
-            catch (err) {
-                const error = err;
-                MultiLogger.getInstance().log(`Error: ${error.message}`);
-                retryCount++;
-                if (delayMillies) {
-                    Utilities.sleep(delayMillies);
-                }
-            }
+  static executeWithRetry(maxRetries, delayMillies, fn) {
+    let retryCount = 0;
+    while (retryCount < maxRetries) {
+      try {
+        return fn();
+      } catch (err) {
+        const error = err;
+        MultiLogger.getInstance().log(`Error: ${error.message}`);
+        retryCount++;
+        if (delayMillies) {
+          Utilities.sleep(delayMillies);
         }
-        throw new Error(`Exceeded maximum number of retries (${maxRetries}).`);
+      }
     }
-    static splitWords(text) {
-        return new Set(text.match(/\w+/g));
-    }
-    static getSetIntersection(set1, set2) {
-        return [...[...set1].filter(element => set2.has(element))];
-    }
-    static getSetDifference(set1, set2) {
-        return [...[...set1].filter(element => !set2.has(element))];
-    }
+    throw new Error(`Exceeded maximum number of retries (${maxRetries}).`);
+  }
+  static splitWords(text) {
+    return new Set(text.match(/\w+/g));
+  }
+  static getSetIntersection(set1, set2) {
+    return [...[...set1].filter(element => set2.has(element))];
+  }
+  static getSetDifference(set1, set2) {
+    return [...[...set1].filter(element => !set2.has(element))];
+  }
 }
 
 class VertexHelper {
-    constructor(projectId, location, modelId) {
-        this.projectId = projectId;
-        this.location = location;
-        this.modelId = modelId;
+  constructor(projectId, location, modelId) {
+    this.projectId = projectId;
+    this.location = location;
+    this.modelId = modelId;
+  }
+  addAuth(params) {
+    const baseParams = {
+      method: 'POST',
+      muteHttpExceptions: true,
+      contentType: 'application/json',
+      headers: {
+        Authorization: `Bearer ${ScriptApp.getOAuthToken()}`,
+      },
+    };
+    return Object.assign({ payload: JSON.stringify(params) }, baseParams);
+  }
+  fetchJson(url, params) {
+    const response = UrlFetchApp.fetch(url, params);
+    if (response.getResponseCode() === 429) {
+      Utilities.sleep(CONFIG.vertexAi.quotaLimitDelay);
+      return this.fetchJson(url, params);
     }
-    addAuth(params) {
-        const baseParams = {
-            method: 'POST',
-            muteHttpExceptions: true,
-            contentType: 'application/json',
-            headers: {
-                Authorization: `Bearer ${ScriptApp.getOAuthToken()}`,
-            },
-        };
-        return Object.assign({ payload: JSON.stringify(params) }, baseParams);
+    return JSON.parse(response.getContentText());
+  }
+  predict(prompt) {
+    MultiLogger.getInstance().log(`Prompt: ${prompt}`);
+    const predictEndpoint = `https://${this.location}-${CONFIG.vertexAi.endpoint}/v1/projects/${this.projectId}/locations/${this.location}/publishers/google/models/${this.modelId}:predict`;
+    const res = this.fetchJson(
+      predictEndpoint,
+      this.addAuth({
+        instances: [{ content: prompt }],
+        parameters: {
+          temperature: 0.1,
+          maxOutputTokens: 1024,
+          topK: 1,
+          topP: 0.8,
+        },
+      })
+    );
+    MultiLogger.getInstance().log(res);
+    if (res.predictions[0].safetyAttributes.blocked) {
+      throw new Error('Blocked for safety reasons.');
+    } else if (!res.predictions[0].content) {
+      throw new Error('No content');
     }
-    fetchJson(url, params) {
-        const response = UrlFetchApp.fetch(url, params);
-        if (response.getResponseCode() === 429) {
-            Utilities.sleep(CONFIG.vertexAi.quotaLimitDelay);
-            return this.fetchJson(url, params);
-        }
-        return JSON.parse(response.getContentText());
+    return res.predictions[0].content;
+  }
+  static getInstance(projectId, location, modelId) {
+    if (typeof this.instance === 'undefined') {
+      this.instance = new VertexHelper(projectId, location, modelId);
     }
-    predict(prompt) {
-        MultiLogger.getInstance().log(`Prompt: ${prompt}`);
-        const predictEndpoint = `https://${this.location}-${CONFIG.vertexAi.endpoint}/v1/projects/${this.projectId}/locations/${this.location}/publishers/google/models/${this.modelId}:predict`;
-        const res = this.fetchJson(predictEndpoint, this.addAuth({
-            instances: [{ content: prompt }],
-            parameters: {
-                temperature: 0.1,
-                maxOutputTokens: 1024,
-                topK: 1,
-                topP: 0.8,
-            },
-        }));
-        MultiLogger.getInstance().log(res);
-        if (res.predictions[0].safetyAttributes.blocked) {
-            throw new Error('Blocked for safety reasons.');
-        }
-        else if (!res.predictions[0].content) {
-            throw new Error('No content');
-        }
-        return res.predictions[0].content;
-    }
-    static getInstance(projectId, location, modelId) {
-        if (typeof this.instance === 'undefined') {
-            this.instance = new VertexHelper(projectId, location, modelId);
-        }
-        return this.instance;
-    }
+    return this.instance;
+  }
 }
 
 const app = null;
-const ORIGINAL_TITLE_TEMPLATE_PROMPT = 'product attribute keys in original title:';
+const ORIGINAL_TITLE_TEMPLATE_PROMPT =
+  'product attribute keys in original title:';
 const CATEGORY_PROMPT = 'product category:';
 const TEMPLATE_PROMPT = 'product attribute keys:';
 const ATTRIBUTES_PROMPT = 'product attributes values:';
-const TITLE_PROMPT = 'Generated title based on all product attributes (100-130 characters):';
+const TITLE_PROMPT =
+  'Generated title based on all product attributes (100-130 characters):';
 const SEPARATOR = '|';
 const WORD_MATCH_REGEX = /(\w|\s)*\w(?=")|\w+/g;
-const vertexAiProjectId = getConfigSheetValue(CONFIG.sheets.config.fields.vertexAiProjectId);
-const vertexAiLocation = getConfigSheetValue(CONFIG.sheets.config.fields.vertexAiLocation);
-const vertexAiModelId = getConfigSheetValue(CONFIG.sheets.config.fields.vertexAiModelId);
-const generationMetrics = (titleChanged, addedAttributes, generatedValuesAdded, newWordsAdded) => { };
+const vertexAiProjectId = getConfigSheetValue(
+  CONFIG.sheets.config.fields.vertexAiProjectId
+);
+const vertexAiLocation = getConfigSheetValue(
+  CONFIG.sheets.config.fields.vertexAiLocation
+);
+const vertexAiModelId = getConfigSheetValue(
+  CONFIG.sheets.config.fields.vertexAiModelId
+);
 function onOpen() {
     SpreadsheetApp.getUi()
         .createMenu('FeedGen')
@@ -327,9 +337,9 @@ function findRowIndex(sheetName, searchValues, column, offset = 0, negate = fals
     return rowIndex >= 0 ? rowIndex : -1;
 }
 function showSidebar() {
-    const html = HtmlService.createTemplateFromFile('static/index').evaluate();
-    html.setTitle('FeedGen');
-    SpreadsheetApp.getUi().showSidebar(html);
+  const html = HtmlService.createTemplateFromFile('static/index').evaluate();
+  html.setTitle('FeedGen');
+  SpreadsheetApp.getUi().showSidebar(html);
 }
 function getNextRowIndexToBeGenerated() {
     const index = findRowIndex(CONFIG.sheets.generated.name, [Status.SUCCESS], CONFIG.sheets.generated.cols.status + 1, CONFIG.sheets.generated.startRow + 1, true);
@@ -372,105 +382,129 @@ function generateNextRow() {
     return rowIndex;
 }
 function getTotalInputRows() {
-    const totalRows = SheetsService.getInstance().getTotalRows(CONFIG.sheets.input.name);
-    return typeof totalRows === 'undefined'
-        ? 0
-        : totalRows - CONFIG.sheets.input.startRow;
+  const totalRows = SheetsService.getInstance().getTotalRows(
+    CONFIG.sheets.input.name
+  );
+  return typeof totalRows === 'undefined'
+    ? 0
+    : totalRows - CONFIG.sheets.input.startRow;
 }
 function getTotalGeneratedRows() {
-    const totalRows = SheetsService.getInstance().getTotalRows(CONFIG.sheets.generated.name);
-    return typeof totalRows === 'undefined'
-        ? 0
-        : totalRows - CONFIG.sheets.generated.startRow;
+  const totalRows = SheetsService.getInstance().getTotalRows(
+    CONFIG.sheets.generated.name
+  );
+  return typeof totalRows === 'undefined'
+    ? 0
+    : totalRows - CONFIG.sheets.generated.startRow;
 }
-const getGenerationMetrics = (origTitle, genTitle, origAttributes, genAttributes, inputWords) => {
-    const titleChanged = origTitle !== genTitle;
-    const addedAttributes = Util.getSetDifference(genAttributes, origAttributes);
-    const newWordsAdded = new Set();
-    const genTitleWords = genTitle.match(WORD_MATCH_REGEX);
-    if (genTitleWords !== null) {
-        genTitleWords
-            .filter((genTitleWord) => !inputWords.has(genTitleWord))
-            .forEach((newWord) => newWordsAdded.add(newWord));
-    }
-    const totalScore = (Number(addedAttributes.length > 0) +
-        Number(titleChanged) +
-        Number(newWordsAdded.size === 0)) /
-        3;
-    return [
-        totalScore.toString(),
-        titleChanged.toString(),
-        addedAttributes.map((attr) => `<${attr}>`).join(' '),
-        [...newWordsAdded].join(SEPARATOR),
-    ];
+const getGenerationMetrics = (
+  origTitle,
+  genTitle,
+  origAttributes,
+  genAttributes,
+  inputWords
+) => {
+  const titleChanged = origTitle !== genTitle;
+  const addedAttributes = Util.getSetDifference(genAttributes, origAttributes);
+  const newWordsAdded = new Set();
+  const genTitleWords = genTitle.match(WORD_MATCH_REGEX);
+  if (genTitleWords) {
+    genTitleWords
+      .filter(genTitleWord => !inputWords.has(genTitleWord))
+      .forEach(newWord => newWordsAdded.add(newWord));
+  }
+  const totalScore =
+    (Number(addedAttributes.length > 0) +
+      Number(titleChanged) +
+      Number(newWordsAdded.size === 0)) /
+    3;
+  return [
+    totalScore.toString(),
+    titleChanged.toString(),
+    addedAttributes.map(attr => `<${attr}>`).join(' '),
+    [...newWordsAdded].join(` ${SEPARATOR} `),
+  ];
 };
 function getConfigSheetValue(field) {
-    return SheetsService.getInstance().getCellValue(CONFIG.sheets.config.name, field.row, field.col);
+  return SheetsService.getInstance().getCellValue(
+    CONFIG.sheets.config.name,
+    field.row,
+    field.col
+  );
 }
 function optimizeRow(headers, data) {
-    const dataObj = Object.fromEntries(data.map((item, index) => [headers[index], item]));
-    const itemIdColumnName = getConfigSheetValue(CONFIG.sheets.config.fields.itemIdColumnName);
-    const titleColumnName = getConfigSheetValue(CONFIG.sheets.config.fields.titleColumnName);
-    const itemId = dataObj[itemIdColumnName];
-    const origTitle = dataObj[titleColumnName];
-    const res = generateTitle(dataObj);
-    const [origTemplateRow, genCategoryRow, genTemplateRow, genAttributesRow] = res.split('\n');
-    const genCategory = genCategoryRow.replace(CATEGORY_PROMPT, '').trim();
-    const genAttributes = genTemplateRow
-        .replace(TEMPLATE_PROMPT, '')
-        .split(SEPARATOR)
-        .map((x) => x.trim());
-    const genTemplate = genAttributes
-        .map((x) => `<${x.trim()}>`)
-        .join(' ');
-    const origAttributes = origTemplateRow
-        .replace(ORIGINAL_TITLE_TEMPLATE_PROMPT, '')
-        .split(SEPARATOR)
-        .map((x) => x.trim());
-    const origTemplate = origAttributes
-        .map((x) => `<${x.trim()}>`)
-        .join(' ');
-    const genAttributeValues = genAttributesRow
-        .replace(ATTRIBUTES_PROMPT, '')
-        .split(SEPARATOR)
-        .map((x) => x.trim());
-    const titleFeatures = [];
-    const gapAttributesAndValues = {};
-    genAttributes.forEach((attribute, index) => {
-        if (!dataObj[attribute]) {
-            gapAttributesAndValues[attribute] = genAttributeValues[index];
-        }
-        titleFeatures.push(dataObj[attribute] || genAttributeValues[index]);
-    });
-    const genTitle = titleFeatures.join(' ');
-    const inputWords = new Set();
-    Object.values(dataObj).forEach((value) => {
-        const match = new String(value).match(WORD_MATCH_REGEX);
-        if (match !== null) {
-            match.forEach((word) => inputWords.add(word));
-        }
-    });
-    const generationMetrics = getGenerationMetrics(origTitle, genTitle, new Set(origAttributes), new Set(genAttributes), inputWords);
-    const row = [];
-    row[CONFIG.sheets.generated.cols.approval] = false;
-    row[CONFIG.sheets.generated.cols.status] = 'Success';
-    row[CONFIG.sheets.generated.cols.id] = itemId;
-    row[CONFIG.sheets.generated.cols.titleOriginal] = origTitle;
-    row[CONFIG.sheets.generated.cols.titleGenerated] = genTitle;
-    return [
-        ...row,
-        origTemplate,
-        genTemplate,
-        genCategory,
-        genAttributeValues.join(', '),
-        ...generationMetrics,
-        JSON.stringify(gapAttributesAndValues),
-        res,
-        JSON.stringify(dataObj),
-    ];
+  const dataObj = Object.fromEntries(
+    data.map((item, index) => [headers[index], item])
+  );
+  const itemIdColumnName = getConfigSheetValue(
+    CONFIG.sheets.config.fields.itemIdColumnName
+  );
+  const titleColumnName = getConfigSheetValue(
+    CONFIG.sheets.config.fields.titleColumnName
+  );
+  const itemId = dataObj[itemIdColumnName];
+  const origTitle = dataObj[titleColumnName];
+  const res = generateTitle(dataObj);
+  const [origTemplateRow, genCategoryRow, genTemplateRow, genAttributesRow] =
+    res.split('\n');
+  const genCategory = genCategoryRow.replace(CATEGORY_PROMPT, '').trim();
+  const genAttributes = genTemplateRow
+    .replace(TEMPLATE_PROMPT, '')
+    .split(SEPARATOR)
+    .map(x => x.trim());
+  const genTemplate = genAttributes.map(x => `<${x.trim()}>`).join(' ');
+  const origAttributes = origTemplateRow
+    .replace(ORIGINAL_TITLE_TEMPLATE_PROMPT, '')
+    .split(SEPARATOR)
+    .map(x => x.trim());
+  const origTemplate = origAttributes.map(x => `<${x.trim()}>`).join(' ');
+  const genAttributeValues = genAttributesRow
+    .replace(ATTRIBUTES_PROMPT, '')
+    .split(SEPARATOR)
+    .map(x => x.trim());
+  const titleFeatures = [];
+  const gapAttributesAndValues = {};
+  genAttributes.forEach((attribute, index) => {
+    if (!dataObj[attribute]) {
+      gapAttributesAndValues[attribute] = genAttributeValues[index];
+    }
+    titleFeatures.push(dataObj[attribute] || genAttributeValues[index]);
+  });
+  const genTitle = titleFeatures.join(' ');
+  const inputWords = new Set();
+  Object.values(dataObj).forEach(value => {
+    const match = new String(value).match(WORD_MATCH_REGEX);
+    if (match) {
+      match.forEach(word => inputWords.add(word));
+    }
+  });
+  const generationMetrics = getGenerationMetrics(
+    origTitle,
+    genTitle,
+    new Set(origAttributes),
+    new Set(genAttributes),
+    inputWords
+  );
+  const row = [];
+  row[CONFIG.sheets.generated.cols.approval] = false;
+  row[CONFIG.sheets.generated.cols.status] = 'Success';
+  row[CONFIG.sheets.generated.cols.id] = itemId;
+  row[CONFIG.sheets.generated.cols.titleOriginal] = origTitle;
+  row[CONFIG.sheets.generated.cols.titleGenerated] = genTitle;
+  return [
+    ...row,
+    origTemplate,
+    genTemplate,
+    genCategory,
+    genAttributeValues.join(', '),
+    ...generationMetrics,
+    JSON.stringify(gapAttributesAndValues),
+    res,
+    JSON.stringify(dataObj),
+  ];
 }
 function generateTitle(data) {
-    const prompt = `
+  const prompt = `
     Context:
     {
       "item_id": "220837",
@@ -529,77 +563,130 @@ function generateTitle(data) {
     ${JSON.stringify(data, null, 2)}
 
     `;
-    const res = Util.executeWithRetry(CONFIG.vertexAi.maxRetries, 0, () => VertexHelper.getInstance(vertexAiProjectId, vertexAiLocation, vertexAiModelId).predict(prompt));
-    return res;
+  const res = Util.executeWithRetry(CONFIG.vertexAi.maxRetries, 0, () =>
+    VertexHelper.getInstance(
+      vertexAiProjectId,
+      vertexAiLocation,
+      vertexAiModelId
+    ).predict(prompt)
+  );
+  return res;
 }
 function getGeneratedRows() {
-    return SheetsService.getInstance().getRangeData(CONFIG.sheets.generated.name, CONFIG.sheets.generated.startRow + 1, 1);
+  return SheetsService.getInstance().getRangeData(
+    CONFIG.sheets.generated.name,
+    CONFIG.sheets.generated.startRow + 1,
+    1
+  );
 }
 function writeGeneratedRows(rows, withHeader = false) {
-    const offset = withHeader ? 0 : 1;
-    SheetsService.getInstance().setValuesInDefinedRange(CONFIG.sheets.generated.name, CONFIG.sheets.generated.startRow + offset, 1, rows);
+  const offset = withHeader ? 0 : 1;
+  SheetsService.getInstance().setValuesInDefinedRange(
+    CONFIG.sheets.generated.name,
+    CONFIG.sheets.generated.startRow + offset,
+    1,
+    rows
+  );
 }
 function writeApprovedData(header, rows) {
-    MultiLogger.getInstance().log('Writing approved data...');
-    SheetsService.getInstance().setValuesInDefinedRange(CONFIG.sheets.output.name, CONFIG.sheets.output.startRow, CONFIG.sheets.output.cols.gapCols.start + 1, [header]);
-    SheetsService.getInstance().setValuesInDefinedRange(CONFIG.sheets.output.name, CONFIG.sheets.output.startRow + 1, 1, rows);
+  MultiLogger.getInstance().log('Writing approved data...');
+  SheetsService.getInstance().setValuesInDefinedRange(
+    CONFIG.sheets.output.name,
+    CONFIG.sheets.output.startRow,
+    CONFIG.sheets.output.cols.gapCols.start + 1,
+    [header]
+  );
+  SheetsService.getInstance().setValuesInDefinedRange(
+    CONFIG.sheets.output.name,
+    CONFIG.sheets.output.startRow + 1,
+    1,
+    rows
+  );
 }
 function clearApprovedData() {
-    MultiLogger.getInstance().log('Clearing approved data...');
-    SheetsService.getInstance().clearDefinedRange(CONFIG.sheets.output.name, CONFIG.sheets.output.startRow, CONFIG.sheets.output.cols.gapCols.start + 1);
-    SheetsService.getInstance().clearDefinedRange(CONFIG.sheets.output.name, CONFIG.sheets.output.startRow + 1, 1);
+  MultiLogger.getInstance().log('Clearing approved data...');
+  SheetsService.getInstance().clearDefinedRange(
+    CONFIG.sheets.output.name,
+    CONFIG.sheets.output.startRow,
+    CONFIG.sheets.output.cols.gapCols.start + 1
+  );
+  SheetsService.getInstance().clearDefinedRange(
+    CONFIG.sheets.output.name,
+    CONFIG.sheets.output.startRow + 1,
+    1
+  );
 }
 function clearGeneratedRows() {
-    MultiLogger.getInstance().log('Clearing generated rows...');
-    MultiLogger.getInstance().clear();
-    SheetsService.getInstance().clearDefinedRange(CONFIG.sheets.generated.name, CONFIG.sheets.generated.startRow + 1, 1);
+  MultiLogger.getInstance().log('Clearing generated rows...');
+  MultiLogger.getInstance().clear();
+  SheetsService.getInstance().clearDefinedRange(
+    CONFIG.sheets.generated.name,
+    CONFIG.sheets.generated.startRow + 1,
+    1
+  );
 }
 function approveFiltered() {
-    MultiLogger.getInstance().log('Approving filtered rows...');
-    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.sheets.generated.name);
-    const rows = getGeneratedRows();
-    if (!sheet || !rows)
-        return;
-    rows.map((row, index) => {
-        row[CONFIG.sheets.generated.cols.approval] = sheet.isRowHiddenByFilter(index + 1 + 1)
-            ? row[CONFIG.sheets.generated.cols.approval]
-            : true;
-        return row;
-    });
-    writeGeneratedRows(rows);
-    MultiLogger.getInstance().log('Writing approved rows...');
+  MultiLogger.getInstance().log('Approving filtered rows...');
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(
+    CONFIG.sheets.generated.name
+  );
+  const rows = getGeneratedRows();
+  if (!sheet || !rows) return;
+  rows.map((row, index) => {
+    row[CONFIG.sheets.generated.cols.approval] = sheet.isRowHiddenByFilter(
+      index + 1 + 1
+    )
+      ? row[CONFIG.sheets.generated.cols.approval]
+      : true;
+    return row;
+  });
+  writeGeneratedRows(rows);
+  MultiLogger.getInstance().log('Writing approved rows...');
 }
 function exportApproved() {
-    MultiLogger.getInstance().log('Exporting approved rows...');
-    const feedGenRows = getGeneratedRows().filter(row => {
-        return row[CONFIG.sheets.generated.cols.approval] === true;
-    });
-    const filledInGapAttributes = [
-        ...new Set(feedGenRows
-            .map(row => Object.keys(JSON.parse(row[CONFIG.sheets.generated.cols.gapAttributes])))
-            .flat(1)),
-    ];
-    const rowsToWrite = [];
-    for (const row of feedGenRows) {
-        const resRow = [];
-        resRow[CONFIG.sheets.output.cols.id] = row[CONFIG.sheets.generated.cols.id];
-        resRow[CONFIG.sheets.output.cols.title] =
-            row[CONFIG.sheets.generated.cols.approval] === true
-                ? row[CONFIG.sheets.generated.cols.titleGenerated]
-                : row[CONFIG.sheets.generated.cols.titleOriginal];
-        resRow[CONFIG.sheets.output.cols.modificationTimestamp] =
-            new Date().toISOString();
-        const gapAttributesAndValues = JSON.parse(row[CONFIG.sheets.generated.cols.gapAttributes]);
-        const gapAttributesKeys = Object.keys(gapAttributesAndValues);
-        const originalInput = JSON.parse(row[CONFIG.sheets.generated.cols.originalInput]);
-        filledInGapAttributes.forEach((attribute, index) => (resRow[CONFIG.sheets.output.cols.gapCols.start + index] =
-            gapAttributesKeys.includes(attribute)
-                ? gapAttributesAndValues[attribute]
-                : originalInput[attribute]));
-        rowsToWrite.push(resRow);
-    }
-    clearApprovedData();
-    writeApprovedData(filledInGapAttributes, rowsToWrite);
+  MultiLogger.getInstance().log('Exporting approved rows...');
+  const feedGenRows = getGeneratedRows().filter(row => {
+    return row[CONFIG.sheets.generated.cols.approval] === true;
+  });
+  const filledInGapAttributes = [
+    ...new Set(
+      feedGenRows
+        .map(row =>
+          Object.keys(
+            JSON.parse(row[CONFIG.sheets.generated.cols.gapAttributes])
+          )
+        )
+        .flat(1)
+    ),
+  ];
+  const rowsToWrite = [];
+  for (const row of feedGenRows) {
+    const resRow = [];
+    resRow[CONFIG.sheets.output.cols.id] = row[CONFIG.sheets.generated.cols.id];
+    resRow[CONFIG.sheets.output.cols.title] =
+      row[CONFIG.sheets.generated.cols.approval] === true
+        ? row[CONFIG.sheets.generated.cols.titleGenerated]
+        : row[CONFIG.sheets.generated.cols.titleOriginal];
+    resRow[CONFIG.sheets.output.cols.modificationTimestamp] =
+      new Date().toISOString();
+    const gapAttributesAndValues = JSON.parse(
+      row[CONFIG.sheets.generated.cols.gapAttributes]
+    );
+    const gapAttributesKeys = Object.keys(gapAttributesAndValues);
+    const originalInput = JSON.parse(
+      row[CONFIG.sheets.generated.cols.originalInput]
+    );
+    filledInGapAttributes.forEach(
+      (attribute, index) =>
+        (resRow[CONFIG.sheets.output.cols.gapCols.start + index] =
+          gapAttributesKeys.includes(attribute)
+            ? gapAttributesAndValues[attribute]
+            : originalInput[attribute])
+    );
+    rowsToWrite.push(resRow);
+  }
+  clearApprovedData();
+  writeApprovedData(filledInGapAttributes, rowsToWrite);
 }
 
 app;
