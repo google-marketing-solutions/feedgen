@@ -293,8 +293,8 @@ function optimizeRow(
 
   return [
     ...row,
-    genTemplate,
     origTemplate,
+    genTemplate,
     genCategory,
     genAttributeValues.join(', '),
     ...generationMetrics.scores(),
