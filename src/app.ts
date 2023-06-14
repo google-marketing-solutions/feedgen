@@ -531,17 +531,6 @@ export function exportApproved() {
     ),
   ];
 
-  // Load 'Approved' sheet
-  const approvedRows = getApprovedData();
-  let approvedColumnHeader = approvedRows.shift();
-  approvedColumnHeader = approvedColumnHeader?.slice(
-    CONFIG.sheets.output.cols.gapCols.start,
-    approvedColumnHeader.length
-  );
-  approvedColumnHeader = [
-    ...new Set([...approvedColumnHeader!, ...filledInGapAttributes]),
-  ];
-
   const rowsToWrite: string[][] = [];
   // Process rows
   for (const row of feedGenRows) {
@@ -583,5 +572,5 @@ export function exportApproved() {
   clearApprovedData();
 
   // Write to 'Approved' sheet
-  writeApprovedData(approvedColumnHeader, rowsToWrite);
+  writeApprovedData(filledInGapAttributes, rowsToWrite);
 }
