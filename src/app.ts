@@ -86,7 +86,7 @@ function findRowIndex(
     throw new Error(`Sheet ${sheetName} not found`);
   }
 
-  if (sheet.getLastRow() - offset === 0) {
+  if (sheet.getLastRow() - offset + 1 === 0) {
     return 0;
   }
 
