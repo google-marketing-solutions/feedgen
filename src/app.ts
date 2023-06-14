@@ -38,6 +38,7 @@ const ATTRIBUTES_PROMPT = 'product attributes values:';
 const TITLE_PROMPT =
   'Generated title based on all product attributes (100-130 characters):';
 const SEPARATOR = '|';
+const WORD_MATCH_REGEX = /(\w|\s)*\w(?=")|\w+/g;
 
 // Get Vertex AI config info
 const vertexAiProjectId = getConfigSheetValue(
@@ -52,13 +53,32 @@ const vertexAiModelId = getConfigSheetValue(
   CONFIG.sheets.config.fields.vertexAiModelId
 );
 
-type GenerationMetrics = {
-  titleChanged: boolean;
-  attributesAreAdded: boolean;
-  generatedValuesAdded: boolean;
-  newWordsAdded: boolean;
-  scores: () => [number];
-};
+// type GenerationMetricsType = {
+//   titleChanged: boolean;
+//   addedAttributes: Set<String>;
+//   generatedValuesAdded: Array<String>;
+//   newWordsAdded: Set<String>;
+//   totalScore: Number;
+//   metrics: () => string[];
+// };
+
+// class GenerationMetrics implements GenerationMetricsType{
+//   titleChanged: boolean;
+//   addedAttributes: Set<String>;
+//   generatedValuesAdded: Array<String>;
+//   newWordsAdded: Set<String>;
+//   totalScore: Number;
+
+//   constructor(titleChanged: boolean, addedAttributes: Set<String>, generatedValuesAdded: Array<String>) {
+//     this.titleChanged = titleChanged;
+//   }
+
+const generationMetrics = (
+  titleChanged: boolean,
+  addedAttributes: Set<String>,
+  generatedValuesAdded: Array<String>,
+  newWordsAdded: Set<String>
+) => {};
 
 /**
  * Handle 'onOpen' Sheets event to show menu.
@@ -164,28 +184,27 @@ const getGenerationMetrics = (
   origAttributes: Set<string>,
   genAttributes: Set<string>,
   inputWords: Set<string>
-): GenerationMetrics => {
-  const isTitleChanged = origTitle !== genTitle;
-  const attributesAdded = genAttributes.size > origAttributes.size;
-  const newWordsAdded = genTitle.split(' ').some((genTitleWord: string) => {
-    return !inputWords.has(genTitleWord);
-  });
-  const genAttributeValuesAdded = true;
-  return {
-    attributesAreAdded: attributesAdded,
-    generatedValuesAdded: genAttributeValuesAdded,
-    titleChanged: isTitleChanged,
-    newWordsAdded: newWordsAdded,
-    scores: () => {
-      return [
-        (Number(attributesAdded) +
-          Number(genAttributeValuesAdded) +
-          Number(isTitleChanged) +
-          Number(newWordsAdded)) /
-          4,
-      ];
-    },
-  };
+): string[] => {
+  const titleChanged = origTitle !== genTitle;
+  const addedAttributes = Util.getSetDifference(genAttributes, origAttributes);
+  const newWordsAdded = new Set<String>();
+  const genTitleWords = genTitle.match(WORD_MATCH_REGEX);
+  if (genTitleWords !== null) {
+    genTitleWords
+      .filter((genTitleWord: string) => !inputWords.has(genTitleWord))
+      .forEach((newWord: string) => newWordsAdded.add(newWord));
+  }
+  const totalScore =
+    (Number(addedAttributes.length > 0) +
+      Number(titleChanged) +
+      Number(newWordsAdded.size === 0)) /
+    3;
+  return [
+    totalScore.toString(), // 0-1 score total
+    titleChanged.toString(), // Title Changed
+    addedAttributes.map((attr: string) => `<${attr}>`).join(' '), // Attributes added
+    [...newWordsAdded].join(SEPARATOR), //hallucinated words added to title
+  ];
 };
 
 function getConfigSheetValue(field: { row: number; col: number }) {
@@ -245,7 +264,8 @@ function optimizeRow(
 
   const origAttributes = origTemplateRow
     .replace(ORIGINAL_TITLE_TEMPLATE_PROMPT, '')
-    .split(SEPARATOR);
+    .split(SEPARATOR)
+    .map((x: string) => x.trim());
 
   const origTemplate = origAttributes
     .map((x: string) => `<${x.trim()}>`)
@@ -267,12 +287,11 @@ function optimizeRow(
   const genTitle = titleFeatures.join(' ');
 
   const inputWords = new Set<string>();
-  data.forEach((field: string) => {
-    String(field)
-      .split(' ')
-      .forEach((word: string) => {
-        inputWords.add(word);
-      });
+  Object.values(dataObj).forEach((value: string) => {
+    const match = new String(value).match(WORD_MATCH_REGEX);
+    if (match !== null) {
+      match.forEach((word: string) => inputWords.add(word));
+    }
   });
 
   const generationMetrics = getGenerationMetrics(
@@ -297,7 +316,7 @@ function optimizeRow(
     genTemplate,
     genCategory,
     genAttributeValues.join(', '),
-    ...generationMetrics.scores(),
+    ...generationMetrics,
     res,
     JSON.stringify(dataObj),
   ];
