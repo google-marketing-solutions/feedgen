@@ -292,9 +292,11 @@ const TEMPLATE_PROMPT = 'product attribute keys:';
 const ATTRIBUTES_PROMPT = 'product attributes values:';
 const TITLE_PROMPT = 'Generated title based on all product attributes (100-130 characters):';
 const SEPARATOR = '|';
+const WORD_MATCH_REGEX = /(\w|\s)*\w(?=")|\w+/g;
 const vertexAiProjectId = getConfigSheetValue(CONFIG.sheets.config.fields.vertexAiProjectId);
 const vertexAiLocation = getConfigSheetValue(CONFIG.sheets.config.fields.vertexAiLocation);
 const vertexAiModelId = getConfigSheetValue(CONFIG.sheets.config.fields.vertexAiModelId);
+const generationMetrics = (titleChanged, addedAttributes, generatedValuesAdded, newWordsAdded) => { };
 function onOpen() {
     SpreadsheetApp.getUi()
         .createMenu('FeedGen')
@@ -366,27 +368,25 @@ function getTotalGeneratedRows() {
         : totalRows - CONFIG.sheets.generated.startRow;
 }
 const getGenerationMetrics = (origTitle, genTitle, origAttributes, genAttributes, inputWords) => {
-    const isTitleChanged = origTitle !== genTitle;
-    const attributesAdded = genAttributes.size > origAttributes.size;
-    const newWordsAdded = genTitle.split(' ').some((genTitleWord) => {
-        return !inputWords.has(genTitleWord);
-    });
-    const genAttributeValuesAdded = true;
-    return {
-        attributesAreAdded: attributesAdded,
-        generatedValuesAdded: genAttributeValuesAdded,
-        titleChanged: isTitleChanged,
-        newWordsAdded: newWordsAdded,
-        scores: () => {
-            return [
-                (Number(attributesAdded) +
-                    Number(genAttributeValuesAdded) +
-                    Number(isTitleChanged) +
-                    Number(newWordsAdded)) /
-                    4,
-            ];
-        },
-    };
+    const titleChanged = origTitle !== genTitle;
+    const addedAttributes = Util.getSetDifference(genAttributes, origAttributes);
+    const newWordsAdded = new Set();
+    const genTitleWords = genTitle.match(WORD_MATCH_REGEX);
+    if (genTitleWords !== null) {
+        genTitleWords
+            .filter((genTitleWord) => !inputWords.has(genTitleWord))
+            .forEach((newWord) => newWordsAdded.add(newWord));
+    }
+    const totalScore = (Number(addedAttributes.length > 0) +
+        Number(titleChanged) +
+        Number(newWordsAdded.size === 0)) /
+        3;
+    return [
+        totalScore.toString(),
+        titleChanged.toString(),
+        addedAttributes.map((attr) => `<${attr}>`).join(' '),
+        [...newWordsAdded].join(SEPARATOR),
+    ];
 };
 function getConfigSheetValue(field) {
     return SheetsService.getInstance().getCellValue(CONFIG.sheets.config.name, field.row, field.col);
@@ -428,12 +428,11 @@ function optimizeRow(headers, data) {
     });
     const genTitle = titleFeatures.join(' ');
     const inputWords = new Set();
-    data.forEach((field) => {
-        String(field)
-            .split(' ')
-            .forEach((word) => {
-            inputWords.add(word);
-        });
+    Object.values(dataObj).forEach((value) => {
+        const match = new String(value).match(WORD_MATCH_REGEX);
+        if (match !== null) {
+            match.forEach((word) => inputWords.add(word));
+        }
     });
     const generationMetrics = getGenerationMetrics(origTitle, genTitle, new Set(origAttributes), new Set(genAttributes), inputWords);
     const row = [];
@@ -448,7 +447,7 @@ function optimizeRow(headers, data) {
         genTemplate,
         genCategory,
         genAttributeValues.join(', '),
-        ...generationMetrics.scores(),
+        ...generationMetrics,
         JSON.stringify(gapAttributesAndValues),
         res,
         JSON.stringify(dataObj),

@@ -59,8 +59,8 @@ export const CONFIG = {
         id: 2,
         titleOriginal: 3,
         titleGenerated: 4,
-        gapAttributes: 10,
-        originalInput: 12,
+        gapAttributes: 13,
+        originalInput: 15,
       },
     },
     output: {
