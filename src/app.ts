@@ -63,10 +63,6 @@ export function onOpen() {
     .addToUi();
 }
 
-function logSummary() {
-  MultiLogger.getInstance().log('Summary: ');
-}
-
 /**
  * Open sidebar.
  */
@@ -216,20 +212,15 @@ function optimizeRow(
   // Generate title with all available context
   const res = generateTitle(dataObj);
 
-  const [
-    origTemplateRow,
-    genCategoryRow,
-    genTemplateRow,
-    genAttributesRow,
-    genTitleRow,
-  ] = res.split('\n');
+  const [origTemplateRow, genCategoryRow, genTemplateRow, genAttributesRow] =
+    res.split('\n');
 
   const genCategory = genCategoryRow.replace(CATEGORY_PROMPT, '').trim();
 
   const genAttributes = genTemplateRow
     .replace(TEMPLATE_PROMPT, '')
     .split(SEPARATOR)
-    .map((x: string) => `${x.trim()}`);
+    .map((x: string) => x.trim());
 
   const genTemplate = genAttributes
     .map((x: string) => `<${x.trim()}>`)
@@ -251,10 +242,15 @@ function optimizeRow(
 
   // Collect all title features with priority on user provided data
   // (use generated only when user provided data is not available)
-  const titleFeatures = genAttributes.map(
-    (attribute: string, index: number) =>
-      dataObj[attribute] || genAttributeValues[index]
-  );
+  const titleFeatures: string[] = [];
+  const gapAttributesAndValues: Record<string, string> = {};
+
+  genAttributes.forEach((attribute: string, index: number) => {
+    if (!dataObj[attribute]) {
+      gapAttributesAndValues[attribute] = genAttributeValues[index];
+    }
+    titleFeatures.push(dataObj[attribute] || genAttributeValues[index]);
+  });
 
   // create title solely based on titleFeatures to reduce hallucination potential
   const genTitle = titleFeatures.join(' ');
@@ -290,6 +286,7 @@ function optimizeRow(
     genCategory,
     genAttributeValues.join(', '),
     ...generationMetrics,
+    JSON.stringify(gapAttributesAndValues),
     res,
     JSON.stringify(dataObj),
   ];
@@ -395,25 +392,18 @@ function writeGeneratedRows(rows: string[][], withHeader = false) {
 }
 
 /**
- * Get rows from 'Supplemental Feed' sheet.
- *
- * @returns {string[][]}
- */
-function getApprovedData() {
-  return SheetsService.getInstance().getRangeData(
-    CONFIG.sheets.output.name,
-    CONFIG.sheets.output.startRow + 1,
-    1
-  );
-}
-
-/**
  * Write rows to 'Approved' Sheet.
  *
  * @param {string[][]} rows
  */
-function writeApprovedRows(rows: string[][]) {
-  MultiLogger.getInstance().log('Writing approved rows...');
+function writeApprovedData(header: string[], rows: string[][]) {
+  MultiLogger.getInstance().log('Writing approved data...');
+  SheetsService.getInstance().setValuesInDefinedRange(
+    CONFIG.sheets.output.name,
+    CONFIG.sheets.output.startRow,
+    CONFIG.sheets.output.cols.gapCols.start + 1,
+    [header]
+  );
   SheetsService.getInstance().setValuesInDefinedRange(
     CONFIG.sheets.output.name,
     CONFIG.sheets.output.startRow + 1,
@@ -425,8 +415,13 @@ function writeApprovedRows(rows: string[][]) {
 /**
  * Clear all data rows from 'Supplemental Feed' sheet.
  */
-function clearApprovedRows() {
-  MultiLogger.getInstance().log('Clearing approved rows...');
+function clearApprovedData() {
+  MultiLogger.getInstance().log('Clearing approved data...');
+  SheetsService.getInstance().clearDefinedRange(
+    CONFIG.sheets.output.name,
+    CONFIG.sheets.output.startRow,
+    CONFIG.sheets.output.cols.gapCols.start + 1
+  );
   SheetsService.getInstance().clearDefinedRange(
     CONFIG.sheets.output.name,
     CONFIG.sheets.output.startRow + 1,
@@ -483,7 +478,7 @@ export function approveFiltered() {
 }
 
 /**
- * Merge title and description from 'FeedGen' to 'Approved' sheet.
+ * Merge title and other attributes from 'FeedGen' to 'Approved' sheet.
  */
 export function exportApproved() {
   MultiLogger.getInstance().log('Exporting approved rows...');
@@ -493,17 +488,19 @@ export function exportApproved() {
     return row[CONFIG.sheets.generated.cols.approval] === true;
   });
 
-  // Load 'Approved' sheet
-  const approvedRows = getApprovedData();
+  const filledInGapAttributes = [
+    ...new Set(
+      feedGenRows
+        .map(row =>
+          Object.keys(
+            JSON.parse(row[CONFIG.sheets.generated.cols.gapAttributes])
+          )
+        )
+        .flat(1)
+    ),
+  ];
 
-  // Generate id-keyed object from approved rows
-  const approvedRowsMap = arrayToMap(
-    approvedRows,
-    CONFIG.sheets.output.cols.id
-  );
-
-  const feedGenApprovedRowsMap: Record<string, string[]> = {};
-
+  const rowsToWrite: string[][] = [];
   // Process rows
   for (const row of feedGenRows) {
     // Row container
@@ -518,35 +515,31 @@ export function exportApproved() {
         ? row[CONFIG.sheets.generated.cols.titleGenerated]
         : row[CONFIG.sheets.generated.cols.titleOriginal];
 
-    feedGenApprovedRowsMap[row[CONFIG.sheets.generated.cols.id]] = resRow;
-  }
+    resRow[CONFIG.sheets.output.cols.modificationTimestamp] =
+      new Date().toISOString();
 
-  // Merge with 'Approved' rows
-  const merged = Object.values(
-    Object.assign(approvedRowsMap, feedGenApprovedRowsMap)
-  );
+    const gapAttributesAndValues = JSON.parse(
+      row[CONFIG.sheets.generated.cols.gapAttributes]
+    );
+    const gapAttributesKeys = Object.keys(gapAttributesAndValues);
+    const originalInput = JSON.parse(
+      row[CONFIG.sheets.generated.cols.originalInput]
+    );
+
+    filledInGapAttributes.forEach(
+      (attribute, index) =>
+        (resRow[CONFIG.sheets.output.cols.gapCols.start + index] =
+          gapAttributesKeys.includes(attribute)
+            ? gapAttributesAndValues[attribute]
+            : originalInput[attribute])
+    );
+
+    rowsToWrite.push(resRow);
+  }
 
   // Clear 'Approved' sheet
-  clearApprovedRows();
+  clearApprovedData();
 
   // Write to 'Approved' sheet
-  writeApprovedRows(merged);
-}
-
-/**
- * Create map from array with key column.
- * @param {Array<Array<string>>} arr
- * @param {number} keyCol
- * @returns {Record<string, Array<string>>}
- */
-export function arrayToMap(arr: string[][], keyCol: number) {
-  const map: Record<string, string[]> = {};
-
-  for (const row of arr) {
-    if (!row[keyCol]) continue;
-
-    map[row[keyCol]] = row;
-  }
-
-  return map;
+  writeApprovedData(filledInGapAttributes, rowsToWrite);
 }
