@@ -64,10 +64,6 @@ export const CONFIG = {
       cols: {
         id: 0,
         title: 1,
-        modificationTimestamp: 2,
-        gapCols: {
-          start: 3,
-        },
       },
     },
     log: {

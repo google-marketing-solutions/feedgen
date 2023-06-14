@@ -53,33 +53,6 @@ const vertexAiModelId = getConfigSheetValue(
   CONFIG.sheets.config.fields.vertexAiModelId
 );
 
-// type GenerationMetricsType = {
-//   titleChanged: boolean;
-//   addedAttributes: Set<String>;
-//   generatedValuesAdded: Array<String>;
-//   newWordsAdded: Set<String>;
-//   totalScore: Number;
-//   metrics: () => string[];
-// };
-
-// class GenerationMetrics implements GenerationMetricsType{
-//   titleChanged: boolean;
-//   addedAttributes: Set<String>;
-//   generatedValuesAdded: Array<String>;
-//   newWordsAdded: Set<String>;
-//   totalScore: Number;
-
-//   constructor(titleChanged: boolean, addedAttributes: Set<String>, generatedValuesAdded: Array<String>) {
-//     this.titleChanged = titleChanged;
-//   }
-
-const generationMetrics = (
-  titleChanged: boolean,
-  addedAttributes: Set<String>,
-  generatedValuesAdded: Array<String>,
-  newWordsAdded: Set<String>
-) => {};
-
 /**
  * Handle 'onOpen' Sheets event to show menu.
  */
@@ -189,7 +162,7 @@ const getGenerationMetrics = (
   const addedAttributes = Util.getSetDifference(genAttributes, origAttributes);
   const newWordsAdded = new Set<String>();
   const genTitleWords = genTitle.match(WORD_MATCH_REGEX);
-  if (genTitleWords !== null) {
+  if (genTitleWords) {
     genTitleWords
       .filter((genTitleWord: string) => !inputWords.has(genTitleWord))
       .forEach((newWord: string) => newWordsAdded.add(newWord));
@@ -201,9 +174,9 @@ const getGenerationMetrics = (
     3;
   return [
     totalScore.toString(), // 0-1 score total
-    titleChanged.toString(), // Title Changed
-    addedAttributes.map((attr: string) => `<${attr}>`).join(' '), // Attributes added
-    [...newWordsAdded].join(SEPARATOR), //hallucinated words added to title
+    titleChanged.toString(),
+    addedAttributes.map((attr: string) => `<${attr}>`).join(' '),
+    [...newWordsAdded].join(` ${SEPARATOR} `),
   ];
 };
 
@@ -289,7 +262,7 @@ function optimizeRow(
   const inputWords = new Set<string>();
   Object.values(dataObj).forEach((value: string) => {
     const match = new String(value).match(WORD_MATCH_REGEX);
-    if (match !== null) {
+    if (match) {
       match.forEach((word: string) => inputWords.add(word));
     }
   });
