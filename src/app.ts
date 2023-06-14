@@ -17,7 +17,7 @@
 //@OnlyCurrentDoc
 /* eslint-disable no-useless-escape */
 
-import { CONFIG } from './config';
+import { CONFIG, Status } from './config';
 import { MultiLogger } from './helpers/logger';
 import { SheetsService } from './helpers/sheets';
 import { Util } from './helpers/util';
@@ -64,6 +64,57 @@ export function onOpen() {
 }
 
 /**
+ * Find first row index for cell matching conditions.
+ *
+ * @param {string} sheetName
+ * @param {string} searchValues
+ * @param {number} column
+ * @param {number} offset
+ * @param {boolean} negate
+ * @returns {number}
+ */
+function findRowIndex(
+  sheetName: string,
+  searchValues: string[],
+  column: number,
+  offset = 0,
+  negate = false
+) {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(sheetName);
+
+  if (!sheet) {
+    throw new Error(`Sheet ${sheetName} not found`);
+  }
+
+  if (sheet.getLastRow() - offset === 0) {
+    return 0;
+  }
+
+  const range = sheet?.getRange(
+    offset,
+    column,
+    sheet.getLastRow() - offset + 1,
+    1
+  );
+
+  if (!range) {
+    throw new Error('Invalid range');
+  }
+
+  const data = range.getValues();
+
+  const rowIndex = data.flat().findIndex(cell => {
+    if (negate) {
+      return !searchValues.includes(cell);
+    } else {
+      return searchValues.includes(cell);
+    }
+  });
+
+  return rowIndex >= 0 ? rowIndex : -1;
+}
+
+/**
  * Open sidebar.
  */
 export function showSidebar() {
@@ -73,9 +124,38 @@ export function showSidebar() {
 }
 
 /**
+ * Get index of row to be generated next.
+ *
+ * @returns {number}
+ */
+export function getNextRowIndexToBeGenerated() {
+  const index = findRowIndex(
+    CONFIG.sheets.generated.name,
+    [Status.SUCCESS],
+    CONFIG.sheets.generated.cols.status + 1,
+    CONFIG.sheets.generated.startRow + 1,
+    true
+  );
+
+  if (index < 0) {
+    const totalGeneratedRows = SheetsService.getInstance().getTotalRows(
+      CONFIG.sheets.generated.name
+    );
+
+    if (typeof totalGeneratedRows === 'undefined') {
+      throw new Error('Error reading generated rows');
+    }
+
+    return totalGeneratedRows - CONFIG.sheets.generated.startRow;
+  }
+
+  return index;
+}
+
+/**
  * Generate content for next row.
  *
- * @returns {null}
+ * @returns {number}
  */
 export function generateNextRow() {
   const inputSheet = SpreadsheetApp.getActive().getSheetByName(
@@ -87,23 +167,36 @@ export function generateNextRow() {
 
   if (!inputSheet || !generatedSheet) return;
 
-  const lastProcessedRow =
-    generatedSheet.getLastRow() - (CONFIG.sheets.generated.startRow - 1);
+  // Get row to be processed
+  const rowIndex = getNextRowIndexToBeGenerated();
 
-  if (lastProcessedRow >= inputSheet.getLastRow()) return;
+  if (rowIndex >= inputSheet.getLastRow() - CONFIG.sheets.input.startRow) {
+    return -1;
+  }
 
-  MultiLogger.getInstance().log(`Generating for row ${lastProcessedRow}`);
+  MultiLogger.getInstance().log(`Generating for row ${rowIndex}`);
 
   const row = inputSheet
-    .getRange(lastProcessedRow + 1, 1, 1, inputSheet.getMaxColumns())
+    .getRange(
+      CONFIG.sheets.input.startRow + 1 + rowIndex,
+      1,
+      1,
+      inputSheet.getLastColumn()
+    )
     .getValues()[0];
 
   try {
     const inputHeaders = SheetsService.getInstance().getHeaders(inputSheet);
     const optimizedRow = optimizeRow(inputHeaders, row);
 
-    generatedSheet.appendRow(optimizedRow);
-    MultiLogger.getInstance().log('Success');
+    SheetsService.getInstance().setValuesInDefinedRange(
+      CONFIG.sheets.generated.name,
+      CONFIG.sheets.generated.startRow + 1 + rowIndex,
+      1,
+      [optimizedRow]
+    );
+
+    MultiLogger.getInstance().log(Status.SUCCESS);
   } catch (e) {
     MultiLogger.getInstance().log(`Error: ${e}`);
     row[CONFIG.sheets.generated.cols.status] = `Error: ${e}`;
@@ -114,7 +207,7 @@ export function generateNextRow() {
     generatedSheet.appendRow(failedRow);
   }
 
-  return lastProcessedRow;
+  return rowIndex;
 }
 
 /**

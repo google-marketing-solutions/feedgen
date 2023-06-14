@@ -106,13 +106,13 @@ export class SheetsService {
    * @param {string} sheetName The name of the sheet
    * @param {number} row The range's start row (1-based)
    * @param {number} col The range's start col (1-based)
-   * @param {?Array<?Array<string|number|undefined>>} values The values to write
+   * @param {?Array<?Array<string|number|undefined|boolean>>} values The values to write
    */
   setValuesInDefinedRange(
     sheetName: string,
     row: number,
     col: number,
-    values: Array<Array<string | number | undefined>>
+    values: Array<Array<string | number | undefined | boolean>>
   ) {
     const sheet = this.getSpreadsheet().getSheetByName(sheetName);
 
@@ -173,6 +173,25 @@ export class SheetsService {
     const cell = sheet.getRange(row, col);
 
     return cell.getValue();
+  }
+
+  /**
+   * Sets a cell's value by the given parameters.
+   *
+   * @param {number} row The row identifier
+   * @param {number} col The column identifier
+   * @param {string} val The value to set
+   * @param {?string=} sheetName The name of the sheet to use. Uses the
+   *     sheet the user currently has open (active sheet) if not given
+   */
+  setCellValue(row: number, col: number, val: string, sheetName?: string) {
+    const sheet = sheetName
+      ? this.getSpreadsheet().getSheetByName(sheetName)
+      : this.getSpreadsheet().getActiveSheet();
+
+    if (!sheet) return;
+
+    sheet.getRange(row, col).setValue(val);
   }
 
   /**
