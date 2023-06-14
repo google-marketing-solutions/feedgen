@@ -201,9 +201,12 @@ function getConfigSheetValue(field: { row: number; col: number }) {
  *
  * @param {string[]} headers
  * @param {string[]} data
- * @returns {string[]}
+ * @returns {Array<string | boolean | number>}
  */
-function optimizeRow(headers: string[], data: string[]): string[] {
+function optimizeRow(
+  headers: string[],
+  data: string[]
+): Array<string | boolean | number> {
   // Build context object
   const dataObj = Object.fromEntries(
     data.map((item, index) => [headers[index], item])
@@ -265,16 +268,18 @@ function optimizeRow(headers: string[], data: string[]): string[] {
 
   const inputWords = new Set<string>();
   data.forEach((field: string) => {
-    field.split(' ').forEach((word: string) => {
-      inputWords.add(word);
-    });
+    String(field)
+      .split(' ')
+      .forEach((word: string) => {
+        inputWords.add(word);
+      });
   });
 
   const generationMetrics = getGenerationMetrics(
     origTitle,
     genTitle,
-    origAttributes,
-    genAttributes,
+    new Set(origAttributes),
+    new Set(genAttributes),
     inputWords
   );
 
@@ -298,7 +303,7 @@ function optimizeRow(headers: string[], data: string[]): string[] {
   ];
 }
 
-function generateTitle(data: Record<string, unknown>) {
+function generateTitle(data: Record<string, unknown>): string {
   const prompt = `
     Context:
     {
