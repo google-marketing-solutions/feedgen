@@ -379,7 +379,9 @@ function optimizeRow(
     genCategory,
     genAttributeValues.join(', '),
     ...generationMetrics,
-    JSON.stringify(gapAttributesAndValues),
+    Object.keys(gapAttributesAndValues).length > 0
+      ? JSON.stringify(gapAttributesAndValues)
+      : '',
     res,
     JSON.stringify(dataObj),
   ];
