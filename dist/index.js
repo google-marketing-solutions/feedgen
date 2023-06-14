@@ -305,9 +305,16 @@ function onOpen() {
 }
 function findRowIndex(sheetName, searchValues, column, offset = 0, negate = false) {
     const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(sheetName);
-    const range = sheet?.getRange(offset, column, sheet.getMaxRows(), 1);
-    if (!range)
-        return -1;
+    if (!sheet) {
+        throw new Error(`Sheet ${sheetName} not found`);
+    }
+    if (sheet.getLastRow() - offset === 0) {
+        return 0;
+    }
+    const range = sheet?.getRange(offset, column, sheet.getLastRow() - offset + 1, 1);
+    if (!range) {
+        throw new Error('Invalid range');
+    }
     const data = range.getValues();
     const rowIndex = data.flat().findIndex(cell => {
         if (negate) {
@@ -325,7 +332,15 @@ function showSidebar() {
     SpreadsheetApp.getUi().showSidebar(html);
 }
 function getNextRowIndexToBeGenerated() {
-    return findRowIndex(CONFIG.sheets.generated.name, [Status.SUCCESS], CONFIG.sheets.generated.cols.status + 1, CONFIG.sheets.generated.startRow + 1, true);
+    const index = findRowIndex(CONFIG.sheets.generated.name, [Status.SUCCESS], CONFIG.sheets.generated.cols.status + 1, CONFIG.sheets.generated.startRow + 1, true);
+    if (index < 0) {
+        const totalGeneratedRows = SheetsService.getInstance().getTotalRows(CONFIG.sheets.generated.name);
+        if (typeof totalGeneratedRows === 'undefined') {
+            throw new Error('Error reading generated rows');
+        }
+        return totalGeneratedRows - CONFIG.sheets.generated.startRow;
+    }
+    return index;
 }
 function generateNextRow() {
     const inputSheet = SpreadsheetApp.getActive().getSheetByName(CONFIG.sheets.input.name);
@@ -333,11 +348,12 @@ function generateNextRow() {
     if (!inputSheet || !generatedSheet)
         return;
     const rowIndex = getNextRowIndexToBeGenerated();
-    if (rowIndex >= inputSheet.getLastRow())
-        return;
+    if (rowIndex >= inputSheet.getLastRow() - CONFIG.sheets.input.startRow) {
+        return -1;
+    }
     MultiLogger.getInstance().log(`Generating for row ${rowIndex}`);
     const row = inputSheet
-        .getRange(CONFIG.sheets.input.startRow + 1 + rowIndex, 1, 1, inputSheet.getMaxColumns())
+        .getRange(CONFIG.sheets.input.startRow + 1 + rowIndex, 1, 1, inputSheet.getLastColumn())
         .getValues()[0];
     try {
         const inputHeaders = SheetsService.getInstance().getHeaders(inputSheet);

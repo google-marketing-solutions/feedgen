@@ -81,9 +81,25 @@ function findRowIndex(
   negate = false
 ) {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(sheetName);
-  const range = sheet?.getRange(offset, column, sheet.getMaxRows(), 1);
 
-  if (!range) return -1;
+  if (!sheet) {
+    throw new Error(`Sheet ${sheetName} not found`);
+  }
+
+  if (sheet.getLastRow() - offset === 0) {
+    return 0;
+  }
+
+  const range = sheet?.getRange(
+    offset,
+    column,
+    sheet.getLastRow() - offset + 1,
+    1
+  );
+
+  if (!range) {
+    throw new Error('Invalid range');
+  }
 
   const data = range.getValues();
 
@@ -113,19 +129,33 @@ export function showSidebar() {
  * @returns {number}
  */
 export function getNextRowIndexToBeGenerated() {
-  return findRowIndex(
+  const index = findRowIndex(
     CONFIG.sheets.generated.name,
     [Status.SUCCESS],
     CONFIG.sheets.generated.cols.status + 1,
     CONFIG.sheets.generated.startRow + 1,
     true
   );
+
+  if (index < 0) {
+    const totalGeneratedRows = SheetsService.getInstance().getTotalRows(
+      CONFIG.sheets.generated.name
+    );
+
+    if (typeof totalGeneratedRows === 'undefined') {
+      throw new Error('Error reading generated rows');
+    }
+
+    return totalGeneratedRows - CONFIG.sheets.generated.startRow;
+  }
+
+  return index;
 }
 
 /**
  * Generate content for next row.
  *
- * @returns {null}
+ * @returns {number}
  */
 export function generateNextRow() {
   const inputSheet = SpreadsheetApp.getActive().getSheetByName(
@@ -140,7 +170,9 @@ export function generateNextRow() {
   // Get row to be processed
   const rowIndex = getNextRowIndexToBeGenerated();
 
-  if (rowIndex >= inputSheet.getLastRow()) return;
+  if (rowIndex >= inputSheet.getLastRow() - CONFIG.sheets.input.startRow) {
+    return -1;
+  }
 
   MultiLogger.getInstance().log(`Generating for row ${rowIndex}`);
 
@@ -149,7 +181,7 @@ export function generateNextRow() {
       CONFIG.sheets.input.startRow + 1 + rowIndex,
       1,
       1,
-      inputSheet.getMaxColumns()
+      inputSheet.getLastColumn()
     )
     .getValues()[0];
 

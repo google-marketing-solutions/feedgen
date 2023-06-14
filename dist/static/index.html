@@ -228,6 +228,11 @@ limitations under the License.
       let currentlyProcessedRow = 0;
 
       do {
+        console.log(currentlyProcessedRow, '/', totalRows);
+        if (cancelled) {
+          break;
+        }
+
         // Update status
         setStatus(STATUS.running, null, `Processed ${currentlyProcessedRow}/${totalRows}`)
 
@@ -240,7 +245,7 @@ limitations under the License.
           });
 
         processedRowsCount++;
-      } while (currentlyProcessedRow <= totalRows && !cancelled);
+      } while (currentlyProcessedRow > 0);
 
       //const elapsedSeconds = Math.floor((Date.now() - startTime) / 1000);
       //setText('summary', `Done! ${processedRowsCount} rows processed in ${elapsedSeconds} seconds`);
