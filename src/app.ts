@@ -70,10 +70,6 @@ export function onOpen() {
     .addToUi();
 }
 
-function logSummary() {
-  MultiLogger.getInstance().log('Summary: ');
-}
-
 /**
  * Open sidebar.
  */
@@ -224,13 +220,8 @@ function optimizeRow(
   // Generate title with all available context
   const res = generateTitle(dataObj);
 
-  const [
-    origTemplateRow,
-    genCategoryRow,
-    genTemplateRow,
-    genAttributesRow,
-    genTitleRow,
-  ] = res.split('\n');
+  const [origTemplateRow, genCategoryRow, genTemplateRow, genAttributesRow] =
+    res.split('\n');
 
   const genCategory = genCategoryRow.replace(CATEGORY_PROMPT, '').trim();
 
@@ -406,19 +397,6 @@ function writeGeneratedRows(rows: string[][], withHeader = false) {
     CONFIG.sheets.generated.startRow + offset,
     1,
     rows
-  );
-}
-
-/**
- * Get rows from 'Supplemental Feed' sheet.
- *
- * @returns {string[][]}
- */
-function getApprovedData() {
-  return SheetsService.getInstance().getRangeData(
-    CONFIG.sheets.output.name,
-    CONFIG.sheets.output.startRow,
-    1
   );
 }
 
