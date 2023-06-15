@@ -71,7 +71,7 @@ const CONFIG = {
       startRow: 1,
     },
     generated: {
-      name: 'Generated Title Validation',
+      name: 'Generated Content Validation',
       startRow: 5,
       cols: {
         approval: 0,
