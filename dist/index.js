@@ -475,16 +475,18 @@ const getGenerationMetrics = (
       .filter(genTitleWord => !inputWords.has(genTitleWord))
       .forEach(newWord => newWordsAdded.add(newWord));
   }
-  const gapAttributesPresent = Object.keys(gapAttributesAndValues).length > 0;
-  const gapAttributesInvented = Object.keys(gapAttributesAndValues).some(
-    gapKey => Object.keys(originalInput).some(origKey => origKey === gapKey)
+  const gapAttributesPresent = Object.keys(gapAttributesAndValues).filter(
+    gapKey => gapKey in originalInput
+  );
+  const gapAttributesInvented = Object.keys(gapAttributesAndValues).filter(
+    gapKey => !(gapKey in originalInput)
   );
   const totalScore =
     (Number(addedAttributes.length > 0) +
       Number(titleChanged) +
       Number(newWordsAdded.size === 0) +
-      Number(gapAttributesPresent) +
-      Number(gapAttributesInvented)) /
+      Number(gapAttributesPresent.length > 0) +
+      Number(gapAttributesInvented.length > 0)) /
     5;
   return [
     totalScore.toString(),
