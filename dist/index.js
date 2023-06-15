@@ -25,24 +25,28 @@ const CONFIG = {
       name: 'Config',
       fields: {
         vertexAiProjectId: {
-          row: 1,
-          col: 2,
-        },
-        vertexAiLocation: {
           row: 2,
           col: 2,
         },
-        vertexAiModelId: {
+        vertexAiLocation: {
           row: 3,
           col: 2,
         },
-        itemIdColumnName: {
+        vertexAiModelId: {
           row: 4,
           col: 2,
         },
-        titleColumnName: {
+        itemIdColumnName: {
           row: 5,
           col: 2,
+        },
+        titleColumnName: {
+          row: 6,
+          col: 2,
+        },
+        fullPrompt: {
+          row: 11,
+          col: 5,
         },
       },
     },
@@ -140,6 +144,11 @@ class SheetsService {
     const sheet = this.spreadsheet_.getSheetByName(sheetName);
     if (!sheet) return;
     return sheet.getDataRange().getLastRow();
+  }
+  getTotalColumns(sheetName) {
+    const sheet = this.spreadsheet_.getSheetByName(sheetName);
+    if (!sheet) return;
+    return sheet.getDataRange().getLastColumn();
   }
   getNonEmptyRows(sheet) {
     return sheet
@@ -294,13 +303,11 @@ class VertexHelper {
 }
 
 const app = null;
-const ORIGINAL_TITLE_TEMPLATE_PROMPT =
+const ORIGINAL_TITLE_TEMPLATE_PROMPT_PART =
   'product attribute keys in original title:';
-const CATEGORY_PROMPT = 'product category:';
-const TEMPLATE_PROMPT = 'product attribute keys:';
-const ATTRIBUTES_PROMPT = 'product attributes values:';
-const TITLE_PROMPT =
-  'Generated title based on all product attributes (100-130 characters):';
+const CATEGORY_PROMPT_PART = 'product category:';
+const TEMPLATE_PROMPT_PART = 'product attribute keys:';
+const ATTRIBUTES_PROMPT_PART = 'product attribute values:';
 const SEPARATOR = '|';
 const WORD_MATCH_REGEX = /(\w|\s)*\w(?=")|\w+/g;
 const vertexAiProjectId = getConfigSheetValue(
@@ -355,6 +362,24 @@ function showSidebar() {
   const html = HtmlService.createTemplateFromFile('static/index').evaluate();
   html.setTitle('FeedGen');
   SpreadsheetApp.getUi().showSidebar(html);
+}
+function FEEDGEN_CREATE_JSON_CONTEXT_FOR_ITEM(itemId) {
+  const inputSheet = SpreadsheetApp.getActive().getSheetByName(
+    CONFIG.sheets.input.name
+  );
+  const itemIdColumnName = getConfigSheetValue(
+    CONFIG.sheets.config.fields.itemIdColumnName
+  );
+  if (!inputSheet) return;
+  const [headers, ...rows] = inputSheet
+    .getRange(1, 1, inputSheet.getLastRow(), inputSheet.getMaxColumns())
+    .getValues();
+  const itemIdIndex = headers.indexOf(itemIdColumnName);
+  const selectedRow = rows.filter(row => row[itemIdIndex] === itemId)[0];
+  const contextObject = Object.fromEntries(
+    headers.map((key, index) => [key, selectedRow[index]])
+  );
+  return JSON.stringify(contextObject);
 }
 function getNextRowIndexToBeGenerated() {
   const index = findRowIndex(
@@ -479,23 +504,26 @@ function optimizeRow(headers, data) {
   );
   const itemId = dataObj[itemIdColumnName];
   const origTitle = dataObj[titleColumnName];
-  const res = generateTitle(dataObj);
+  const res = fetchTitleGenerationData(dataObj);
   const [origTemplateRow, genCategoryRow, genTemplateRow, genAttributesRow] =
     res.split('\n');
-  const genCategory = genCategoryRow.replace(CATEGORY_PROMPT, '').trim();
+  const genCategory = genCategoryRow.replace(CATEGORY_PROMPT_PART, '').trim();
   const genAttributes = genTemplateRow
-    .replace(TEMPLATE_PROMPT, '')
+    .replace(TEMPLATE_PROMPT_PART, '')
     .split(SEPARATOR)
+    .filter(x => x)
     .map(x => x.trim());
   const genTemplate = genAttributes.map(x => `<${x.trim()}>`).join(' ');
   const origAttributes = origTemplateRow
-    .replace(ORIGINAL_TITLE_TEMPLATE_PROMPT, '')
+    .replace(ORIGINAL_TITLE_TEMPLATE_PROMPT_PART, '')
     .split(SEPARATOR)
+    .filter(x => x)
     .map(x => x.trim());
   const origTemplate = origAttributes.map(x => `<${x.trim()}>`).join(' ');
   const genAttributeValues = genAttributesRow
-    .replace(ATTRIBUTES_PROMPT, '')
+    .replace(ATTRIBUTES_PROMPT_PART, '')
     .split(SEPARATOR)
+    .filter(x => x)
     .map(x => x.trim());
   const titleFeatures = [];
   const gapAttributesAndValues = {};
@@ -533,71 +561,17 @@ function optimizeRow(headers, data) {
     genCategory,
     genAttributeValues.join(', '),
     ...generationMetrics,
-    JSON.stringify(gapAttributesAndValues),
+    Object.keys(gapAttributesAndValues).length > 0
+      ? JSON.stringify(gapAttributesAndValues)
+      : '',
     res,
     JSON.stringify(dataObj),
   ];
 }
-function generateTitle(data) {
-  const prompt = `
-    Context:
-    {
-      "item_id": "220837",
-      "title": "Seymour Duncan SM-1 Mini Humbucker B CHR",
-      "description": "Seymour Duncan SM-1 Mini Humbucker B CHR Vintage Fire-bird Mini Humbucker, 2 - adrig, Bridge Position, Finish Chrome Cover",
-      "brand": "Seymour Duncan",
-      "color": "Chrome Cover",
-      "product_type": "Gitarren und Bässe > Pickups und Tonabnehmer > Tonabnehmer für E-Gitarre > Sonstige Tonabnehmer für E-Gitarre",
-      "impressions_7d": 13,
-      "clicks_7d": 0
-    }
-
-    ${ORIGINAL_TITLE_TEMPLATE_PROMPT} brand ${SEPARATOR} model ${SEPARATOR} product
-    ${CATEGORY_PROMPT} Guitars
-    ${TEMPLATE_PROMPT} brand ${SEPARATOR} model ${SEPARATOR} product ${SEPARATOR} color ${SEPARATOR} design
-    ${ATTRIBUTES_PROMPT} Seymour Duncan ${SEPARATOR} SM-1 ${SEPARATOR} Mini Humbucker ${SEPARATOR} Chrome ${SEPARATOR} Vintage
-    ${TITLE_PROMPT} Seymour Duncan SM-1 Mini Humbucker Pickup in Chrome
-
-    Context:
-    {
-      "item_id": "565119",
-      "title": "Gretsch Drums 14\"\"x7\"\" 140th Anniversary Snare",
-      "description": "Gretsch Drums 140th Anniversary Snare + Bag; Farbe: Natur; Hochglanz lackiert; Ahorn Kessel; 16 Einzelböckchen; Nickel Hardware; Figured Ash Außenlage; Micro Sensitive Anhebung; Snap-in Stimmschlüsselhalter; inkluseive 140th Anniversary Tasche; Zertifikat unterzeichnet von allen Produktionsmitarbeitern; 140 Stück limitiert",
-      "brand": "Gretsch Drums",
-      "color": "Natur",
-      "product_type": "Drums und Percussion > Akustik-Drums > Snaredrums mit Holzkessel > 14\"\" Holz Snaredrums",
-      "impressions_7d": 84,
-      "clicks_7d": 1
-    }
-
-    ${ORIGINAL_TITLE_TEMPLATE_PROMPT} brand ${SEPARATOR} size ${SEPARATOR} edition ${SEPARATOR} product
-    ${CATEGORY_PROMPT} Drums
-    ${TEMPLATE_PROMPT} brand ${SEPARATOR} product ${SEPARATOR} material ${SEPARATOR} edition ${SEPARATOR} size
-    ${ATTRIBUTES_PROMPT} Gretsch Drums ${SEPARATOR} Snare + Bag ${SEPARATOR} Ahorn ${SEPARATOR} 140th Anniversary ${SEPARATOR} 14"x7"
-    ${TITLE_PROMPT} Gretsch Snare Drums + Bag aus Ahorn, 140th Anniversary edition
-
-    Context:
-    {
-      "item_id": "302293",
-      "title": "Thon CD Player Case American Audio",
-      "description": "Thon CD Player Case American Audio, maßgefertigtes Haubencase für American Audio Radius 1000, 2000 und 3000, aus 7mm Multiplex, 25 x 25 mm Alukante, Schaumstoffpolsterung, 2x Butterfly-Verschlüsse, 1 Koffergriff, Gummifüße, Platz für Netzkabel, Stahlkugelecken, hergestellt in Deutschland, Außenmaße (BxTxH): ca. 34 x 50 x 19,4 cm, Gewicht: ca. 4,9 kg, Gewicht mit Radius: ca. 8,7 kg",
-      "brand": "Thon",
-      "color": "Phenol Braun",
-      "product_type": "DJ-Equipment > Zubehör für DJs > DJ Player Cases/Bags",
-      "impressions_7d": 15,
-      "clicks_7d": 0
-    }
-
-    ${ORIGINAL_TITLE_TEMPLATE_PROMPT} brand ${SEPARATOR} product ${SEPARATOR} compatibility
-    ${CATEGORY_PROMPT} DJ Equimpent
-    ${TEMPLATE_PROMPT} brand ${SEPARATOR} product ${SEPARATOR} weight ${SEPARATOR} compatibility ${SEPARATOR} color
-    ${ATTRIBUTES_PROMPT} Thon ${SEPARATOR} CD Player Case ${SEPARATOR} 4,9 kg ${SEPARATOR} American Audio ${SEPARATOR} braun
-    ${TITLE_PROMPT} Thon CD PlayerCase, 4,9 kg, American Audio, braun
-
-    Context:
-    ${JSON.stringify(data, null, 2)}
-
-    `;
+function fetchTitleGenerationData(data) {
+  const dataContext = `Context: ${JSON.stringify(data)}\n\n`;
+  const prompt =
+    getConfigSheetValue(CONFIG.sheets.config.fields.fullPrompt) + dataContext;
   const res = Util.executeWithRetry(CONFIG.vertexAi.maxRetries, 0, () =>
     VertexHelper.getInstance(
       vertexAiProjectId,
