@@ -1,10 +1,23 @@
+<!--
+Copyright 2023 Google LLC
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-->
 <img align="left" width="150" src="https://services.google.com/fh/files/misc/feedgen_logo.png" alt="feedgen_logo"></img><br>
 
 # FeedGen: Optimise Shopping Ads feeds with Generative AI
 
 **Disclaimer: This is not an official Google product.**
-
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/google/feedgen/blob/main/feedgen.ipynb)
 
 [What it solves](#challenges) •
 [How it works](#solution-overview) •
@@ -14,22 +27,22 @@
 
 **FeedGen** is an open-source tool that uses Google Cloud's state-of-the-art
 Large Language Models (LLMs) to generate optimised Shopping Ads titles and
-descriptions. It helps merchants and advertisers surface and fix quality issues
-in their feeds using Generative AI in a configurable, user-friendly and
-privacy-preserving manner.
+descriptions, and fill missing attributes in product feeds. It helps merchants
+and advertisers surface and fix quality issues in their feeds using
+Generative AI in a simple and configurable way.
 
-The tool relies on GCP's Vertex PaLM API to provide both zero-shot and few-shot
+The tool relies on GCP's Vertex AI API to provide both zero-shot and few-shot
 inference capabilities on GCP's foundational LLMs. With
 [few-shot prompting](https://cloud.google.com/vertex-ai/docs/generative-ai/text/text-overview),
-you use the best 5-10 samples from your own Shopping Ads feeds to customise the
+you use the best 3-10 samples from your own Shopping Ads feeds to customise the
 model's responses towards your own data, thus achieving higher quality and more
 consistent output. This can be optimised further by fine-tuning the
 foundational models with your own proprietary data. Find out how to fine-tune
 models with Vertex AI, along with the benefits of doing so, at this
 [guide](https://cloud.google.com/vertex-ai/docs/generative-ai/models/tune-models).
 
-> Note: Vertex PaLM API's Public Preview
-[only supports English](https://cloud.google.com/vertex-ai/docs/generative-ai/learn/models#language_support).
+> Note: Vertex AI PaLM models
+[currently only support English](https://cloud.google.com/vertex-ai/docs/generative-ai/learn/models#language_support).
 For non-English language generation, please reach out to your Google Sales /
 gTech representative to have the FeedGen team generate the output for you.
 
@@ -40,15 +53,18 @@ Merchant Center (MC), as doing so would help improve query matching,
 click-through rates (CTR), and conversions. However, it is cumbersome to sift
 through product disapprovals in Merchant Center or manually fix quality issues.
 
-FeedGen tackles this using Generative AI, allowing users to surface and fix
-quality issues with their titles and descriptions in an automated fashion.
+FeedGen tackles this using Generative AI - allowing users to surface and fix
+quality issues, and fill attribute gaps in their feeds in an automated fashion.
 
 ## Solution Overview
 
-The solution consists of a Colab notebook where all the magic happens, along
-with a Google Sheets
-[spreadsheet template](https://docs.google.com/spreadsheets/d/1Ro91GhHaurph5zaqgr4n1PDqFZwuln-jpwam3irYq5k/edit#gid=1221408551)
-that is used for both (optional) human validation as well as setting up a
+FeedGen is an Apps Script based application that runs as an HTML sidebar (see
+[HtmlService](https://developers.google.com/apps-script/guides/html) for
+details) in Google Sheets. The associated Google Sheets
+[spreadsheet template](https://docs.google.com/spreadsheets/d/1L8cgQCppRwIOvNYR3kqelPuSfAYFhhLi8gvIcknnwNo/edit#gid=92939291)
+is where all the magic happens; it holds the input feed that needs optimisation,
+along with specific configuration values that control how content is generated.
+The spreadsheet is also used for both (optional) human validation and setting up a
 **supplemental feed** in MC. Follow the instructions defined in this
 [Help Center article](https://support.google.com/merchants/answer/7439058) to
 set up a supplemental feed in MC, and this
@@ -57,9 +73,10 @@ set up a supplemental feed for a multi-client account (MCA).
 
 > Generative Language in Vertex AI, and in general, is an experimental feature /
 technology. We highly recommend manually reviewing and verifying the generated
-titles and descriptions. FeedGen helps users expedite this process by
-pre-approving titles and descriptions that already fulfill all the validation
-and evaluation rules defined within the Colab notebook.
+titles and descriptions. FeedGen helps users expedite this process by providing
+a score between 0 and 1 (along with detailed score components) that represents
+how "good" the generated content is, along with a Sheets-native way for
+bulk-approving generated content via data filters.
 
 ### Best Practices
 
@@ -73,16 +90,15 @@ We recommend the following patterns for titles according to your business domain
 |Electronics|Brand + Attribute + Product Type|Samsung 88” Smart LED TV with 4K 3D Curved Screen|
 |Books|Title + Type + Format (Hardcover, eBook) + Author|1,000 Italian Recipe Cookbook, Hardcover by Michele Scicolone|
 
-These patterns can be set up in the Colab notebook by defining the set of
-features that are considered **main features**, and thus must exist in all
-generated titles and descriptions, as well as defining individual features to
-use for composing the title and description model prompts, respectively.
+You can rely on these patterns to generate the few-shot prompting examples
+defined in the FeedGen `Config` worksheet, which will accordingly steer the
+values generated by the model.
 
 We also suggest the following:
 
-*  Provide as many product attributes as possible for enriching **description** generation.
-*  Use **size**, **color**, and **gender / age group** for title generation, if available.
-*  Do **NOT** use model numbers or promotional text in titles.
+* Provide as many product attributes as possible for enriching **description** generation.
+* Use **size**, **color**, and **gender / age group** for title generation, if available.
+* Do **NOT** use model numbers or promotional text in titles.
 
 ### Vertex AI Pricing and Quotas
 
@@ -93,10 +109,8 @@ guides for more information.
 
 ## Get Started
 
-The quickest way to get started with FeedGen is to load the `feedgen.ipynb`
-notebook in Google Colaboratory via the link below:
+To get started with FeedGen:
 
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/google/feedgen/blob/main/feedgen.ipynb)
-
-The notebook provides an easy to use interface for configuring and running the
-tool, along with a code walkthrough and results visualization.
+1. Make a copy of the Google Sheets
+[spreadsheet template](https://docs.google.com/spreadsheets/d/1L8cgQCppRwIOvNYR3kqelPuSfAYFhhLi8gvIcknnwNo/edit#gid=92939291).
+1. Follow the instructions detailed in the `Getting Started` worksheet.

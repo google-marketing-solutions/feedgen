@@ -1,0 +1,318 @@
+<!--
+Copyright 2023 Google LLC
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-->
+<!DOCTYPE html>
+<head>
+  <title>FeedGen</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: sans-serif;
+    }
+    button {
+      margin-top: 10px;
+      width: 100%;
+      background-color: #027ad6;
+      font-weight: bold;
+      border-radius: 2px;
+      outline: none;
+      border: 1px solid #027ad6;
+      color: white;
+      transition: background-color 150ms linear;
+      cursor: pointer;
+    }
+    button:not(.flat-button) {
+      padding: 15px;
+    }
+    button:hover:not(:disabled),
+    button.back {
+      background-color: white;
+      border: 1px solid #027ad6;
+      color: #027ad6;
+    }
+    button.back:hover {
+      background-color: #027ad6;
+      border: 1px solid #027ad6;
+      color: white;
+    }
+    button:disabled,
+    button[disabled] {
+      cursor: auto;
+      background-color: #ccc !important;
+      border-color: #bbb !important;
+      color: white !important;
+    }
+    .hidden {
+      display: none !important;
+    }
+    .loading {
+      font-weight: bold;
+      text-align: center;
+      color: green;
+    }
+    #header {
+      position: fixed;
+      padding: 8px;
+      width: 100%;
+      background-color: white;
+    }
+    #brand {
+      text-align: center;
+      color: #027ad6;
+      font-size: 24px;
+    }
+    #status {
+      font-weight: bold;
+      text-align: center;
+    }
+    #metrics {
+      text-align: center;
+    }
+    #summary {
+      color: #1e8e3e;
+      font-weight: bold;
+      text-align: center;
+    }
+    #content {
+      padding: 8px;
+      padding-top: 100px;
+    }
+    #run {
+      background-color: #005495;
+      border: 1px solid #005495;
+    }
+    #run:hover {
+      background-color: white;
+      color: #005495;
+    }
+    #stop-generating {
+      background-color: #ea4335;
+      border-color: #ea4335;
+      color: white;
+    }
+    #stop-generating:hover {
+      background-color: #c5221f;
+    }
+    .selector-controls {
+      justify-content: space-between;
+      display: flex;
+      gap: 10px;
+    }
+    #selector-form {
+      margin-top: 10px;
+    }
+    .checkbox-content {
+      margin-left: 10px;
+    }
+    .active {
+      color: green;
+    }
+    .not-active {
+      color: #777777;
+    }
+    .error {
+      color: #ea4335;
+    }
+    .error-message {
+      white-space: pre-wrap;
+    }
+  </style>
+  <script>
+    const STATUS = {
+      idle: {
+        type: 'idle',
+        text: 'Ready',
+        className: 'not-active',
+      },
+      running: {
+        type: 'running',
+        text: 'Running...',
+        className: 'active',
+      },
+      error: {
+        type: 'error',
+        text: 'Error',
+        className: 'error',
+      },
+    };
+
+    let startTime = Date.now();
+    let processedRowsCount = 1;
+    let cancelled = false;
+    //let interval;
+
+    function setStatus(status, error = undefined, customText = undefined) {
+      const statusElem = document.getElementById('status');
+      statusElem.innerText = customText || status.text;
+      statusElem.className = status.className;
+
+      document
+        .querySelectorAll('button:not(.back):not(#stop-generating)')
+        .forEach(elem => (elem.disabled = status.type === STATUS.running.type));
+
+      const errorElem = document.getElementById('error');
+      let errorMessage = '';
+
+      if (error) {
+        errorMessage =
+          'An error occurred! Please check the ' +
+          '<a href="https://script.google.com/home/executions" target="_blank">script logs</a> ' +
+          'for detailed information.<br/>Errors:';
+      }
+
+      errorElem.innerHTML = errorMessage;
+    }
+
+    function updateElapsed() {
+      const elapsed = Math.floor((Date.now() - startTime)/1000);
+      const timePerRow = Math.round(elapsed/processedRowsCount);
+
+      setText('metrics', `Running for ${elapsed} seconds (${timePerRow}s/row)`);
+    }
+
+    function setText(id, message) {
+      document.getElementById(id).textContent = message
+    }
+
+    function log(message) {
+      console.log(message);
+      const node = document.createElement('li');
+      node.textContent = message;
+      document.getElementById('content').appendChild(node);
+    }
+
+    async function startGenerating(resume = false) {
+      setStatus(STATUS.running);
+
+      // Hide 'Start' button
+      document.querySelectorAll('#start-generating, #continue-generating').forEach(elem => (elem.classList.add('hidden')));
+
+      // Show 'Stop' button
+      document.getElementById('stop-generating').classList.remove('hidden');
+
+      cancelled = false;
+      startTime = Date.now();
+
+      if (!resume) {
+        // Clear Generated Rows
+        await new Promise((resolve, reject) => {
+          google.script.run
+            .withSuccessHandler(res => resolve(res))
+            .withFailureHandler(err => log(err))
+            .clearGeneratedRows();
+        });
+      }
+
+      // Get input rows count
+      let totalRows = await new Promise((resolve, reject) => {
+        google.script.run
+          .withSuccessHandler(res => resolve(res))
+          .withFailureHandler(err => log(err))
+          .getTotalInputRows();
+      });
+
+      // Get generated rows count
+      let currentlyProcessedRow = 0;
+
+      do {
+        if (cancelled) {
+          break;
+        }
+
+        // Update status
+        setStatus(STATUS.running, null, `Processed ${currentlyProcessedRow}/${totalRows}`)
+
+        // Generate next row
+        currentlyProcessedRow = await new Promise((resolve, reject) => {
+            google.script.run
+            .withSuccessHandler(res => resolve(res + 1))
+            .withFailureHandler(err => log(err))
+            .generateNextRow();
+          });
+
+        processedRowsCount++;
+      } while (currentlyProcessedRow > 0);
+
+      stopGenerating();
+    }
+
+    function approveFiltered() {
+      setStatus(STATUS.running);
+
+      google.script.run
+        .withSuccessHandler(res => {
+          setStatus(STATUS.idle);
+        })
+        .withFailureHandler(err => log(err))
+        .approveFiltered()
+    }
+
+    function exportApproved() {
+      setStatus(STATUS.running);
+
+      google.script.run
+        .withSuccessHandler(res => {
+          setStatus(STATUS.idle);
+        })
+        .withFailureHandler(err => log(err))
+        .exportApproved()
+    }
+
+    function stopGenerating() {
+      cancelled = true;
+
+      // Show 'Start' button
+      document.querySelectorAll('#start-generating, #continue-generating').forEach(elem => (elem.classList.remove('hidden')));
+
+      // Hide 'Stop' button
+      document.getElementById('stop-generating').classList.add('hidden');
+
+      setStatus(STATUS.idle);
+    }
+
+    function openSection(sectionId) {
+      document
+        .querySelectorAll('section')
+        .forEach(elem => elem.classList.add('hidden'));
+      document.getElementById(sectionId).classList.remove('hidden');
+    }
+
+    function goBack() {
+      document
+        .querySelectorAll('section')
+        .forEach(elem => elem.classList.add('hidden'));
+      document.getElementById('main').classList.remove('hidden');
+    }
+  </script>
+</head>
+<body onload='openSection("main");'>
+  <div id='header'>
+    <h1 id='brand'>FeedGen</h1>
+    <div id='status' class='not-active'>Ready</div>
+  </div>
+
+  <div id='content'>
+    <section id='main'>
+      <button id='start-generating' onclick='startGenerating()'>Start Generating</button>
+      <button id='continue-generating' onclick='startGenerating(true)'>Continue Generating</button>
+      <button id='stop-generating' class='hidden' onclick='stopGenerating()'>Stop Generating</button>
+      <button onclick='approveFiltered()'>Approve Filtered</button>
+      <button onclick='exportApproved()'>Export to Output Feed</button>
+    </section>
+
+  <div id='error' class='error-message'></div>
+</body>
+</html>
