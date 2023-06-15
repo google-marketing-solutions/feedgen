@@ -39,14 +39,6 @@ const CONFIG = {
                     row: 5,
                     col: 2,
                 },
-                promptPrefix: {
-                    row: 6,
-                    col: 2,
-                },
-                promptExamplesStart: {
-                    row: 13,
-                    col: 1,
-                },
             },
         },
         input: {
@@ -62,8 +54,6 @@ const CONFIG = {
                 id: 2,
                 titleOriginal: 3,
                 titleGenerated: 4,
-                gapAttributes: 13,
-                originalInput: 15,
             },
         },
         output: {
@@ -72,10 +62,6 @@ const CONFIG = {
             cols: {
                 id: 0,
                 title: 1,
-                modificationTimestamp: 2,
-                gapCols: {
-                    start: 3,
-                },
             },
         },
         log: {
@@ -142,12 +128,6 @@ class SheetsService {
         if (!sheet)
             return;
         return sheet.getDataRange().getLastRow();
-    }
-    getTotalColumns(sheetName) {
-        const sheet = this.spreadsheet_.getSheetByName(sheetName);
-        if (!sheet)
-            return;
-        return sheet.getDataRange().getLastColumn();
     }
     getNonEmptyRows(sheet) {
         return sheet
@@ -291,36 +271,26 @@ const ORIGINAL_TITLE_TEMPLATE_PROMPT = 'product attribute keys in original title
 const CATEGORY_PROMPT = 'product category:';
 const TEMPLATE_PROMPT = 'product attribute keys:';
 const ATTRIBUTES_PROMPT = 'product attributes values:';
+const TITLE_PROMPT = 'Generated title based on all product attributes (100-130 characters):';
 const SEPARATOR = '|';
 const WORD_MATCH_REGEX = /(\w|\s)*\w(?=")|\w+/g;
 const vertexAiProjectId = getConfigSheetValue(CONFIG.sheets.config.fields.vertexAiProjectId);
 const vertexAiLocation = getConfigSheetValue(CONFIG.sheets.config.fields.vertexAiLocation);
 const vertexAiModelId = getConfigSheetValue(CONFIG.sheets.config.fields.vertexAiModelId);
-const promptPrefix = getConfigSheetValue(CONFIG.sheets.config.fields.promptPrefix);
-const examplesData = getExamplesData();
+const generationMetrics = (titleChanged, addedAttributes, generatedValuesAdded, newWordsAdded) => { };
 function onOpen() {
     SpreadsheetApp.getUi()
         .createMenu('FeedGen')
         .addItem('Launch', 'showSidebar')
         .addToUi();
 }
+function logSummary() {
+    MultiLogger.getInstance().log('Summary: ');
+}
 function showSidebar() {
     const html = HtmlService.createTemplateFromFile('static/index').evaluate();
     html.setTitle('FeedGen');
     SpreadsheetApp.getUi().showSidebar(html);
-}
-function fetchContextByItemId(itemId) {
-    const inputSheet = SpreadsheetApp.getActive().getSheetByName(CONFIG.sheets.input.name);
-    const itemIdColumnName = getConfigSheetValue(CONFIG.sheets.config.fields.itemIdColumnName);
-    if (!inputSheet)
-        return;
-    const [headers, ...rows] = inputSheet
-        .getRange(1, 1, inputSheet.getLastRow(), inputSheet.getMaxColumns())
-        .getValues();
-    const itemIdIndex = headers.indexOf(itemIdColumnName);
-    const selectedRow = rows.filter(row => row[itemIdIndex] === itemId)[0];
-    const contextObject = Object.fromEntries(headers.map((key, index) => [key, selectedRow[index]]));
-    return JSON.stringify(contextObject);
 }
 function generateNextRow() {
     const inputSheet = SpreadsheetApp.getActive().getSheetByName(CONFIG.sheets.input.name);
@@ -367,7 +337,7 @@ const getGenerationMetrics = (origTitle, genTitle, origAttributes, genAttributes
     const addedAttributes = Util.getSetDifference(genAttributes, origAttributes);
     const newWordsAdded = new Set();
     const genTitleWords = genTitle.match(WORD_MATCH_REGEX);
-    if (genTitleWords) {
+    if (genTitleWords !== null) {
         genTitleWords
             .filter((genTitleWord) => !inputWords.has(genTitleWord))
             .forEach((newWord) => newWordsAdded.add(newWord));
@@ -380,30 +350,11 @@ const getGenerationMetrics = (origTitle, genTitle, origAttributes, genAttributes
         totalScore.toString(),
         titleChanged.toString(),
         addedAttributes.map((attr) => `<${attr}>`).join(' '),
-        [...newWordsAdded].join(` ${SEPARATOR} `),
+        [...newWordsAdded].join(SEPARATOR),
     ];
 };
 function getConfigSheetValue(field) {
     return SheetsService.getInstance().getCellValue(CONFIG.sheets.config.name, field.row, field.col);
-}
-function getConfigSheetDataRange(startCell) {
-    const sheets = SheetsService.getInstance();
-    const totalConfigRows = sheets.getTotalRows(CONFIG.sheets.config.name) || 0;
-    const totalConfigColumns = sheets.getTotalColumns(CONFIG.sheets.config.name) || 0;
-    return sheets.getRangeData(CONFIG.sheets.config.name, startCell.row, startCell.col, totalConfigRows - startCell.row + 1, totalConfigColumns - startCell.col + 1);
-}
-function getExamplesData() {
-    const examplesDataRange = getConfigSheetDataRange(CONFIG.sheets.config.fields.promptExamplesStart).filter(row => row[0] !== '');
-    const [headers, ...data] = examplesDataRange;
-    const examples = data.map(row => {
-        return row.reduce((acc, value, i) => {
-            const key = headers[i];
-            if (key === '')
-                return acc;
-            return { ...acc, [key]: value };
-        }, {});
-    });
-    return examples;
 }
 function optimizeRow(headers, data) {
     const dataObj = Object.fromEntries(data.map((item, index) => [headers[index], item]));
@@ -411,13 +362,13 @@ function optimizeRow(headers, data) {
     const titleColumnName = getConfigSheetValue(CONFIG.sheets.config.fields.titleColumnName);
     const itemId = dataObj[itemIdColumnName];
     const origTitle = dataObj[titleColumnName];
-    const res = generateEntry(dataObj);
-    const [origTemplateRow, genCategoryRow, genTemplateRow, genAttributesRow] = res.split('\n');
+    const res = generateTitle(dataObj);
+    const [origTemplateRow, genCategoryRow, genTemplateRow, genAttributesRow, genTitleRow,] = res.split('\n');
     const genCategory = genCategoryRow.replace(CATEGORY_PROMPT, '').trim();
     const genAttributes = genTemplateRow
         .replace(TEMPLATE_PROMPT, '')
         .split(SEPARATOR)
-        .map((x) => x.trim());
+        .map((x) => `${x.trim()}`);
     const genTemplate = genAttributes
         .map((x) => `<${x.trim()}>`)
         .join(' ');
@@ -432,19 +383,12 @@ function optimizeRow(headers, data) {
         .replace(ATTRIBUTES_PROMPT, '')
         .split(SEPARATOR)
         .map((x) => x.trim());
-    const titleFeatures = [];
-    const gapAttributesAndValues = {};
-    genAttributes.forEach((attribute, index) => {
-        if (!dataObj[attribute]) {
-            gapAttributesAndValues[attribute] = genAttributeValues[index];
-        }
-        titleFeatures.push(dataObj[attribute] || genAttributeValues[index]);
-    });
+    const titleFeatures = genAttributes.map((attribute, index) => dataObj[attribute] || genAttributeValues[index]);
     const genTitle = titleFeatures.join(' ');
     const inputWords = new Set();
     Object.values(dataObj).forEach((value) => {
         const match = new String(value).match(WORD_MATCH_REGEX);
-        if (match) {
+        if (match !== null) {
             match.forEach((word) => inputWords.add(word));
         }
     });
@@ -462,23 +406,70 @@ function optimizeRow(headers, data) {
         genCategory,
         genAttributeValues.join(', '),
         ...generationMetrics,
-        JSON.stringify(gapAttributesAndValues),
         res,
         JSON.stringify(dataObj),
     ];
 }
-function generateEntry(data) {
-    const promptExamples = examplesData
-        .map(example => {
-        let examplePart = '';
-        for (const k in example) {
-            examplePart += `${k}: ${example[k]}\n`;
-        }
-        return examplePart;
-    })
-        .join('\n');
-    const dataContext = `${JSON.stringify(data)}`;
-    const prompt = promptPrefix + '\n' + promptExamples + '\nContext:\n' + dataContext;
+function generateTitle(data) {
+    const prompt = `
+    Context:
+    {
+      "item_id": "220837",
+      "title": "Seymour Duncan SM-1 Mini Humbucker B CHR",
+      "description": "Seymour Duncan SM-1 Mini Humbucker B CHR Vintage Fire-bird Mini Humbucker, 2 - adrig, Bridge Position, Finish Chrome Cover",
+      "brand": "Seymour Duncan",
+      "color": "Chrome Cover",
+      "product_type": "Gitarren und Bässe > Pickups und Tonabnehmer > Tonabnehmer für E-Gitarre > Sonstige Tonabnehmer für E-Gitarre",
+      "impressions_7d": 13,
+      "clicks_7d": 0
+    }
+
+    ${ORIGINAL_TITLE_TEMPLATE_PROMPT} brand ${SEPARATOR} model ${SEPARATOR} product
+    ${CATEGORY_PROMPT} Guitars
+    ${TEMPLATE_PROMPT} brand ${SEPARATOR} model ${SEPARATOR} product ${SEPARATOR} color ${SEPARATOR} design
+    ${ATTRIBUTES_PROMPT} Seymour Duncan ${SEPARATOR} SM-1 ${SEPARATOR} Mini Humbucker ${SEPARATOR} Chrome ${SEPARATOR} Vintage
+    ${TITLE_PROMPT} Seymour Duncan SM-1 Mini Humbucker Pickup in Chrome
+
+    Context:
+    {
+      "item_id": "565119",
+      "title": "Gretsch Drums 14\"\"x7\"\" 140th Anniversary Snare",
+      "description": "Gretsch Drums 140th Anniversary Snare + Bag; Farbe: Natur; Hochglanz lackiert; Ahorn Kessel; 16 Einzelböckchen; Nickel Hardware; Figured Ash Außenlage; Micro Sensitive Anhebung; Snap-in Stimmschlüsselhalter; inkluseive 140th Anniversary Tasche; Zertifikat unterzeichnet von allen Produktionsmitarbeitern; 140 Stück limitiert",
+      "brand": "Gretsch Drums",
+      "color": "Natur",
+      "product_type": "Drums und Percussion > Akustik-Drums > Snaredrums mit Holzkessel > 14\"\" Holz Snaredrums",
+      "impressions_7d": 84,
+      "clicks_7d": 1
+    }
+
+    ${ORIGINAL_TITLE_TEMPLATE_PROMPT} brand ${SEPARATOR} size ${SEPARATOR} edition ${SEPARATOR} product
+    ${CATEGORY_PROMPT} Drums
+    ${TEMPLATE_PROMPT} brand ${SEPARATOR} product ${SEPARATOR} material ${SEPARATOR} edition ${SEPARATOR} size
+    ${ATTRIBUTES_PROMPT} Gretsch Drums ${SEPARATOR} Snare + Bag ${SEPARATOR} Ahorn ${SEPARATOR} 140th Anniversary ${SEPARATOR} 14"x7"
+    ${TITLE_PROMPT} Gretsch Snare Drums + Bag aus Ahorn, 140th Anniversary edition
+
+    Context:
+    {
+      "item_id": "302293",
+      "title": "Thon CD Player Case American Audio",
+      "description": "Thon CD Player Case American Audio, maßgefertigtes Haubencase für American Audio Radius 1000, 2000 und 3000, aus 7mm Multiplex, 25 x 25 mm Alukante, Schaumstoffpolsterung, 2x Butterfly-Verschlüsse, 1 Koffergriff, Gummifüße, Platz für Netzkabel, Stahlkugelecken, hergestellt in Deutschland, Außenmaße (BxTxH): ca. 34 x 50 x 19,4 cm, Gewicht: ca. 4,9 kg, Gewicht mit Radius: ca. 8,7 kg",
+      "brand": "Thon",
+      "color": "Phenol Braun",
+      "product_type": "DJ-Equipment > Zubehör für DJs > DJ Player Cases/Bags",
+      "impressions_7d": 15,
+      "clicks_7d": 0
+    }
+
+    ${ORIGINAL_TITLE_TEMPLATE_PROMPT} brand ${SEPARATOR} product ${SEPARATOR} compatibility
+    ${CATEGORY_PROMPT} DJ Equimpent
+    ${TEMPLATE_PROMPT} brand ${SEPARATOR} product ${SEPARATOR} weight ${SEPARATOR} compatibility ${SEPARATOR} color
+    ${ATTRIBUTES_PROMPT} Thon ${SEPARATOR} CD Player Case ${SEPARATOR} 4,9 kg ${SEPARATOR} American Audio ${SEPARATOR} braun
+    ${TITLE_PROMPT} Thon CD PlayerCase, 4,9 kg, American Audio, braun
+
+    Context:
+    ${JSON.stringify(data, null, 2)}
+
+    `;
     const res = Util.executeWithRetry(CONFIG.vertexAi.maxRetries, 0, () => VertexHelper.getInstance(vertexAiProjectId, vertexAiLocation, vertexAiModelId).predict(prompt));
     return res;
 }
@@ -489,14 +480,15 @@ function writeGeneratedRows(rows, withHeader = false) {
     const offset = withHeader ? 0 : 1;
     SheetsService.getInstance().setValuesInDefinedRange(CONFIG.sheets.generated.name, CONFIG.sheets.generated.startRow + offset, 1, rows);
 }
-function writeApprovedData(header, rows) {
-    MultiLogger.getInstance().log('Writing approved data...');
-    SheetsService.getInstance().setValuesInDefinedRange(CONFIG.sheets.output.name, CONFIG.sheets.output.startRow, CONFIG.sheets.output.cols.gapCols.start + 1, [header]);
+function getApprovedData() {
+    return SheetsService.getInstance().getRangeData(CONFIG.sheets.output.name, CONFIG.sheets.output.startRow + 1, 1);
+}
+function writeApprovedRows(rows) {
+    MultiLogger.getInstance().log('Writing approved rows...');
     SheetsService.getInstance().setValuesInDefinedRange(CONFIG.sheets.output.name, CONFIG.sheets.output.startRow + 1, 1, rows);
 }
-function clearApprovedData() {
-    MultiLogger.getInstance().log('Clearing approved data...');
-    SheetsService.getInstance().clearDefinedRange(CONFIG.sheets.output.name, CONFIG.sheets.output.startRow, CONFIG.sheets.output.cols.gapCols.start + 1);
+function clearApprovedRows() {
+    MultiLogger.getInstance().log('Clearing approved rows...');
     SheetsService.getInstance().clearDefinedRange(CONFIG.sheets.output.name, CONFIG.sheets.output.startRow + 1, 1);
 }
 function clearGeneratedRows() {
@@ -524,12 +516,9 @@ function exportApproved() {
     const feedGenRows = getGeneratedRows().filter(row => {
         return row[CONFIG.sheets.generated.cols.approval] === true;
     });
-    const filledInGapAttributes = [
-        ...new Set(feedGenRows
-            .map(row => Object.keys(JSON.parse(row[CONFIG.sheets.generated.cols.gapAttributes])))
-            .flat(1)),
-    ];
-    const rowsToWrite = [];
+    const approvedRows = getApprovedData();
+    const approvedRowsMap = arrayToMap(approvedRows, CONFIG.sheets.output.cols.id);
+    const feedGenApprovedRowsMap = {};
     for (const row of feedGenRows) {
         const resRow = [];
         resRow[CONFIG.sheets.output.cols.id] = row[CONFIG.sheets.generated.cols.id];
@@ -537,19 +526,20 @@ function exportApproved() {
             row[CONFIG.sheets.generated.cols.approval] === true
                 ? row[CONFIG.sheets.generated.cols.titleGenerated]
                 : row[CONFIG.sheets.generated.cols.titleOriginal];
-        resRow[CONFIG.sheets.output.cols.modificationTimestamp] =
-            new Date().toISOString();
-        const gapAttributesAndValues = JSON.parse(row[CONFIG.sheets.generated.cols.gapAttributes]);
-        const gapAttributesKeys = Object.keys(gapAttributesAndValues);
-        const originalInput = JSON.parse(row[CONFIG.sheets.generated.cols.originalInput]);
-        filledInGapAttributes.forEach((attribute, index) => (resRow[CONFIG.sheets.output.cols.gapCols.start + index] =
-            gapAttributesKeys.includes(attribute)
-                ? gapAttributesAndValues[attribute]
-                : originalInput[attribute]));
-        rowsToWrite.push(resRow);
+        feedGenApprovedRowsMap[row[CONFIG.sheets.generated.cols.id]] = resRow;
     }
-    clearApprovedData();
-    writeApprovedData(filledInGapAttributes, rowsToWrite);
+    const merged = Object.values(Object.assign(approvedRowsMap, feedGenApprovedRowsMap));
+    clearApprovedRows();
+    writeApprovedRows(merged);
+}
+function arrayToMap(arr, keyCol) {
+    const map = {};
+    for (const row of arr) {
+        if (!row[keyCol])
+            continue;
+        map[row[keyCol]] = row;
+    }
+    return map;
 }
 
 app;

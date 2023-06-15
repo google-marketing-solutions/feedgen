@@ -30,11 +30,11 @@ import { VertexHelper } from './helpers/vertex';
  */
 export const app = null;
 
-const ORIGINAL_TITLE_TEMPLATE_PROMPT =
+const ORIGINAL_TITLE_TEMPLATE_PROMPT_PART =
   'product attribute keys in original title:';
-const CATEGORY_PROMPT = 'product category:';
-const TEMPLATE_PROMPT = 'product attribute keys:';
-const ATTRIBUTES_PROMPT = 'product attributes values:';
+const CATEGORY_PROMPT_PART = 'product category:';
+const TEMPLATE_PROMPT_PART = 'product attribute keys:';
+const ATTRIBUTES_PROMPT_PART = 'product attributes values:';
 const SEPARATOR = '|';
 const WORD_MATCH_REGEX = /(\w|\s)*\w(?=")|\w+/g;
 
@@ -55,7 +55,7 @@ const promptPrefix = getConfigSheetValue(
   CONFIG.sheets.config.fields.promptPrefix
 );
 
-const examplesData = getExamplesData();
+const examplesData = getFewShotPromptTuningData();
 
 /**
  * Handle 'onOpen' Sheets event to show menu.
@@ -76,7 +76,7 @@ export function showSidebar() {
   SpreadsheetApp.getUi().showSidebar(html);
 }
 
-export function fetchContextByItemId(itemId: string) {
+export function FEEDGEN_CREATE_JSON_CONTEXT_FOR_ITEM(itemId: string) {
   const inputSheet = SpreadsheetApp.getActive().getSheetByName(
     CONFIG.sheets.input.name
   );
@@ -223,7 +223,7 @@ function getConfigSheetDataRange(startCell: { row: number; col: number }) {
   );
 }
 
-function getExamplesData() {
+function getFewShotPromptTuningData() {
   const examplesDataRange = getConfigSheetDataRange(
     CONFIG.sheets.config.fields.promptExamplesStart
   ).filter(row => row[0] !== '');
@@ -265,15 +265,15 @@ function optimizeRow(
   const origTitle = dataObj[titleColumnName];
 
   // Generate title with all available context
-  const res = generateEntry(dataObj);
+  const res = fetchTitleGenerationData(dataObj);
 
   const [origTemplateRow, genCategoryRow, genTemplateRow, genAttributesRow] =
     res.split('\n');
 
-  const genCategory = genCategoryRow.replace(CATEGORY_PROMPT, '').trim();
+  const genCategory = genCategoryRow.replace(CATEGORY_PROMPT_PART, '').trim();
 
   const genAttributes = genTemplateRow
-    .replace(TEMPLATE_PROMPT, '')
+    .replace(TEMPLATE_PROMPT_PART, '')
     .split(SEPARATOR)
     .map((x: string) => x.trim());
 
@@ -282,7 +282,7 @@ function optimizeRow(
     .join(' ');
 
   const origAttributes = origTemplateRow
-    .replace(ORIGINAL_TITLE_TEMPLATE_PROMPT, '')
+    .replace(ORIGINAL_TITLE_TEMPLATE_PROMPT_PART, '')
     .split(SEPARATOR)
     .map((x: string) => x.trim());
 
@@ -291,7 +291,7 @@ function optimizeRow(
     .join(' ');
 
   const genAttributeValues = genAttributesRow
-    .replace(ATTRIBUTES_PROMPT, '')
+    .replace(ATTRIBUTES_PROMPT_PART, '')
     .split(SEPARATOR)
     .map((x: string) => x.trim());
 
@@ -347,7 +347,7 @@ function optimizeRow(
   ];
 }
 
-function generateEntry(data: Record<string, unknown>): string {
+function fetchTitleGenerationData(data: Record<string, unknown>): string {
   const promptExamples = examplesData
     .map(example => {
       let examplePart = '';
