@@ -181,7 +181,7 @@ limitations under the License.
       const timePerRow = Math.round(elapsed/processedRowsCount);
 
       setText('metrics', `Running for ${elapsed} seconds (${timePerRow}s/row)`);
-    } 
+    }
 
     function setText(id, message) {
       document.getElementById(id).textContent = message
@@ -246,11 +246,6 @@ limitations under the License.
         processedRowsCount++;
       } while (currentlyProcessedRow > 0);
 
-      //const elapsedSeconds = Math.floor((Date.now() - startTime) / 1000);
-      //setText('summary', `Done! ${processedRowsCount} rows processed in ${elapsedSeconds} seconds`);
-      //setText('close', 'Close')
-      //clearInterval(interval)
-      
       stopGenerating();
     }
 
@@ -276,17 +271,6 @@ limitations under the License.
         .exportApproved()
     }
 
-    function debug() {
-      setStatus(STATUS.running);
-
-      google.script.run
-        .withSuccessHandler(res => {
-          setStatus(STATUS.idle);
-        })
-        .withFailureHandler(err => log(err))
-        .debug()
-    }
-
     function stopGenerating() {
       cancelled = true;
 
@@ -297,7 +281,6 @@ limitations under the License.
       document.getElementById('stop-generating').classList.add('hidden');
 
       setStatus(STATUS.idle);
-      //clearInterval(interval);
     }
 
     function openSection(sectionId) {
@@ -320,27 +303,15 @@ limitations under the License.
     <h1 id='brand'>FeedGen</h1>
     <div id='status' class='not-active'>Ready</div>
   </div>
-  
+
   <div id='content'>
     <section id='main'>
       <button id='start-generating' onclick='startGenerating()'>Start Generating</button>
       <button id='continue-generating' onclick='startGenerating(true)'>Continue Generating</button>
       <button id='stop-generating' class='hidden' onclick='stopGenerating()'>Stop Generating</button>
       <button onclick='approveFiltered()'>Approve Filtered</button>
-      <button onclick='exportApproved()'>Export Approved</button>
-      <button onclick='debug()'>Debug</button>
+      <button onclick='exportApproved()'>Export to Output Feed</button>
     </section>
-
-    <!--<section id='generate'>
-      <button class="back" onclick="goBack()">&larr; Back</button>
-      <div id='metrics'>Starting to process Input Data</div>
-      <div id='current'></div>
-      <div id='summary'></div>
-  
-      <button id='close' onclick='startGeneration()'>Start</button>
-      <button id='close' onclick='cancelGeneration()'>Cancel</button>
-    </section>
-  </div>-->
 
   <div id='error' class='error-message'></div>
 </body>
