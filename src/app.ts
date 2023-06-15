@@ -34,7 +34,7 @@ const ORIGINAL_TITLE_TEMPLATE_PROMPT_PART =
   'product attribute keys in original title:';
 const CATEGORY_PROMPT_PART = 'product category:';
 const TEMPLATE_PROMPT_PART = 'product attribute keys:';
-const ATTRIBUTES_PROMPT_PART = 'product attributes values:';
+const ATTRIBUTES_PROMPT_PART = 'product attribute values:';
 const SEPARATOR = '|';
 const WORD_MATCH_REGEX = /(\w|\s)*\w(?=")|\w+/g;
 
@@ -50,12 +50,6 @@ const vertexAiLocation = getConfigSheetValue(
 const vertexAiModelId = getConfigSheetValue(
   CONFIG.sheets.config.fields.vertexAiModelId
 );
-
-const promptPrefix = getConfigSheetValue(
-  CONFIG.sheets.config.fields.promptPrefix
-);
-
-const examplesData = getFewShotPromptTuningData();
 
 /**
  * Handle 'onOpen' Sheets event to show menu.
@@ -209,36 +203,6 @@ function getConfigSheetValue(field: { row: number; col: number }) {
   );
 }
 
-function getConfigSheetDataRange(startCell: { row: number; col: number }) {
-  const sheets = SheetsService.getInstance();
-  const totalConfigRows = sheets.getTotalRows(CONFIG.sheets.config.name) || 0;
-  const totalConfigColumns =
-    sheets.getTotalColumns(CONFIG.sheets.config.name) || 0;
-  return sheets.getRangeData(
-    CONFIG.sheets.config.name,
-    startCell.row,
-    startCell.col,
-    totalConfigRows - startCell.row + 1,
-    totalConfigColumns - startCell.col + 1
-  );
-}
-
-function getFewShotPromptTuningData() {
-  const examplesDataRange = getConfigSheetDataRange(
-    CONFIG.sheets.config.fields.promptExamplesStart
-  ).filter(row => row[0] !== '');
-  const [headers, ...data] = examplesDataRange;
-
-  const examples = data.map(row => {
-    return row.reduce((acc, value, i) => {
-      const key = headers[i];
-      if (key === '') return acc;
-      return { ...acc, [key]: value };
-    }, {});
-  });
-  return examples;
-}
-
 /**
  * Use Vertex AI to optimize row.
  *
@@ -341,25 +305,19 @@ function optimizeRow(
     genCategory,
     genAttributeValues.join(', '),
     ...generationMetrics,
-    JSON.stringify(gapAttributesAndValues),
+    Object.keys(gapAttributesAndValues).length > 0
+      ? JSON.stringify(gapAttributesAndValues)
+      : '',
     res,
     JSON.stringify(dataObj),
   ];
 }
 
 function fetchTitleGenerationData(data: Record<string, unknown>): string {
-  const promptExamples = examplesData
-    .map(example => {
-      let examplePart = '';
-      for (const k in example) {
-        examplePart += `${k}: ${example[k]}\n`;
-      }
-      return examplePart;
-    })
-    .join('\n');
-  const dataContext = `${JSON.stringify(data)}`;
+  // Extra lines instruct LLM to comlpete what is missing. Don't remove.
+  const dataContext = `Context: ${JSON.stringify(data)}\n\n`;
   const prompt =
-    promptPrefix + '\n' + promptExamples + '\nContext:\n' + dataContext;
+    getConfigSheetValue(CONFIG.sheets.config.fields.fullPrompt) + dataContext;
   const res = Util.executeWithRetry(CONFIG.vertexAi.maxRetries, 0, () =>
     VertexHelper.getInstance(
       vertexAiProjectId,

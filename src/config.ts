@@ -20,32 +20,28 @@ export const CONFIG = {
       name: 'Config',
       fields: {
         vertexAiProjectId: {
-          row: 1,
-          col: 2,
-        },
-        vertexAiLocation: {
           row: 2,
           col: 2,
         },
-        vertexAiModelId: {
+        vertexAiLocation: {
           row: 3,
           col: 2,
         },
-        itemIdColumnName: {
+        vertexAiModelId: {
           row: 4,
           col: 2,
         },
-        titleColumnName: {
+        itemIdColumnName: {
           row: 5,
           col: 2,
         },
-        promptPrefix: {
+        titleColumnName: {
           row: 6,
           col: 2,
         },
-        promptExamplesStart: {
-          row: 13,
-          col: 1,
+        fullPrompt: {
+          row: 11,
+          col: 5,
         },
       },
     },
