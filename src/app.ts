@@ -239,6 +239,7 @@ function optimizeRow(
   const genAttributes = genTemplateRow
     .replace(TEMPLATE_PROMPT_PART, '')
     .split(SEPARATOR)
+    .filter((x: string) => x)
     .map((x: string) => x.trim());
 
   const genTemplate = genAttributes
@@ -248,6 +249,7 @@ function optimizeRow(
   const origAttributes = origTemplateRow
     .replace(ORIGINAL_TITLE_TEMPLATE_PROMPT_PART, '')
     .split(SEPARATOR)
+    .filter((x: string) => x)
     .map((x: string) => x.trim());
 
   const origTemplate = origAttributes
@@ -257,6 +259,7 @@ function optimizeRow(
   const genAttributeValues = genAttributesRow
     .replace(ATTRIBUTES_PROMPT_PART, '')
     .split(SEPARATOR)
+    .filter((x: string) => x)
     .map((x: string) => x.trim());
 
   // Collect all title features with priority on user provided data
