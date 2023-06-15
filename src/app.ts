@@ -268,7 +268,9 @@ const getGenerationMetrics = (
   genTitle: string,
   origAttributes: Set<string>,
   genAttributes: Set<string>,
-  inputWords: Set<string>
+  inputWords: Set<string>,
+  gapAttributesAndValues: Record<string, string>,
+  originalInput: { [k: string]: string }
 ): string[] => {
   const titleChanged = origTitle !== genTitle;
   const addedAttributes = Util.getSetDifference(genAttributes, origAttributes);
@@ -279,11 +281,18 @@ const getGenerationMetrics = (
       .filter((genTitleWord: string) => !inputWords.has(genTitleWord))
       .forEach((newWord: string) => newWordsAdded.add(newWord));
   }
+  const gapAttributesPresent = Object.keys(gapAttributesAndValues).length > 0;
+  const gapAttributesInvented = Object.keys(gapAttributesAndValues).some(
+    gapKey => Object.keys(originalInput).some(origKey => origKey === gapKey)
+  );
+
   const totalScore =
     (Number(addedAttributes.length > 0) +
       Number(titleChanged) +
-      Number(newWordsAdded.size === 0)) /
-    3;
+      Number(newWordsAdded.size === 0) +
+      Number(gapAttributesPresent) +
+      Number(gapAttributesInvented)) /
+    5;
   return [
     totalScore.toString(), // 0-1 score total
     titleChanged.toString(),
@@ -387,7 +396,9 @@ function optimizeRow(
     genTitle,
     new Set(origAttributes),
     new Set(genAttributes),
-    inputWords
+    inputWords,
+    gapAttributesAndValues,
+    dataObj
   );
 
   const row: Array<string | boolean> = [];
