@@ -56,6 +56,14 @@ export class SheetsService {
     return sheet.getDataRange().getLastRow();
   }
 
+  getTotalColumns(sheetName: string) {
+    const sheet = this.spreadsheet_.getSheetByName(sheetName);
+
+    if (!sheet) return;
+
+    return sheet.getDataRange().getLastColumn();
+  }
+
   getNonEmptyRows(sheet: GoogleAppsScript.Spreadsheet.Sheet) {
     return sheet
       .getDataRange()
