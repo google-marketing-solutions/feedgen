@@ -72,6 +72,15 @@ export function onOpen() {
 }
 
 /**
+ * Initialises context triggering Apps Script auth if not already done.
+ */
+export function init() {
+  SpreadsheetApp.getActiveSpreadsheet()
+    .getSheetByName(CONFIG.sheets.config.name)
+    ?.getDataRange();
+}
+
+/**
  * Find first row index for cell matching conditions.
  *
  * @param {string} sheetName

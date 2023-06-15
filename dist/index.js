@@ -354,6 +354,11 @@ function onOpen() {
     .addItem('Launch', 'showSidebar')
     .addToUi();
 }
+function init() {
+  SpreadsheetApp.getActiveSpreadsheet()
+    .getSheetByName(CONFIG.sheets.config.name)
+    ?.getDataRange();
+}
 function findRowIndex(
   sheetName,
   searchValues,
