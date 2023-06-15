@@ -70,6 +70,9 @@ export function showSidebar() {
   SpreadsheetApp.getUi().showSidebar(html);
 }
 
+/**
+ * Sheets utility function to fetch JSON'd context from input feed for few shot examples.
+ */
 export function FEEDGEN_CREATE_JSON_CONTEXT_FOR_ITEM(itemId: string) {
   const inputSheet = SpreadsheetApp.getActive().getSheetByName(
     CONFIG.sheets.input.name
