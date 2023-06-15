@@ -579,6 +579,31 @@ export function exportApproved() {
     ),
   ];
 
+  const allInputAttributes = [
+    ...new Set(
+      feedGenRows
+        .map(row =>
+          Object.keys(
+            JSON.parse(row[CONFIG.sheets.generated.cols.originalInput])
+          )
+        )
+        .flat(1)
+    ),
+  ];
+
+  const inventedAttributes = filledInGapAttributes.filter(
+    gapKey => !allInputAttributes.includes(gapKey)
+  );
+
+  const outputHeader: string[] = [];
+
+  filledInGapAttributes.forEach(gapKey => {
+    if (inventedAttributes.includes(gapKey)) {
+      gapKey = `new_${gapKey}`;
+    }
+    outputHeader.push(gapKey);
+  });
+
   const rowsToWrite: string[][] = [];
   // Process rows
   for (const row of feedGenRows) {
@@ -620,5 +645,5 @@ export function exportApproved() {
   clearApprovedData();
 
   // Write to 'Approved' sheet
-  writeApprovedData(filledInGapAttributes, rowsToWrite);
+  writeApprovedData(outputHeader, rowsToWrite);
 }
