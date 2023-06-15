@@ -26,26 +26,42 @@ export const CONFIG = {
       fields: {
         vertexAiProjectId: {
           row: 2,
-          col: 2,
+          col: 5,
         },
         vertexAiLocation: {
           row: 3,
-          col: 2,
+          col: 5,
         },
         vertexAiModelId: {
           row: 4,
-          col: 2,
+          col: 5,
+        },
+        vertexAiModelTemperature: {
+          row: 5,
+          col: 5,
+        },
+        vertexAiModelMaxOutputTokens: {
+          row: 6,
+          col: 5,
+        },
+        vertexAiModelTopK: {
+          row: 7,
+          col: 5,
+        },
+        vertexAiModelTopP: {
+          row: 8,
+          col: 5,
         },
         itemIdColumnName: {
-          row: 5,
+          row: 2,
           col: 2,
         },
         titleColumnName: {
-          row: 6,
+          row: 3,
           col: 2,
         },
         fullPrompt: {
-          row: 11,
+          row: 13,
           col: 5,
         },
       },

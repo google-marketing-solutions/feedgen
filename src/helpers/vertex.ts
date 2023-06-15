@@ -23,6 +23,13 @@ interface VertexAiPrediction {
   };
 }
 
+interface VertexAiModelParams {
+  temperature: number;
+  maxOutputTokens: number;
+  topK: number;
+  topP: number;
+}
+
 interface VertexAiResponse {
   predictions: VertexAiPrediction[];
 }
@@ -32,11 +39,18 @@ export class VertexHelper {
   private projectId: string;
   private location: string;
   private modelId: string;
+  private modelParams: VertexAiModelParams;
 
-  constructor(projectId: string, location: string, modelId: string) {
+  constructor(
+    projectId: string,
+    location: string,
+    modelId: string,
+    modelParams: VertexAiModelParams
+  ) {
     this.projectId = projectId;
     this.location = location;
     this.modelId = modelId;
+    this.modelParams = modelParams;
   }
 
   addAuth(params: Record<string, unknown>) {
@@ -71,13 +85,7 @@ export class VertexHelper {
       predictEndpoint,
       this.addAuth({
         instances: [{ content: prompt }],
-        // Refer to https://cloud.google.com/vertex-ai/docs/generative-ai/learn/models#text_model_parameters
-        parameters: {
-          temperature: 0.1,
-          maxOutputTokens: 1024,
-          topK: 1,
-          topP: 0.8,
-        },
+        parameters: this.modelParams,
       })
     );
 
@@ -99,11 +107,22 @@ export class VertexHelper {
    * @param {string} location
    * @param {string} endpoint
    * @param {string} modelId
+   * @param {VertexAiModelParams} modelParams
    * @returns {!VertexHelper} The initialized SheetsService instance
    */
-  static getInstance(projectId: string, location: string, modelId: string) {
+  static getInstance(
+    projectId: string,
+    location: string,
+    modelId: string,
+    modelParams: VertexAiModelParams
+  ) {
     if (typeof this.instance === 'undefined') {
-      this.instance = new VertexHelper(projectId, location, modelId);
+      this.instance = new VertexHelper(
+        projectId,
+        location,
+        modelId,
+        modelParams
+      );
     }
     return this.instance;
   }

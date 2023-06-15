@@ -42,13 +42,23 @@ const WORD_MATCH_REGEX = /(\w|\s)*\w(?=")|\w+/g;
 const vertexAiProjectId = getConfigSheetValue(
   CONFIG.sheets.config.fields.vertexAiProjectId
 );
-
 const vertexAiLocation = getConfigSheetValue(
   CONFIG.sheets.config.fields.vertexAiLocation
 );
-
 const vertexAiModelId = getConfigSheetValue(
   CONFIG.sheets.config.fields.vertexAiModelId
+);
+const vertexAiModelTemperature = getConfigSheetValue(
+  CONFIG.sheets.config.fields.vertexAiModelTemperature
+);
+const vertexAiModelMaxOutputTokens = getConfigSheetValue(
+  CONFIG.sheets.config.fields.vertexAiModelMaxOutputTokens
+);
+const vertexAiModelTopK = getConfigSheetValue(
+  CONFIG.sheets.config.fields.vertexAiModelTopK
+);
+const vertexAiModelTopP = getConfigSheetValue(
+  CONFIG.sheets.config.fields.vertexAiModelTopP
 );
 
 /**
@@ -141,7 +151,9 @@ export function FEEDGEN_CREATE_JSON_CONTEXT_FOR_ITEM(itemId: string) {
   const itemIdIndex = headers.indexOf(itemIdColumnName);
   const selectedRow = rows.filter(row => row[itemIdIndex] === itemId)[0];
   const contextObject = Object.fromEntries(
-    headers.map((key: string, index: number) => [key, selectedRow[index]])
+    headers
+      .filter((key: string) => key)
+      .map((key: string, index: number) => [key, selectedRow[index]])
   );
   return JSON.stringify(contextObject);
 }
@@ -436,7 +448,13 @@ function fetchTitleGenerationData(data: Record<string, unknown>): string {
     VertexHelper.getInstance(
       vertexAiProjectId,
       vertexAiLocation,
-      vertexAiModelId
+      vertexAiModelId,
+      {
+        temperature: Number(vertexAiModelTemperature),
+        maxOutputTokens: Number(vertexAiModelMaxOutputTokens),
+        topK: Number(vertexAiModelTopK),
+        topP: Number(vertexAiModelTopP),
+      }
     ).predict(prompt)
   );
 

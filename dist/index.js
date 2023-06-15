@@ -26,26 +26,42 @@ const CONFIG = {
       fields: {
         vertexAiProjectId: {
           row: 2,
-          col: 2,
+          col: 5,
         },
         vertexAiLocation: {
           row: 3,
-          col: 2,
+          col: 5,
         },
         vertexAiModelId: {
           row: 4,
-          col: 2,
+          col: 5,
+        },
+        vertexAiModelTemperature: {
+          row: 5,
+          col: 5,
+        },
+        vertexAiModelMaxOutputTokens: {
+          row: 6,
+          col: 5,
+        },
+        vertexAiModelTopK: {
+          row: 7,
+          col: 5,
+        },
+        vertexAiModelTopP: {
+          row: 8,
+          col: 5,
         },
         itemIdColumnName: {
-          row: 5,
+          row: 2,
           col: 2,
         },
         titleColumnName: {
-          row: 6,
+          row: 3,
           col: 2,
         },
         fullPrompt: {
-          row: 11,
+          row: 13,
           col: 5,
         },
       },
@@ -247,10 +263,11 @@ class Util {
 }
 
 class VertexHelper {
-  constructor(projectId, location, modelId) {
+  constructor(projectId, location, modelId, modelParams) {
     this.projectId = projectId;
     this.location = location;
     this.modelId = modelId;
+    this.modelParams = modelParams;
   }
   addAuth(params) {
     const baseParams = {
@@ -278,12 +295,7 @@ class VertexHelper {
       predictEndpoint,
       this.addAuth({
         instances: [{ content: prompt }],
-        parameters: {
-          temperature: 0.1,
-          maxOutputTokens: 1024,
-          topK: 1,
-          topP: 0.8,
-        },
+        parameters: this.modelParams,
       })
     );
     MultiLogger.getInstance().log(res);
@@ -294,9 +306,14 @@ class VertexHelper {
     }
     return res.predictions[0].content;
   }
-  static getInstance(projectId, location, modelId) {
+  static getInstance(projectId, location, modelId, modelParams) {
     if (typeof this.instance === 'undefined') {
-      this.instance = new VertexHelper(projectId, location, modelId);
+      this.instance = new VertexHelper(
+        projectId,
+        location,
+        modelId,
+        modelParams
+      );
     }
     return this.instance;
   }
@@ -318,6 +335,18 @@ const vertexAiLocation = getConfigSheetValue(
 );
 const vertexAiModelId = getConfigSheetValue(
   CONFIG.sheets.config.fields.vertexAiModelId
+);
+const vertexAiModelTemperature = getConfigSheetValue(
+  CONFIG.sheets.config.fields.vertexAiModelTemperature
+);
+const vertexAiModelMaxOutputTokens = getConfigSheetValue(
+  CONFIG.sheets.config.fields.vertexAiModelMaxOutputTokens
+);
+const vertexAiModelTopK = getConfigSheetValue(
+  CONFIG.sheets.config.fields.vertexAiModelTopK
+);
+const vertexAiModelTopP = getConfigSheetValue(
+  CONFIG.sheets.config.fields.vertexAiModelTopP
 );
 function onOpen() {
   SpreadsheetApp.getUi()
@@ -377,7 +406,7 @@ function FEEDGEN_CREATE_JSON_CONTEXT_FOR_ITEM(itemId) {
   const itemIdIndex = headers.indexOf(itemIdColumnName);
   const selectedRow = rows.filter(row => row[itemIdIndex] === itemId)[0];
   const contextObject = Object.fromEntries(
-    headers.map((key, index) => [key, selectedRow[index]])
+    headers.filter(key => key).map((key, index) => [key, selectedRow[index]])
   );
   return JSON.stringify(contextObject);
 }
@@ -588,7 +617,13 @@ function fetchTitleGenerationData(data) {
     VertexHelper.getInstance(
       vertexAiProjectId,
       vertexAiLocation,
-      vertexAiModelId
+      vertexAiModelId,
+      {
+        temperature: Number(vertexAiModelTemperature),
+        maxOutputTokens: Number(vertexAiModelMaxOutputTokens),
+        topK: Number(vertexAiModelTopK),
+        topP: Number(vertexAiModelTopP),
+      }
     ).predict(prompt)
   );
   return res;
