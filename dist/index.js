@@ -462,7 +462,9 @@ const getGenerationMetrics = (
   genTitle,
   origAttributes,
   genAttributes,
-  inputWords
+  inputWords,
+  gapAttributesAndValues,
+  originalInput
 ) => {
   const titleChanged = origTitle !== genTitle;
   const addedAttributes = Util.getSetDifference(genAttributes, origAttributes);
@@ -473,11 +475,19 @@ const getGenerationMetrics = (
       .filter(genTitleWord => !inputWords.has(genTitleWord))
       .forEach(newWord => newWordsAdded.add(newWord));
   }
+  const gapAttributesPresent = Object.keys(gapAttributesAndValues).filter(
+    gapKey => gapKey in originalInput
+  );
+  const gapAttributesInvented = Object.keys(gapAttributesAndValues).filter(
+    gapKey => !(gapKey in originalInput)
+  );
   const totalScore =
     (Number(addedAttributes.length > 0) +
       Number(titleChanged) +
-      Number(newWordsAdded.size === 0)) /
-    3;
+      Number(newWordsAdded.size === 0) +
+      Number(gapAttributesPresent.length > 0) +
+      Number(gapAttributesInvented.length > 0)) /
+    5;
   return [
     totalScore.toString(),
     titleChanged.toString(),
@@ -546,7 +556,9 @@ function optimizeRow(headers, data) {
     genTitle,
     new Set(origAttributes),
     new Set(genAttributes),
-    inputWords
+    inputWords,
+    gapAttributesAndValues,
+    dataObj
   );
   const row = [];
   row[CONFIG.sheets.generated.cols.approval] = false;
@@ -668,6 +680,27 @@ function exportApproved() {
         .flat(1)
     ),
   ];
+  const allInputAttributes = [
+    ...new Set(
+      feedGenRows
+        .map(row =>
+          Object.keys(
+            JSON.parse(row[CONFIG.sheets.generated.cols.originalInput])
+          )
+        )
+        .flat(1)
+    ),
+  ];
+  const inventedAttributes = filledInGapAttributes.filter(
+    gapKey => !allInputAttributes.includes(gapKey)
+  );
+  const outputHeader = [];
+  filledInGapAttributes.forEach(gapKey => {
+    if (inventedAttributes.includes(gapKey)) {
+      gapKey = `new_${gapKey}`;
+    }
+    outputHeader.push(gapKey);
+  });
   const rowsToWrite = [];
   for (const row of feedGenRows) {
     const resRow = [];
@@ -695,7 +728,7 @@ function exportApproved() {
     rowsToWrite.push(resRow);
   }
   clearApprovedData();
-  writeApprovedData(filledInGapAttributes, rowsToWrite);
+  writeApprovedData(outputHeader, rowsToWrite);
 }
 
 app;
