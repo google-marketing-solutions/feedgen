@@ -14,6 +14,11 @@
  * limitations under the License.
  */
 
+export enum Status {
+  SUCCESS = 'Success',
+  FAILED = 'Failed',
+}
+
 export const CONFIG = {
   sheets: {
     config: {

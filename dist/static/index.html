@@ -98,6 +98,14 @@ limitations under the License.
       background-color: white;
       color: #005495;
     }
+    #stop-generating {
+      background-color: #ea4335;
+      border-color: #ea4335;
+      color: white;
+    }
+    #stop-generating:hover {
+      background-color: #c5221f;
+    }
     .selector-controls {
       justify-content: space-between;
       display: flex;
@@ -116,7 +124,7 @@ limitations under the License.
       color: #777777;
     }
     .error {
-      color: red;
+      color: #ea4335;
     }
     .error-message {
       white-space: pre-wrap;
@@ -217,16 +225,15 @@ limitations under the License.
       });
 
       // Get generated rows count
-      let currentlyProcessedRow = await new Promise((resolve, reject) => {
-          google.script.run
-            .withSuccessHandler(res => resolve(res + 1))
-            .withFailureHandler(err => log(err))
-            .getTotalGeneratedRows();
-        });
+      let currentlyProcessedRow = 0;
 
       do {
+        if (cancelled) {
+          break;
+        }
+
         // Update status
-        setStatus(STATUS.running, null, `Processing row ${currentlyProcessedRow}/${totalRows}...`)
+        setStatus(STATUS.running, null, `Processed ${currentlyProcessedRow}/${totalRows}`)
 
         // Generate next row
         currentlyProcessedRow = await new Promise((resolve, reject) => {
@@ -237,7 +244,7 @@ limitations under the License.
           });
 
         processedRowsCount++;
-      } while (currentlyProcessedRow <= totalRows && !cancelled);
+      } while (currentlyProcessedRow > 0);
 
       //const elapsedSeconds = Math.floor((Date.now() - startTime) / 1000);
       //setText('summary', `Done! ${processedRowsCount} rows processed in ${elapsedSeconds} seconds`);
@@ -317,7 +324,7 @@ limitations under the License.
   <div id='content'>
     <section id='main'>
       <button id='start-generating' onclick='startGenerating()'>Start Generating</button>
-      <button id='continue-generating' onclick='startGenerating(false)'>Continue Generating</button>
+      <button id='continue-generating' onclick='startGenerating(true)'>Continue Generating</button>
       <button id='stop-generating' class='hidden' onclick='stopGenerating()'>Stop Generating</button>
       <button onclick='approveFiltered()'>Approve Filtered</button>
       <button onclick='exportApproved()'>Export Approved</button>
