@@ -433,10 +433,10 @@ function generateNextRow() {
     MultiLogger.getInstance().log(Status.SUCCESS);
   } catch (e) {
     MultiLogger.getInstance().log(`Error: ${e}`);
-    row[CONFIG.sheets.generated.cols.status] = `Error: ${e}`;
     const failedRow = [];
-    failedRow[CONFIG.sheets.generated.cols.status] =
-      'Failed. See log for more details.';
+    failedRow[
+      CONFIG.sheets.generated.cols.status
+    ] = `${Status.FAILED}. See log for more details.`;
     generatedSheet.appendRow(failedRow);
   }
   return rowIndex;
