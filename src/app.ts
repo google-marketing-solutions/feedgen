@@ -283,7 +283,7 @@ const getGenerationMetrics = (
   }
   const gapAttributesPresent = Object.keys(gapAttributesAndValues).length > 0;
   const gapAttributesInvented = Object.keys(gapAttributesAndValues).some(
-    gapKey => Object.keys(originalInput).some(origKey => origKey === gapKey)
+    gapKey => !(gapKey in originalInput)
   );
 
   const totalScore =
