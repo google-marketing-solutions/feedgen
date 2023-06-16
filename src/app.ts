@@ -571,7 +571,7 @@ export function approveFiltered() {
   rows.map((row, index) => {
     // Update title status
     row[CONFIG.sheets.generated.cols.approval] = sheet.isRowHiddenByFilter(
-      index + 1 + 1
+      index + CONFIG.sheets.generated.startRow + 1
     )
       ? row[CONFIG.sheets.generated.cols.approval]
       : true;
