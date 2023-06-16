@@ -17,11 +17,12 @@ limitations under the License.
 
 # FeedGen: Optimise Shopping Ads feeds with Generative AI
 
+[![GitHub last commit](https://img.shields.io/github/last-commit/google/feedgen)](https://github.com/google/feedgen/commits)
+[![Code Style: Google](https://img.shields.io/badge/code%20style-google-blueviolet.svg)](https://github.com/google/gts)
+
 **Disclaimer: This is not an official Google product.**
 
-[What it solves](#challenges) •
-[How it works](#solution-overview) •
-[Get started](#get-started)
+[Overview](#overview) • [What it solves](#challenges) • [How it works](#solution-overview) • [Get started](#get-started)
 
 ## Overview
 
@@ -78,6 +79,65 @@ a score between 0 and 1 (along with detailed score components) that represents
 how "good" the generated content is, along with a Sheets-native way for
 bulk-approving generated content via data filters.
 
+First, make a copy of the template spreadsheet and follow the instructions defined in the **Getting Started** section. The first step is for users to authenticate to the Apps Script environment via the **Initialise** button as shown below.
+
+<img src='./img/getting-started.png' alt='Getting Started'>
+
+Afterwards, users should navigate to the **Config** worksheet to configure feed settings, Vertex AI API settings as well as settings to control the content generation using few-shot prompting; this is where they would select the best 3-10 samples from their own input feed as shown below to customise the model's responses towards their data.
+
+<img src='./img/config.png' alt='Config'>
+
+To help with this process, FeedGen provides a utility Google Sheets formula:
+
+```sql
+=FEEDGEN_CREATE_JSON_CONTEXT_FOR_ITEM('Input Feed'!A2)
+```
+
+Which can be used to fill up the “Context” information field in the few-shot prompt examples table by dragging it down, just as for other Sheets formulas. Afterwards, users must manually fill in the remaining columns of the few-shot prompt examples table, which define the expected output by the LLM. These examples are very important as they provide the basis upon which the LLM learns how it should generate content for the rest of the input feed.
+
+<img src='./img/few-shot.png' alt='Few-Shot'>
+
+Now users are ready to optimise their feeds. Use the top navigation menu to launch the FeedGen sidebar and start generating and validating content in the **Generated Content Validation** worksheet.
+
+<img src='./img/generated.png' alt='Generated'>
+
+Users would typically work within this view to approve / regenerate content for each feed item as desired:
+- Approval can be done in bulk via filtering the provided view and using the **Approve Filtered** button, or individually using the checkboxes in the Approval column.
+- If an error occurs, it will be reflected in the **Status** column as "Failed".
+- Clicking **Continue Generating** will first regenerate all columns with an *empty* or *failed* status before continuing on with the rest of the feed. For example, clearing row 7 above and clicking *Continue Generating* will start the generation process at row 7 first, before continuing on with the next feed item (53/1000).
+  - This means that users may clear the value of the **Status** column for any feed item in order to *regenerate* it.
+
+<img src='./img/approval.png' alt='Approval'>
+
+FeedGen provides a score for each feed item that may act as a quality indicator. Let’s examine an entire row and walk through the individual components to understand the scoring system:
+
+- **Original Title**: 2XU Men's Swimmers Compression Long Sleeve Top
+- **Generated Title**: 2XU Men's Swim Compression Long Sleeve Top Black M PWX Fabric UV Protection
+
+First FeedGen extracts "features" of both the original and generated title in order to compare them together. This is referred to as the **template** in our ubiquitous language.
+
+- **Original Title Template**: `<Brand> <Gender> <Category> <Product Type>`
+- **Generated Title Template**: `<Brand> <Gender> <Category> <Product Type> <Color> <Size> <Material> <Highlights>`
+
+We can directly see that 4 new attributes have been added. Great! But is that really a good thing? Let’s dive deeper. The templates are compared to surface the following points, which contribute either positively or negatively to the score:
+1. Has the title changed? Yes!
+1. Have attributes been added to the title? Yes! *Color*, *Size*, *Material* and *Highlights*.
+1. Were there completely new words added that may have been *hallucinated* by the language model? Yes! The LLM added "UV Protection" which is not mentioned anywhere in the provided input feed. As a result the scoring system will incur a penalty for this behaviour. Examining the feed item more clearly however surfaces that the description indeed contained the value *UPF 50+*, so the addition of UV Protection is actually a *positive* thing, but since we have no way of assessing this (without applying a more granular semantic text analysis) we default to penalising the score.
+1. Were there any feed **gap** attributes? In other words, did an attribute key (e.g. size) exist in the feed without a value, and FeedGen filled it up? Yes! The attribute **Color** is in the feed but missing. FeedGen inferred the value from the other feed input columns (in this case, **Description**) and filled it in. Great!
+1. Were there any **newly added** attributes that did not previously exist in the feed? Yes! The **Highlights** attribute is entirely new and did not exist in the feed before. Completely new feed attributes will be prefixed with **new_** in the **Output Feed** (e.g. new_Highlights) so that users can decide whether to include them or not.
+
+|Score|Has the title changed?|Template changed?|New Words Added|Attributes Filled (gap)|Attributes Added|
+|-|-|-|-|-|-|
+|0.8|+0.2|+0.2|0|+0.2|+0.2|
+
+Once you have completed all the necessary approval and are satisfied with the output, clicking **Export to Output Feed** will transfer all approved feed items to the **Output Feed** worksheet.
+
+The last step is to connect the spreadsheet to MC as a supplemental feed, this can be done as described by this [Help Center article](https://support.google.com/merchants/answer/7439058) for standard MC accounts, and this [Help Center article](https://support.google.com/merchants/answer/9651854) for multi-client accounts (MCA).
+
+<img src='./img/output.png' alt='Output'>
+
+Notice that there is a **custom_attribute_feedgen** column in the output feed. This column name is completely flexible and can be changed  directly in the output sheet. It adds a custom attribute to the supplemental feed for reporting and performance measurement purposes.
+
 ### Best Practices
 
 We recommend the following patterns for titles according to your business domain:
@@ -112,5 +172,5 @@ guides for more information.
 To get started with FeedGen:
 
 1. Make a copy of the Google Sheets
-[spreadsheet template](https://docs.google.com/spreadsheets/d/1L8cgQCppRwIOvNYR3kqelPuSfAYFhhLi8gvIcknnwNo/edit#gid=92939291).
-1. Follow the instructions detailed in the `Getting Started` worksheet.
+[spreadsheet template](https://docs.google.com/spreadsheets/d/1L8cgQCppRwIOvNYR3kqelPuSfAYFhhLi8gvIcknnwNo/edit#gid=92939291)
+1. Follow the instructions detailed in the `Getting Started` worksheet
