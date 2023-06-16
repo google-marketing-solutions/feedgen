@@ -701,7 +701,7 @@ function approveFiltered() {
   if (!sheet || !rows) return;
   rows.map((row, index) => {
     row[CONFIG.sheets.generated.cols.approval] = sheet.isRowHiddenByFilter(
-      index + 1 + 1
+      index + CONFIG.sheets.generated.startRow + 1
     )
       ? row[CONFIG.sheets.generated.cols.approval]
       : true;
