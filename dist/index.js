@@ -87,9 +87,15 @@ const CONFIG = {
       startRow: 1,
       name: 'Output Feed',
       cols: {
-        id: 0,
-        title: 1,
-        modificationTimestamp: 2,
+        modificationTimestamp: 0,
+        id: {
+          idx: 1,
+          name: 'Item ID',
+        },
+        title: {
+          idx: 2,
+          name: 'Title',
+        },
         gapCols: {
           start: 3,
         },
@@ -506,7 +512,7 @@ const getGenerationMetrics = (
   const genTitleWords = genTitle.match(WORD_MATCH_REGEX);
   if (genTitleWords) {
     genTitleWords
-      .filter(genTitleWord => !inputWords.has(genTitleWord))
+      .filter(genTitleWord => !inputWords.has(genTitleWord.toLowerCase()))
       .forEach(newWord => newWordsAdded.add(newWord));
   }
   const gapAttributesPresent = Object.keys(gapAttributesAndValues).filter(
@@ -572,7 +578,7 @@ function optimizeRow(headers, data) {
   const titleFeatures = [];
   const gapAttributesAndValues = {};
   genAttributes.forEach((attribute, index) => {
-    if (!dataObj[attribute]) {
+    if (!dataObj[attribute] && !origAttributes.includes(attribute)) {
       gapAttributesAndValues[attribute] = genAttributeValues[index];
     }
     titleFeatures.push(dataObj[attribute] || genAttributeValues[index]);
@@ -582,7 +588,7 @@ function optimizeRow(headers, data) {
   Object.values(dataObj).forEach(value => {
     const match = new String(value).match(WORD_MATCH_REGEX);
     if (match) {
-      match.forEach(word => inputWords.add(word));
+      match.forEach(word => inputWords.add(word.toLowerCase()));
     }
   });
   const generationMetrics = getGenerationMetrics(
@@ -654,7 +660,7 @@ function writeApprovedData(header, rows) {
   SheetsService.getInstance().setValuesInDefinedRange(
     CONFIG.sheets.output.name,
     CONFIG.sheets.output.startRow,
-    CONFIG.sheets.output.cols.gapCols.start + 1,
+    CONFIG.sheets.output.cols.id.idx + 1,
     [header]
   );
   SheetsService.getInstance().setValuesInDefinedRange(
@@ -669,7 +675,7 @@ function clearApprovedData() {
   SheetsService.getInstance().clearDefinedRange(
     CONFIG.sheets.output.name,
     CONFIG.sheets.output.startRow,
-    CONFIG.sheets.output.cols.gapCols.start + 1
+    CONFIG.sheets.output.cols.id.idx + 1
   );
   SheetsService.getInstance().clearDefinedRange(
     CONFIG.sheets.output.name,
@@ -706,12 +712,14 @@ function approveFiltered() {
 }
 function exportApproved() {
   MultiLogger.getInstance().log('Exporting approved rows...');
-  const feedGenRows = getGeneratedRows().filter(row => {
-    return row[CONFIG.sheets.generated.cols.approval] === true;
-  });
+  const feedGenRows = getGeneratedRows().filter(
+    row => row[CONFIG.sheets.generated.cols.approval] === true
+  );
+  if (feedGenRows.length === 0) return;
   const filledInGapAttributes = [
     ...new Set(
       feedGenRows
+        .filter(row => row[CONFIG.sheets.generated.cols.gapAttributes])
         .map(row =>
           Object.keys(
             JSON.parse(row[CONFIG.sheets.generated.cols.gapAttributes])
@@ -723,6 +731,7 @@ function exportApproved() {
   const allInputAttributes = [
     ...new Set(
       feedGenRows
+        .filter(row => row[CONFIG.sheets.generated.cols.originalInput])
         .map(row =>
           Object.keys(
             JSON.parse(row[CONFIG.sheets.generated.cols.originalInput])
@@ -734,7 +743,10 @@ function exportApproved() {
   const inventedAttributes = filledInGapAttributes.filter(
     gapKey => !allInputAttributes.includes(gapKey)
   );
-  const outputHeader = [];
+  const outputHeader = [
+    CONFIG.sheets.output.cols.id.name,
+    CONFIG.sheets.output.cols.title.name,
+  ];
   filledInGapAttributes.forEach(gapKey => {
     if (inventedAttributes.includes(gapKey)) {
       gapKey = `new_${gapKey}`;
@@ -744,20 +756,23 @@ function exportApproved() {
   const rowsToWrite = [];
   for (const row of feedGenRows) {
     const resRow = [];
-    resRow[CONFIG.sheets.output.cols.id] = row[CONFIG.sheets.generated.cols.id];
-    resRow[CONFIG.sheets.output.cols.title] =
+    resRow[CONFIG.sheets.output.cols.id.idx] =
+      row[CONFIG.sheets.generated.cols.id];
+    resRow[CONFIG.sheets.output.cols.title.idx] =
       row[CONFIG.sheets.generated.cols.approval] === true
         ? row[CONFIG.sheets.generated.cols.titleGenerated]
         : row[CONFIG.sheets.generated.cols.titleOriginal];
     resRow[CONFIG.sheets.output.cols.modificationTimestamp] =
       new Date().toISOString();
-    const gapAttributesAndValues = JSON.parse(
-      row[CONFIG.sheets.generated.cols.gapAttributes]
-    );
+    const gapAttributesAndValues = row[
+      CONFIG.sheets.generated.cols.gapAttributes
+    ]
+      ? JSON.parse(row[CONFIG.sheets.generated.cols.gapAttributes])
+      : {};
     const gapAttributesKeys = Object.keys(gapAttributesAndValues);
-    const originalInput = JSON.parse(
-      row[CONFIG.sheets.generated.cols.originalInput]
-    );
+    const originalInput = row[CONFIG.sheets.generated.cols.originalInput]
+      ? JSON.parse(row[CONFIG.sheets.generated.cols.originalInput])
+      : {};
     filledInGapAttributes.forEach(
       (attribute, index) =>
         (resRow[CONFIG.sheets.output.cols.gapCols.start + index] =

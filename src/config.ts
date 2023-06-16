@@ -87,9 +87,15 @@ export const CONFIG = {
       startRow: 1,
       name: 'Output Feed',
       cols: {
-        id: 0,
-        title: 1,
-        modificationTimestamp: 2,
+        modificationTimestamp: 0,
+        id: {
+          idx: 1,
+          name: 'Item ID',
+        },
+        title: {
+          idx: 2,
+          name: 'Title',
+        },
         gapCols: {
           start: 3,
         },
