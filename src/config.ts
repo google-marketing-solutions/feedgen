@@ -20,51 +20,87 @@ export enum Status {
 }
 
 export const CONFIG = {
+  userSettings: {
+    feed: {
+      itemIdColumnName: {
+        row: 2,
+        col: 2,
+      },
+      titleColumnName: {
+        row: 3,
+        col: 2,
+      },
+      descriptionColumnName: {
+        row: 4,
+        col: 2,
+      },
+    },
+    vertexAi: {
+      gcpProjectId: {
+        row: 2,
+        col: 5,
+      },
+      gcpProjectLocation: {
+        row: 3,
+        col: 5,
+      },
+      languageModelId: {
+        row: 4,
+        col: 5,
+      },
+    },
+    description: {
+      fullPrompt: {
+        row: 9,
+        col: 5,
+      },
+      modelParameters: {
+        temperature: {
+          row: 10,
+          col: 2,
+        },
+        maxOutputTokens: {
+          row: 11,
+          col: 2,
+        },
+        topK: {
+          row: 12,
+          col: 2,
+        },
+        topP: {
+          row: 13,
+          col: 2,
+        },
+      },
+    },
+    title: {
+      fullPrompt: {
+        row: 17,
+        col: 5,
+      },
+      modelParameters: {
+        temperature: {
+          row: 18,
+          col: 2,
+        },
+        maxOutputTokens: {
+          row: 19,
+          col: 2,
+        },
+        topK: {
+          row: 20,
+          col: 2,
+        },
+        topP: {
+          row: 21,
+          col: 2,
+        },
+      },
+    },
+  },
   sheets: {
     config: {
       name: 'Config',
-      fields: {
-        vertexAiProjectId: {
-          row: 2,
-          col: 5,
-        },
-        vertexAiLocation: {
-          row: 3,
-          col: 5,
-        },
-        vertexAiModelId: {
-          row: 4,
-          col: 5,
-        },
-        vertexAiModelTemperature: {
-          row: 5,
-          col: 5,
-        },
-        vertexAiModelMaxOutputTokens: {
-          row: 6,
-          col: 5,
-        },
-        vertexAiModelTopK: {
-          row: 7,
-          col: 5,
-        },
-        vertexAiModelTopP: {
-          row: 8,
-          col: 5,
-        },
-        itemIdColumnName: {
-          row: 2,
-          col: 2,
-        },
-        titleColumnName: {
-          row: 3,
-          col: 2,
-        },
-        fullPrompt: {
-          row: 13,
-          col: 5,
-        },
-      },
     },
     input: {
       name: 'Input Feed',
@@ -77,15 +113,15 @@ export const CONFIG = {
         approval: 0,
         status: 1,
         id: 2,
-        titleOriginal: 3,
-        titleGenerated: 4,
-        gapAttributes: 13,
-        originalInput: 15,
+        titleGenerated: 3,
+        descriptionGenerated: 4,
+        gapAttributes: 12,
+        originalInput: 13,
       },
     },
     output: {
-      startRow: 1,
       name: 'Output Feed',
+      startRow: 1,
       cols: {
         modificationTimestamp: 0,
         id: {
@@ -96,14 +132,18 @@ export const CONFIG = {
           idx: 2,
           name: 'Title',
         },
+        description: {
+          idx: 3,
+          name: 'Description',
+        },
         gapCols: {
-          start: 3,
+          start: 4,
         },
       },
     },
     log: {
-      startRow: 0,
       name: 'Log',
+      startRow: 0,
     },
   },
   vertexAi: {

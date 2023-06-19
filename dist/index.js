@@ -20,51 +20,87 @@ var Status;
   Status['FAILED'] = 'Failed';
 })(Status || (Status = {}));
 const CONFIG = {
+  userSettings: {
+    feed: {
+      itemIdColumnName: {
+        row: 2,
+        col: 2,
+      },
+      titleColumnName: {
+        row: 3,
+        col: 2,
+      },
+      descriptionColumnName: {
+        row: 4,
+        col: 2,
+      },
+    },
+    vertexAi: {
+      gcpProjectId: {
+        row: 2,
+        col: 5,
+      },
+      gcpProjectLocation: {
+        row: 3,
+        col: 5,
+      },
+      languageModelId: {
+        row: 4,
+        col: 5,
+      },
+    },
+    description: {
+      fullPrompt: {
+        row: 9,
+        col: 5,
+      },
+      modelParameters: {
+        temperature: {
+          row: 10,
+          col: 2,
+        },
+        maxOutputTokens: {
+          row: 11,
+          col: 2,
+        },
+        topK: {
+          row: 12,
+          col: 2,
+        },
+        topP: {
+          row: 13,
+          col: 2,
+        },
+      },
+    },
+    title: {
+      fullPrompt: {
+        row: 17,
+        col: 5,
+      },
+      modelParameters: {
+        temperature: {
+          row: 18,
+          col: 2,
+        },
+        maxOutputTokens: {
+          row: 19,
+          col: 2,
+        },
+        topK: {
+          row: 20,
+          col: 2,
+        },
+        topP: {
+          row: 21,
+          col: 2,
+        },
+      },
+    },
+  },
   sheets: {
     config: {
       name: 'Config',
-      fields: {
-        vertexAiProjectId: {
-          row: 2,
-          col: 5,
-        },
-        vertexAiLocation: {
-          row: 3,
-          col: 5,
-        },
-        vertexAiModelId: {
-          row: 4,
-          col: 5,
-        },
-        vertexAiModelTemperature: {
-          row: 5,
-          col: 5,
-        },
-        vertexAiModelMaxOutputTokens: {
-          row: 6,
-          col: 5,
-        },
-        vertexAiModelTopK: {
-          row: 7,
-          col: 5,
-        },
-        vertexAiModelTopP: {
-          row: 8,
-          col: 5,
-        },
-        itemIdColumnName: {
-          row: 2,
-          col: 2,
-        },
-        titleColumnName: {
-          row: 3,
-          col: 2,
-        },
-        fullPrompt: {
-          row: 13,
-          col: 5,
-        },
-      },
     },
     input: {
       name: 'Input Feed',
@@ -77,15 +113,15 @@ const CONFIG = {
         approval: 0,
         status: 1,
         id: 2,
-        titleOriginal: 3,
-        titleGenerated: 4,
-        gapAttributes: 13,
-        originalInput: 15,
+        titleGenerated: 3,
+        descriptionGenerated: 4,
+        gapAttributes: 12,
+        originalInput: 13,
       },
     },
     output: {
-      startRow: 1,
       name: 'Output Feed',
+      startRow: 1,
       cols: {
         modificationTimestamp: 0,
         id: {
@@ -96,14 +132,18 @@ const CONFIG = {
           idx: 2,
           name: 'Title',
         },
+        description: {
+          idx: 3,
+          name: 'Description',
+        },
         gapCols: {
-          start: 3,
+          start: 4,
         },
       },
     },
     log: {
-      startRow: 0,
       name: 'Log',
+      startRow: 0,
     },
   },
   vertexAi: {
@@ -241,7 +281,7 @@ class SheetsService {
 }
 
 class Util {
-  static executeWithRetry(maxRetries, delayMillies, fn) {
+  static executeWithRetry(maxRetries, fn, delayMillies = 0) {
     let retryCount = 0;
     while (retryCount < maxRetries) {
       try {
@@ -289,6 +329,9 @@ class VertexHelper {
   fetchJson(url, params) {
     const response = UrlFetchApp.fetch(url, params);
     if (response.getResponseCode() === 429) {
+      MultiLogger.getInstance().log(
+        `Waiting ${CONFIG.vertexAi.quotaLimitDelay}s as API quota limit has been reached...`
+      );
       Utilities.sleep(CONFIG.vertexAi.quotaLimitDelay);
       return this.fetchJson(url, params);
     }
@@ -333,27 +376,15 @@ const TEMPLATE_PROMPT_PART = 'product attribute keys:';
 const ATTRIBUTES_PROMPT_PART = 'product attribute values:';
 const SEPARATOR = '|';
 const WORD_MATCH_REGEX = /(\w|\s)*\w(?=")|\w+/g;
-const vertexAiProjectId = getConfigSheetValue(
-  CONFIG.sheets.config.fields.vertexAiProjectId
-);
-const vertexAiLocation = getConfigSheetValue(
-  CONFIG.sheets.config.fields.vertexAiLocation
-);
-const vertexAiModelId = getConfigSheetValue(
-  CONFIG.sheets.config.fields.vertexAiModelId
-);
-const vertexAiModelTemperature = getConfigSheetValue(
-  CONFIG.sheets.config.fields.vertexAiModelTemperature
-);
-const vertexAiModelMaxOutputTokens = getConfigSheetValue(
-  CONFIG.sheets.config.fields.vertexAiModelMaxOutputTokens
-);
-const vertexAiModelTopK = getConfigSheetValue(
-  CONFIG.sheets.config.fields.vertexAiModelTopK
-);
-const vertexAiModelTopP = getConfigSheetValue(
-  CONFIG.sheets.config.fields.vertexAiModelTopP
-);
+const [
+  vertexAiGcpProjectId,
+  vertexAiGcpProjectLocation,
+  vertexAiLanguageModelId,
+] = [
+  getConfigSheetValue(CONFIG.userSettings.vertexAi.gcpProjectId),
+  getConfigSheetValue(CONFIG.userSettings.vertexAi.gcpProjectLocation),
+  getConfigSheetValue(CONFIG.userSettings.vertexAi.languageModelId),
+];
 function onOpen() {
   SpreadsheetApp.getUi()
     .createMenu('FeedGen')
@@ -408,7 +439,7 @@ function FEEDGEN_CREATE_JSON_CONTEXT_FOR_ITEM(itemId) {
     CONFIG.sheets.input.name
   );
   const itemIdColumnName = getConfigSheetValue(
-    CONFIG.sheets.config.fields.itemIdColumnName
+    CONFIG.userSettings.feed.itemIdColumnName
   );
   if (!inputSheet) return;
   const [headers, ...rows] = inputSheet
@@ -528,12 +559,12 @@ const getGenerationMetrics = (
       Number(gapAttributesPresent.length > 0) +
       Number(gapAttributesInvented.length > 0)) /
     5;
-  return [
-    totalScore.toString(),
-    titleChanged.toString(),
-    addedAttributes.map(attr => `<${attr}>`).join(' '),
-    [...newWordsAdded].join(` ${SEPARATOR} `),
-  ];
+  return {
+    totalScore: totalScore.toString(),
+    titleChanged: titleChanged.toString(),
+    addedAttributes: addedAttributes.map(attr => `<${attr}>`).join(' '),
+    newWordsAdded: [...newWordsAdded].join(` ${SEPARATOR} `),
+  };
 };
 function getConfigSheetValue(field) {
   return SheetsService.getInstance().getCellValue(
@@ -546,14 +577,14 @@ function optimizeRow(headers, data) {
   const dataObj = Object.fromEntries(
     data.map((item, index) => [headers[index], item])
   );
-  const itemIdColumnName = getConfigSheetValue(
-    CONFIG.sheets.config.fields.itemIdColumnName
-  );
-  const titleColumnName = getConfigSheetValue(
-    CONFIG.sheets.config.fields.titleColumnName
-  );
-  const itemId = dataObj[itemIdColumnName];
-  const origTitle = dataObj[titleColumnName];
+  const itemId =
+    dataObj[getConfigSheetValue(CONFIG.userSettings.feed.itemIdColumnName)];
+  const origTitle =
+    dataObj[getConfigSheetValue(CONFIG.userSettings.feed.titleColumnName)];
+  const origDescription =
+    dataObj[
+      getConfigSheetValue(CONFIG.userSettings.feed.descriptionColumnName)
+    ];
   const res = fetchTitleGenerationData(dataObj);
   const [origTemplateRow, genCategoryRow, genTemplateRow, genAttributesRow] =
     res.split('\n');
@@ -588,6 +619,7 @@ function optimizeRow(headers, data) {
     titleFeatures.push(dataObj[attribute] || genAttributeValues[index]);
   });
   const genTitle = titleFeatures.join(' ');
+  const genDescription = fetchDescriptionGenerationData(dataObj, genTitle);
   const inputWords = new Set();
   Object.values(dataObj).forEach(value => {
     const match = new String(value).match(WORD_MATCH_REGEX);
@@ -595,49 +627,103 @@ function optimizeRow(headers, data) {
       match.forEach(word => inputWords.add(word.toLowerCase()));
     }
   });
-  const generationMetrics = getGenerationMetrics(
-    origTitle,
-    genTitle,
-    new Set(origAttributes),
-    new Set(genAttributes),
-    inputWords,
-    gapAttributesAndValues,
-    dataObj
-  );
-  const row = [];
-  row[CONFIG.sheets.generated.cols.approval] = false;
-  row[CONFIG.sheets.generated.cols.status] = 'Success';
-  row[CONFIG.sheets.generated.cols.id] = itemId;
-  row[CONFIG.sheets.generated.cols.titleOriginal] = origTitle;
-  row[CONFIG.sheets.generated.cols.titleGenerated] = genTitle;
+  const { totalScore, titleChanged, addedAttributes, newWordsAdded } =
+    getGenerationMetrics(
+      origTitle,
+      genTitle,
+      new Set(origAttributes),
+      new Set(genAttributes),
+      inputWords,
+      gapAttributesAndValues,
+      dataObj
+    );
   return [
-    ...row,
+    false,
+    'Success',
+    itemId,
+    genTitle,
+    genDescription,
+    genCategory,
+    totalScore,
+    titleChanged,
     origTemplate,
     genTemplate,
-    genCategory,
-    genAttributeValues.join(', '),
-    ...generationMetrics,
+    addedAttributes,
+    newWordsAdded,
     Object.keys(gapAttributesAndValues).length > 0
       ? JSON.stringify(gapAttributesAndValues)
       : '',
-    res,
     JSON.stringify(dataObj),
+    origTitle,
+    origDescription,
+    `${res}\nproduct description: ${genDescription}`,
   ];
 }
 function fetchTitleGenerationData(data) {
   const dataContext = `Context: ${JSON.stringify(data)}\n\n`;
   const prompt =
-    getConfigSheetValue(CONFIG.sheets.config.fields.fullPrompt) + dataContext;
-  const res = Util.executeWithRetry(CONFIG.vertexAi.maxRetries, 0, () =>
+    getConfigSheetValue(CONFIG.userSettings.title.fullPrompt) + dataContext;
+  const res = Util.executeWithRetry(CONFIG.vertexAi.maxRetries, () =>
     VertexHelper.getInstance(
-      vertexAiProjectId,
-      vertexAiLocation,
-      vertexAiModelId,
+      vertexAiGcpProjectId,
+      vertexAiGcpProjectLocation,
+      vertexAiLanguageModelId,
       {
-        temperature: Number(vertexAiModelTemperature),
-        maxOutputTokens: Number(vertexAiModelMaxOutputTokens),
-        topK: Number(vertexAiModelTopK),
-        topP: Number(vertexAiModelTopP),
+        temperature: Number(
+          getConfigSheetValue(
+            CONFIG.userSettings.title.modelParameters.temperature
+          )
+        ),
+        maxOutputTokens: Number(
+          getConfigSheetValue(
+            CONFIG.userSettings.title.modelParameters.maxOutputTokens
+          )
+        ),
+        topK: Number(
+          getConfigSheetValue(CONFIG.userSettings.title.modelParameters.topK)
+        ),
+        topP: Number(
+          getConfigSheetValue(CONFIG.userSettings.title.modelParameters.topP)
+        ),
+      }
+    ).predict(prompt)
+  );
+  return res;
+}
+function fetchDescriptionGenerationData(data, generatedTitle) {
+  const modifiedData = Object.assign(data, {
+    'Generated Title': generatedTitle,
+  });
+  const dataContext = `Context: ${JSON.stringify(modifiedData)}\n\n`;
+  const prompt =
+    getConfigSheetValue(CONFIG.userSettings.description.fullPrompt) +
+    dataContext;
+  const res = Util.executeWithRetry(CONFIG.vertexAi.maxRetries, () =>
+    VertexHelper.getInstance(
+      vertexAiGcpProjectId,
+      vertexAiGcpProjectLocation,
+      vertexAiLanguageModelId,
+      {
+        temperature: Number(
+          getConfigSheetValue(
+            CONFIG.userSettings.description.modelParameters.temperature
+          )
+        ),
+        maxOutputTokens: Number(
+          getConfigSheetValue(
+            CONFIG.userSettings.description.modelParameters.maxOutputTokens
+          )
+        ),
+        topK: Number(
+          getConfigSheetValue(
+            CONFIG.userSettings.description.modelParameters.topK
+          )
+        ),
+        topP: Number(
+          getConfigSheetValue(
+            CONFIG.userSettings.description.modelParameters.topP
+          )
+        ),
       }
     ).predict(prompt)
   );
@@ -759,6 +845,7 @@ function exportApproved() {
   const outputHeader = [
     CONFIG.sheets.output.cols.id.name,
     CONFIG.sheets.output.cols.title.name,
+    CONFIG.sheets.output.cols.description.name,
     ...gapAttributes,
     ...inventedAttributes.map(key => `new_${key}`),
   ];
@@ -770,9 +857,9 @@ function exportApproved() {
     resRow[CONFIG.sheets.output.cols.id.idx] =
       row[CONFIG.sheets.generated.cols.id];
     resRow[CONFIG.sheets.output.cols.title.idx] =
-      row[CONFIG.sheets.generated.cols.approval] === true
-        ? row[CONFIG.sheets.generated.cols.titleGenerated]
-        : row[CONFIG.sheets.generated.cols.titleOriginal];
+      row[CONFIG.sheets.generated.cols.titleGenerated];
+    resRow[CONFIG.sheets.output.cols.description.idx] =
+      row[CONFIG.sheets.generated.cols.descriptionGenerated];
     const gapAttributesAndValues = row[
       CONFIG.sheets.generated.cols.gapAttributes
     ]

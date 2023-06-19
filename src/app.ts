@@ -38,28 +38,15 @@ const ATTRIBUTES_PROMPT_PART = 'product attribute values:';
 const SEPARATOR = '|';
 const WORD_MATCH_REGEX = /(\w|\s)*\w(?=")|\w+/g;
 
-// Get Vertex AI config info
-const vertexAiProjectId = getConfigSheetValue(
-  CONFIG.sheets.config.fields.vertexAiProjectId
-);
-const vertexAiLocation = getConfigSheetValue(
-  CONFIG.sheets.config.fields.vertexAiLocation
-);
-const vertexAiModelId = getConfigSheetValue(
-  CONFIG.sheets.config.fields.vertexAiModelId
-);
-const vertexAiModelTemperature = getConfigSheetValue(
-  CONFIG.sheets.config.fields.vertexAiModelTemperature
-);
-const vertexAiModelMaxOutputTokens = getConfigSheetValue(
-  CONFIG.sheets.config.fields.vertexAiModelMaxOutputTokens
-);
-const vertexAiModelTopK = getConfigSheetValue(
-  CONFIG.sheets.config.fields.vertexAiModelTopK
-);
-const vertexAiModelTopP = getConfigSheetValue(
-  CONFIG.sheets.config.fields.vertexAiModelTopP
-);
+const [
+  vertexAiGcpProjectId,
+  vertexAiGcpProjectLocation,
+  vertexAiLanguageModelId,
+] = [
+  getConfigSheetValue(CONFIG.userSettings.vertexAi.gcpProjectId),
+  getConfigSheetValue(CONFIG.userSettings.vertexAi.gcpProjectLocation),
+  getConfigSheetValue(CONFIG.userSettings.vertexAi.languageModelId),
+];
 
 /**
  * Handle 'onOpen' Sheets event to show menu.
@@ -148,7 +135,7 @@ export function FEEDGEN_CREATE_JSON_CONTEXT_FOR_ITEM(itemId: string) {
     CONFIG.sheets.input.name
   );
   const itemIdColumnName = getConfigSheetValue(
-    CONFIG.sheets.config.fields.itemIdColumnName
+    CONFIG.userSettings.feed.itemIdColumnName
   );
 
   if (!inputSheet) return;
@@ -211,13 +198,11 @@ export function generateNextRow() {
 
   if (!inputSheet || !generatedSheet) return;
 
-  // Get row to be processed
   const rowIndex = getNextRowIndexToBeGenerated();
 
   if (rowIndex >= inputSheet.getLastRow() - CONFIG.sheets.input.startRow) {
     return -1;
   }
-
   MultiLogger.getInstance().log(`Generating for row ${rowIndex}`);
 
   const row = inputSheet
@@ -292,7 +277,7 @@ const getGenerationMetrics = (
   inputWords: Set<string>,
   gapAttributesAndValues: Record<string, string>,
   originalInput: { [k: string]: string }
-): string[] => {
+): Record<string, string> => {
   const titleChanged = origTitle !== genTitle;
   const addedAttributes = Util.getSetDifference(genAttributes, origAttributes);
   const newWordsAdded = new Set<String>();
@@ -319,12 +304,14 @@ const getGenerationMetrics = (
       Number(gapAttributesPresent.length > 0) +
       Number(gapAttributesInvented.length > 0)) /
     5;
-  return [
-    totalScore.toString(), // 0-1 score total
-    titleChanged.toString(),
-    addedAttributes.map((attr: string) => `<${attr}>`).join(' '),
-    [...newWordsAdded].join(` ${SEPARATOR} `),
-  ];
+  return {
+    totalScore: totalScore.toString(),
+    titleChanged: titleChanged.toString(),
+    addedAttributes: addedAttributes
+      .map((attr: string) => `<${attr}>`)
+      .join(' '),
+    newWordsAdded: [...newWordsAdded].join(` ${SEPARATOR} `),
+  };
 };
 
 function getConfigSheetValue(field: { row: number; col: number }) {
@@ -346,21 +333,19 @@ function optimizeRow(
   headers: string[],
   data: string[]
 ): Array<string | boolean | number> {
-  // Build context object
   const dataObj = Object.fromEntries(
     data.map((item, index) => [headers[index], item])
   );
 
-  const itemIdColumnName = getConfigSheetValue(
-    CONFIG.sheets.config.fields.itemIdColumnName
-  );
-  const titleColumnName = getConfigSheetValue(
-    CONFIG.sheets.config.fields.titleColumnName
-  );
-  const itemId = dataObj[itemIdColumnName];
-  const origTitle = dataObj[titleColumnName];
+  const itemId =
+    dataObj[getConfigSheetValue(CONFIG.userSettings.feed.itemIdColumnName)];
+  const origTitle =
+    dataObj[getConfigSheetValue(CONFIG.userSettings.feed.titleColumnName)];
+  const origDescription =
+    dataObj[
+      getConfigSheetValue(CONFIG.userSettings.feed.descriptionColumnName)
+    ];
 
-  // Generate title with all available context
   const res = fetchTitleGenerationData(dataObj);
 
   const [origTemplateRow, genCategoryRow, genTemplateRow, genAttributesRow] =
@@ -394,8 +379,7 @@ function optimizeRow(
     .filter((x: string) => x)
     .map((x: string) => x.trim());
 
-  // Collect all title features with priority on user provided data
-  // (use generated only when user provided data is not available)
+  // Use generated data only when user provided data is not available
   const titleFeatures: string[] = [];
   const gapAttributesAndValues: Record<string, string> = {};
 
@@ -411,8 +395,8 @@ function optimizeRow(
     titleFeatures.push(dataObj[attribute] || genAttributeValues[index]);
   });
 
-  // create title solely based on titleFeatures to reduce hallucination potential
   const genTitle = titleFeatures.join(' ');
+  const genDescription = fetchDescriptionGenerationData(dataObj, genTitle);
 
   const inputWords = new Set<string>();
   Object.values(dataObj).forEach((value: string) => {
@@ -422,58 +406,114 @@ function optimizeRow(
     }
   });
 
-  const generationMetrics = getGenerationMetrics(
-    origTitle,
-    genTitle,
-    new Set(origAttributes),
-    new Set(genAttributes),
-    inputWords,
-    gapAttributesAndValues,
-    dataObj
-  );
-
-  const row: Array<string | boolean> = [];
-
-  row[CONFIG.sheets.generated.cols.approval] = false;
-  row[CONFIG.sheets.generated.cols.status] = 'Success';
-  row[CONFIG.sheets.generated.cols.id] = itemId;
-  row[CONFIG.sheets.generated.cols.titleOriginal] = origTitle;
-  row[CONFIG.sheets.generated.cols.titleGenerated] = genTitle;
+  const { totalScore, titleChanged, addedAttributes, newWordsAdded } =
+    getGenerationMetrics(
+      origTitle,
+      genTitle,
+      new Set(origAttributes),
+      new Set(genAttributes),
+      inputWords,
+      gapAttributesAndValues,
+      dataObj
+    );
 
   return [
-    ...row,
+    false, // approval
+    'Success', // status
+    itemId,
+    genTitle,
+    genDescription,
+    genCategory,
+    totalScore,
+    titleChanged,
     origTemplate,
     genTemplate,
-    genCategory,
-    genAttributeValues.join(', '),
-    ...generationMetrics,
+    addedAttributes,
+    newWordsAdded,
     Object.keys(gapAttributesAndValues).length > 0
       ? JSON.stringify(gapAttributesAndValues)
       : '',
-    res,
     JSON.stringify(dataObj),
+    origTitle,
+    origDescription,
+    `${res}\nproduct description: ${genDescription}`, // API response
   ];
 }
 
 function fetchTitleGenerationData(data: Record<string, unknown>): string {
-  // Extra lines instruct LLM to comlpete what is missing. Don't remove.
+  // Extra lines (\n) instruct LLM to comlpete what is missing. Don't remove.
   const dataContext = `Context: ${JSON.stringify(data)}\n\n`;
   const prompt =
-    getConfigSheetValue(CONFIG.sheets.config.fields.fullPrompt) + dataContext;
-  const res = Util.executeWithRetry(CONFIG.vertexAi.maxRetries, 0, () =>
+    getConfigSheetValue(CONFIG.userSettings.title.fullPrompt) + dataContext;
+  const res = Util.executeWithRetry(CONFIG.vertexAi.maxRetries, () =>
     VertexHelper.getInstance(
-      vertexAiProjectId,
-      vertexAiLocation,
-      vertexAiModelId,
+      vertexAiGcpProjectId,
+      vertexAiGcpProjectLocation,
+      vertexAiLanguageModelId,
       {
-        temperature: Number(vertexAiModelTemperature),
-        maxOutputTokens: Number(vertexAiModelMaxOutputTokens),
-        topK: Number(vertexAiModelTopK),
-        topP: Number(vertexAiModelTopP),
+        temperature: Number(
+          getConfigSheetValue(
+            CONFIG.userSettings.title.modelParameters.temperature
+          )
+        ),
+        maxOutputTokens: Number(
+          getConfigSheetValue(
+            CONFIG.userSettings.title.modelParameters.maxOutputTokens
+          )
+        ),
+        topK: Number(
+          getConfigSheetValue(CONFIG.userSettings.title.modelParameters.topK)
+        ),
+        topP: Number(
+          getConfigSheetValue(CONFIG.userSettings.title.modelParameters.topP)
+        ),
       }
     ).predict(prompt)
   );
+  return res;
+}
 
+function fetchDescriptionGenerationData(
+  data: Record<string, unknown>,
+  generatedTitle: string
+): string {
+  // Extra lines (\n) instruct LLM to complete what is missing. Don't remove.
+  const modifiedData = Object.assign(data, {
+    'Generated Title': generatedTitle,
+  });
+  const dataContext = `Context: ${JSON.stringify(modifiedData)}\n\n`;
+  const prompt =
+    getConfigSheetValue(CONFIG.userSettings.description.fullPrompt) +
+    dataContext;
+  const res = Util.executeWithRetry(CONFIG.vertexAi.maxRetries, () =>
+    VertexHelper.getInstance(
+      vertexAiGcpProjectId,
+      vertexAiGcpProjectLocation,
+      vertexAiLanguageModelId,
+      {
+        temperature: Number(
+          getConfigSheetValue(
+            CONFIG.userSettings.description.modelParameters.temperature
+          )
+        ),
+        maxOutputTokens: Number(
+          getConfigSheetValue(
+            CONFIG.userSettings.description.modelParameters.maxOutputTokens
+          )
+        ),
+        topK: Number(
+          getConfigSheetValue(
+            CONFIG.userSettings.description.modelParameters.topK
+          )
+        ),
+        topP: Number(
+          getConfigSheetValue(
+            CONFIG.userSettings.description.modelParameters.topP
+          )
+        ),
+      }
+    ).predict(prompt)
+  );
   return res;
 }
 
@@ -561,20 +601,14 @@ export function clearGeneratedRows() {
  */
 export function approveFiltered() {
   MultiLogger.getInstance().log('Approving filtered rows...');
-  // Load 'Generated' sheet
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(
     CONFIG.sheets.generated.name
   );
-
-  // Load 'Generated' rows
-  //const rows = getSelectedGeneratedRows();
   const rows = getGeneratedRows();
 
   if (!sheet || !rows) return;
 
-  // Update status to 'Approved'
   rows.map((row, index) => {
-    // Update title status
     row[CONFIG.sheets.generated.cols.approval] = sheet.isRowHiddenByFilter(
       index + CONFIG.sheets.generated.startRow + 1
     )
@@ -583,10 +617,7 @@ export function approveFiltered() {
 
     return row;
   });
-
-  // Write back to 'FeedGen' sheet
   writeGeneratedRows(rows);
-
   MultiLogger.getInstance().log('Writing approved rows...');
 }
 
@@ -632,7 +663,6 @@ function getGapAndInventedAttributes(rows: string[][]) {
 export function exportApproved() {
   MultiLogger.getInstance().log('Exporting approved rows...');
 
-  // Load approved 'FeedGen' rows
   const feedGenRows = getGeneratedRows().filter(
     row => row[CONFIG.sheets.generated.cols.approval] === true
   );
@@ -647,6 +677,7 @@ export function exportApproved() {
   const outputHeader: string[] = [
     CONFIG.sheets.output.cols.id.name,
     CONFIG.sheets.output.cols.title.name,
+    CONFIG.sheets.output.cols.description.name,
     ...gapAttributes,
     ...inventedAttributes.map(key => `new_${key}`),
   ];
@@ -660,9 +691,9 @@ export function exportApproved() {
     resRow[CONFIG.sheets.output.cols.id.idx] =
       row[CONFIG.sheets.generated.cols.id];
     resRow[CONFIG.sheets.output.cols.title.idx] =
-      row[CONFIG.sheets.generated.cols.approval] === true
-        ? row[CONFIG.sheets.generated.cols.titleGenerated]
-        : row[CONFIG.sheets.generated.cols.titleOriginal];
+      row[CONFIG.sheets.generated.cols.titleGenerated];
+    resRow[CONFIG.sheets.output.cols.description.idx] =
+      row[CONFIG.sheets.generated.cols.descriptionGenerated];
 
     const gapAttributesAndValues = row[
       CONFIG.sheets.generated.cols.gapAttributes
@@ -684,10 +715,6 @@ export function exportApproved() {
 
     rowsToWrite.push(resRow);
   }
-
-  // Clear 'Approved' sheet
   clearApprovedData();
-
-  // Write to 'Approved' sheet
   writeApprovedData(outputHeader, rowsToWrite);
 }
