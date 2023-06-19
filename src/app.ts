@@ -36,7 +36,8 @@ const CATEGORY_PROMPT_PART = 'product category:';
 const TEMPLATE_PROMPT_PART = 'product attribute keys:';
 const ATTRIBUTES_PROMPT_PART = 'product attribute values:';
 const SEPARATOR = '|';
-const WORD_MATCH_REGEX = /(\w|\s)*\w(?=")|\w+/g;
+const WORD_MATCH_REGEX =
+  /([A-Za-zÀ-ÖØ-öø-ÿ0-9]|\s)*\[A-Za-zÀ-ÖØ-öø-ÿ0-9](?=")|\[A-Za-zÀ-ÖØ-öø-ÿ0-9]+/g;
 
 const [
   vertexAiGcpProjectId,
