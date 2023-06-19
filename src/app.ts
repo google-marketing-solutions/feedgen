@@ -386,6 +386,7 @@ function optimizeRow(
   genAttributes.forEach((attribute: string, index: number) => {
     if (
       !dataObj[attribute] && // matches gaps ({color: ""}) AND invented
+      genAttributeValues[index] && // non-empty generated value
       (!origAttributes.includes(attribute) ||
         // force include gaps even if in generated template for original title
         Object.keys(dataObj).includes(attribute))
@@ -478,9 +479,12 @@ function fetchDescriptionGenerationData(
   generatedTitle: string
 ): string {
   // Extra lines (\n) instruct LLM to complete what is missing. Don't remove.
-  const modifiedData = Object.assign(data, {
-    'Generated Title': generatedTitle,
-  });
+  const modifiedData = Object.assign(
+    {
+      'Generated Title': generatedTitle,
+    },
+    data
+  );
   const dataContext = `Context: ${JSON.stringify(modifiedData)}\n\n`;
   const prompt =
     getConfigSheetValue(CONFIG.userSettings.description.fullPrompt) +

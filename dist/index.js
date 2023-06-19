@@ -611,6 +611,7 @@ function optimizeRow(headers, data) {
   genAttributes.forEach((attribute, index) => {
     if (
       !dataObj[attribute] &&
+      genAttributeValues[index] &&
       (!origAttributes.includes(attribute) ||
         Object.keys(dataObj).includes(attribute))
     ) {
@@ -691,9 +692,12 @@ function fetchTitleGenerationData(data) {
   return res;
 }
 function fetchDescriptionGenerationData(data, generatedTitle) {
-  const modifiedData = Object.assign(data, {
-    'Generated Title': generatedTitle,
-  });
+  const modifiedData = Object.assign(
+    {
+      'Generated Title': generatedTitle,
+    },
+    data
+  );
   const dataContext = `Context: ${JSON.stringify(modifiedData)}\n\n`;
   const prompt =
     getConfigSheetValue(CONFIG.userSettings.description.fullPrompt) +
