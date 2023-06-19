@@ -16,11 +16,7 @@ import { MultiLogger } from './logger';
  * limitations under the License.
  */
 export class Util {
-  static executeWithRetry(
-    maxRetries: number,
-    delayMillies: number,
-    fn: Function
-  ) {
+  static executeWithRetry(maxRetries: number, fn: Function, delayMillies = 0) {
     let retryCount = 0;
 
     while (retryCount < maxRetries) {
