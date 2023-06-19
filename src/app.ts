@@ -38,29 +38,6 @@ const ATTRIBUTES_PROMPT_PART = 'product attribute values:';
 const SEPARATOR = '|';
 const WORD_MATCH_REGEX = /(\w|\s)*\w(?=")|\w+/g;
 
-// Get Vertex AI config info
-const vertexAiProjectId = getConfigSheetValue(
-  CONFIG.sheets.config.fields.vertexAiProjectId
-);
-const vertexAiLocation = getConfigSheetValue(
-  CONFIG.sheets.config.fields.vertexAiLocation
-);
-const vertexAiModelId = getConfigSheetValue(
-  CONFIG.sheets.config.fields.vertexAiModelId
-);
-const vertexAiModelTemperature = getConfigSheetValue(
-  CONFIG.sheets.config.fields.vertexAiModelTemperature
-);
-const vertexAiModelMaxOutputTokens = getConfigSheetValue(
-  CONFIG.sheets.config.fields.vertexAiModelMaxOutputTokens
-);
-const vertexAiModelTopK = getConfigSheetValue(
-  CONFIG.sheets.config.fields.vertexAiModelTopK
-);
-const vertexAiModelTopP = getConfigSheetValue(
-  CONFIG.sheets.config.fields.vertexAiModelTopP
-);
-
 /**
  * Handle 'onOpen' Sheets event to show menu.
  */
@@ -148,7 +125,7 @@ export function FEEDGEN_CREATE_JSON_CONTEXT_FOR_ITEM(itemId: string) {
     CONFIG.sheets.input.name
   );
   const itemIdColumnName = getConfigSheetValue(
-    CONFIG.sheets.config.fields.itemIdColumnName
+    CONFIG.userSettings.feed.itemIdColumnName
   );
 
   if (!inputSheet) return;
@@ -352,10 +329,10 @@ function optimizeRow(
   );
 
   const itemIdColumnName = getConfigSheetValue(
-    CONFIG.sheets.config.fields.itemIdColumnName
+    CONFIG.userSettings.feed.itemIdColumnName
   );
   const titleColumnName = getConfigSheetValue(
-    CONFIG.sheets.config.fields.titleColumnName
+    CONFIG.userSettings.feed.titleColumnName
   );
   const itemId = dataObj[itemIdColumnName];
   const origTitle = dataObj[titleColumnName];
@@ -459,17 +436,29 @@ function fetchTitleGenerationData(data: Record<string, unknown>): string {
   // Extra lines instruct LLM to comlpete what is missing. Don't remove.
   const dataContext = `Context: ${JSON.stringify(data)}\n\n`;
   const prompt =
-    getConfigSheetValue(CONFIG.sheets.config.fields.fullPrompt) + dataContext;
+    getConfigSheetValue(CONFIG.userSettings.title.fullPrompt) + dataContext;
   const res = Util.executeWithRetry(CONFIG.vertexAi.maxRetries, 0, () =>
     VertexHelper.getInstance(
-      vertexAiProjectId,
-      vertexAiLocation,
-      vertexAiModelId,
+      getConfigSheetValue(CONFIG.userSettings.vertexAi.gcpProjectId),
+      getConfigSheetValue(CONFIG.userSettings.vertexAi.gcpProjectLocation),
+      getConfigSheetValue(CONFIG.userSettings.vertexAi.languageModelId),
       {
-        temperature: Number(vertexAiModelTemperature),
-        maxOutputTokens: Number(vertexAiModelMaxOutputTokens),
-        topK: Number(vertexAiModelTopK),
-        topP: Number(vertexAiModelTopP),
+        temperature: Number(
+          getConfigSheetValue(
+            CONFIG.userSettings.title.modelParameters.temperature
+          )
+        ),
+        maxOutputTokens: Number(
+          getConfigSheetValue(
+            CONFIG.userSettings.title.modelParameters.maxOutputTokens
+          )
+        ),
+        topK: Number(
+          getConfigSheetValue(CONFIG.userSettings.title.modelParameters.topK)
+        ),
+        topP: Number(
+          getConfigSheetValue(CONFIG.userSettings.title.modelParameters.topP)
+        ),
       }
     ).predict(prompt)
   );
