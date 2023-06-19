@@ -277,7 +277,7 @@ const getGenerationMetrics = (
   inputWords: Set<string>,
   gapAttributesAndValues: Record<string, string>,
   originalInput: { [k: string]: string }
-): string[] => {
+): Record<string, string> => {
   const titleChanged = origTitle !== genTitle;
   const addedAttributes = Util.getSetDifference(genAttributes, origAttributes);
   const newWordsAdded = new Set<String>();
@@ -304,12 +304,14 @@ const getGenerationMetrics = (
       Number(gapAttributesPresent.length > 0) +
       Number(gapAttributesInvented.length > 0)) /
     5;
-  return [
-    totalScore.toString(), // 0-1 score
-    titleChanged.toString(),
-    addedAttributes.map((attr: string) => `<${attr}>`).join(' '),
-    [...newWordsAdded].join(` ${SEPARATOR} `),
-  ];
+  return {
+    totalScore: totalScore.toString(),
+    titleChanged: titleChanged.toString(),
+    addedAttributes: addedAttributes
+      .map((attr: string) => `<${attr}>`)
+      .join(' '),
+    newWordsAdded: [...newWordsAdded].join(` ${SEPARATOR} `),
+  };
 };
 
 function getConfigSheetValue(field: { row: number; col: number }) {
@@ -339,9 +341,12 @@ function optimizeRow(
     dataObj[getConfigSheetValue(CONFIG.userSettings.feed.itemIdColumnName)];
   const origTitle =
     dataObj[getConfigSheetValue(CONFIG.userSettings.feed.titleColumnName)];
+  const origDescription =
+    dataObj[
+      getConfigSheetValue(CONFIG.userSettings.feed.descriptionColumnName)
+    ];
 
   const res = fetchTitleGenerationData(dataObj);
-  const genDescription = fetchDescriptionGenerationData(dataObj);
 
   const [origTemplateRow, genCategoryRow, genTemplateRow, genAttributesRow] =
     res.split('\n');
@@ -391,6 +396,7 @@ function optimizeRow(
   });
 
   const genTitle = titleFeatures.join(' ');
+  const genDescription = fetchDescriptionGenerationData(dataObj, genTitle);
 
   const inputWords = new Set<string>();
   Object.values(dataObj).forEach((value: string) => {
@@ -400,36 +406,37 @@ function optimizeRow(
     }
   });
 
-  const generationMetrics = getGenerationMetrics(
-    origTitle,
-    genTitle,
-    new Set(origAttributes),
-    new Set(genAttributes),
-    inputWords,
-    gapAttributesAndValues,
-    dataObj
-  );
-
-  const row: Array<string | boolean> = [];
-
-  row[CONFIG.sheets.generated.cols.approval] = false;
-  row[CONFIG.sheets.generated.cols.status] = 'Success';
-  row[CONFIG.sheets.generated.cols.id] = itemId;
-  row[CONFIG.sheets.generated.cols.titleOriginal] = origTitle;
-  row[CONFIG.sheets.generated.cols.titleGenerated] = genTitle;
-  row[CONFIG.sheets.generated.cols.descriptionGenerated] = genDescription;
+  const { totalScore, titleChanged, addedAttributes, newWordsAdded } =
+    getGenerationMetrics(
+      origTitle,
+      genTitle,
+      new Set(origAttributes),
+      new Set(genAttributes),
+      inputWords,
+      gapAttributesAndValues,
+      dataObj
+    );
 
   return [
-    ...row,
+    false, // approval
+    'Success', // status
+    itemId,
+    genTitle,
+    genDescription,
+    genCategory,
+    totalScore,
+    titleChanged,
     origTemplate,
     genTemplate,
-    genCategory,
-    ...generationMetrics,
+    addedAttributes,
+    newWordsAdded,
     Object.keys(gapAttributesAndValues).length > 0
       ? JSON.stringify(gapAttributesAndValues)
       : '',
-    res,
     JSON.stringify(dataObj),
+    origTitle,
+    origDescription,
+    `${res}\nproduct description: ${genDescription}`, // API response
   ];
 }
 
@@ -466,9 +473,15 @@ function fetchTitleGenerationData(data: Record<string, unknown>): string {
   return res;
 }
 
-function fetchDescriptionGenerationData(data: Record<string, unknown>): string {
-  // Extra lines (\n) instruct LLM to comlpete what is missing. Don't remove.
-  const dataContext = `Context: ${JSON.stringify(data)}\n\n`;
+function fetchDescriptionGenerationData(
+  data: Record<string, unknown>,
+  generatedTitle: string
+): string {
+  // Extra lines (\n) instruct LLM to complete what is missing. Don't remove.
+  const modifiedData = Object.assign(data, {
+    'Generated Title': generatedTitle,
+  });
+  const dataContext = `Context: ${JSON.stringify(modifiedData)}\n\n`;
   const prompt =
     getConfigSheetValue(CONFIG.userSettings.description.fullPrompt) +
     dataContext;
@@ -664,6 +677,7 @@ export function exportApproved() {
   const outputHeader: string[] = [
     CONFIG.sheets.output.cols.id.name,
     CONFIG.sheets.output.cols.title.name,
+    CONFIG.sheets.output.cols.description.name,
     ...gapAttributes,
     ...inventedAttributes.map(key => `new_${key}`),
   ];
@@ -677,9 +691,9 @@ export function exportApproved() {
     resRow[CONFIG.sheets.output.cols.id.idx] =
       row[CONFIG.sheets.generated.cols.id];
     resRow[CONFIG.sheets.output.cols.title.idx] =
-      row[CONFIG.sheets.generated.cols.approval] === true
-        ? row[CONFIG.sheets.generated.cols.titleGenerated]
-        : row[CONFIG.sheets.generated.cols.titleOriginal];
+      row[CONFIG.sheets.generated.cols.titleGenerated];
+    resRow[CONFIG.sheets.output.cols.description.idx] =
+      row[CONFIG.sheets.generated.cols.descriptionGenerated];
 
     const gapAttributesAndValues = row[
       CONFIG.sheets.generated.cols.gapAttributes

@@ -30,6 +30,10 @@ export const CONFIG = {
         row: 3,
         col: 2,
       },
+      descriptionColumnName: {
+        row: 4,
+        col: 2,
+      },
     },
     vertexAi: {
       gcpProjectId: {
@@ -109,11 +113,10 @@ export const CONFIG = {
         approval: 0,
         status: 1,
         id: 2,
-        titleOriginal: 3,
-        titleGenerated: 4,
-        descriptionGenerated: 5,
-        gapAttributes: 13,
-        originalInput: 15,
+        titleGenerated: 3,
+        descriptionGenerated: 4,
+        gapAttributes: 12,
+        originalInput: 13,
       },
     },
     output: {
@@ -129,8 +132,12 @@ export const CONFIG = {
           idx: 2,
           name: 'Title',
         },
+        description: {
+          idx: 3,
+          name: 'Description',
+        },
         gapCols: {
-          start: 3,
+          start: 4,
         },
       },
     },
