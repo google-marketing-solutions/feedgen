@@ -70,6 +70,9 @@ export class VertexHelper {
     const response = UrlFetchApp.fetch(url, params);
 
     if (response.getResponseCode() === 429) {
+      MultiLogger.getInstance().log(
+        `Waiting ${CONFIG.vertexAi.quotaLimitDelay}s as API quota limit has been reached...`
+      );
       Utilities.sleep(CONFIG.vertexAi.quotaLimitDelay);
       return this.fetchJson(url, params);
     }
