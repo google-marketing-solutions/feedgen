@@ -111,6 +111,7 @@ export const CONFIG = {
         id: 2,
         titleOriginal: 3,
         titleGenerated: 4,
+        descriptionGenerated: 5,
         gapAttributes: 13,
         originalInput: 15,
       },

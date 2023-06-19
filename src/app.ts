@@ -38,6 +38,16 @@ const ATTRIBUTES_PROMPT_PART = 'product attribute values:';
 const SEPARATOR = '|';
 const WORD_MATCH_REGEX = /(\w|\s)*\w(?=")|\w+/g;
 
+const [
+  vertexAiGcpProjectId,
+  vertexAiGcpProjectLocation,
+  vertexAiLanguageModelId,
+] = [
+  getConfigSheetValue(CONFIG.userSettings.vertexAi.gcpProjectId),
+  getConfigSheetValue(CONFIG.userSettings.vertexAi.gcpProjectLocation),
+  getConfigSheetValue(CONFIG.userSettings.vertexAi.languageModelId),
+];
+
 /**
  * Handle 'onOpen' Sheets event to show menu.
  */
@@ -325,16 +335,13 @@ function optimizeRow(
     data.map((item, index) => [headers[index], item])
   );
 
-  const itemIdColumnName = getConfigSheetValue(
-    CONFIG.userSettings.feed.itemIdColumnName
-  );
-  const titleColumnName = getConfigSheetValue(
-    CONFIG.userSettings.feed.titleColumnName
-  );
-  const itemId = dataObj[itemIdColumnName];
-  const origTitle = dataObj[titleColumnName];
+  const itemId =
+    dataObj[getConfigSheetValue(CONFIG.userSettings.feed.itemIdColumnName)];
+  const origTitle =
+    dataObj[getConfigSheetValue(CONFIG.userSettings.feed.titleColumnName)];
 
   const res = fetchTitleGenerationData(dataObj);
+  const genDescription = fetchDescriptionGenerationData(dataObj);
 
   const [origTemplateRow, genCategoryRow, genTemplateRow, genAttributesRow] =
     res.split('\n');
@@ -410,13 +417,13 @@ function optimizeRow(
   row[CONFIG.sheets.generated.cols.id] = itemId;
   row[CONFIG.sheets.generated.cols.titleOriginal] = origTitle;
   row[CONFIG.sheets.generated.cols.titleGenerated] = genTitle;
+  row[CONFIG.sheets.generated.cols.descriptionGenerated] = genDescription;
 
   return [
     ...row,
     origTemplate,
     genTemplate,
     genCategory,
-    genAttributeValues.join(', '),
     ...generationMetrics,
     Object.keys(gapAttributesAndValues).length > 0
       ? JSON.stringify(gapAttributesAndValues)
@@ -431,11 +438,11 @@ function fetchTitleGenerationData(data: Record<string, unknown>): string {
   const dataContext = `Context: ${JSON.stringify(data)}\n\n`;
   const prompt =
     getConfigSheetValue(CONFIG.userSettings.title.fullPrompt) + dataContext;
-  const res = Util.executeWithRetry(CONFIG.vertexAi.maxRetries, 0, () =>
+  const res = Util.executeWithRetry(CONFIG.vertexAi.maxRetries, () =>
     VertexHelper.getInstance(
-      getConfigSheetValue(CONFIG.userSettings.vertexAi.gcpProjectId),
-      getConfigSheetValue(CONFIG.userSettings.vertexAi.gcpProjectLocation),
-      getConfigSheetValue(CONFIG.userSettings.vertexAi.languageModelId),
+      vertexAiGcpProjectId,
+      vertexAiGcpProjectLocation,
+      vertexAiLanguageModelId,
       {
         temperature: Number(
           getConfigSheetValue(
@@ -456,7 +463,44 @@ function fetchTitleGenerationData(data: Record<string, unknown>): string {
       }
     ).predict(prompt)
   );
+  return res;
+}
 
+function fetchDescriptionGenerationData(data: Record<string, unknown>): string {
+  // Extra lines (\n) instruct LLM to comlpete what is missing. Don't remove.
+  const dataContext = `Context: ${JSON.stringify(data)}\n\n`;
+  const prompt =
+    getConfigSheetValue(CONFIG.userSettings.description.fullPrompt) +
+    dataContext;
+  const res = Util.executeWithRetry(CONFIG.vertexAi.maxRetries, () =>
+    VertexHelper.getInstance(
+      vertexAiGcpProjectId,
+      vertexAiGcpProjectLocation,
+      vertexAiLanguageModelId,
+      {
+        temperature: Number(
+          getConfigSheetValue(
+            CONFIG.userSettings.description.modelParameters.temperature
+          )
+        ),
+        maxOutputTokens: Number(
+          getConfigSheetValue(
+            CONFIG.userSettings.description.modelParameters.maxOutputTokens
+          )
+        ),
+        topK: Number(
+          getConfigSheetValue(
+            CONFIG.userSettings.description.modelParameters.topK
+          )
+        ),
+        topP: Number(
+          getConfigSheetValue(
+            CONFIG.userSettings.description.modelParameters.topP
+          )
+        ),
+      }
+    ).predict(prompt)
+  );
   return res;
 }
 
