@@ -188,13 +188,11 @@ export function generateNextRow() {
 
   if (!inputSheet || !generatedSheet) return;
 
-  // Get row to be processed
   const rowIndex = getNextRowIndexToBeGenerated();
 
   if (rowIndex >= inputSheet.getLastRow() - CONFIG.sheets.input.startRow) {
     return -1;
   }
-
   MultiLogger.getInstance().log(`Generating for row ${rowIndex}`);
 
   const row = inputSheet
@@ -297,7 +295,7 @@ const getGenerationMetrics = (
       Number(gapAttributesInvented.length > 0)) /
     5;
   return [
-    totalScore.toString(), // 0-1 score total
+    totalScore.toString(), // 0-1 score
     titleChanged.toString(),
     addedAttributes.map((attr: string) => `<${attr}>`).join(' '),
     [...newWordsAdded].join(` ${SEPARATOR} `),
@@ -323,7 +321,6 @@ function optimizeRow(
   headers: string[],
   data: string[]
 ): Array<string | boolean | number> {
-  // Build context object
   const dataObj = Object.fromEntries(
     data.map((item, index) => [headers[index], item])
   );
@@ -337,7 +334,6 @@ function optimizeRow(
   const itemId = dataObj[itemIdColumnName];
   const origTitle = dataObj[titleColumnName];
 
-  // Generate title with all available context
   const res = fetchTitleGenerationData(dataObj);
 
   const [origTemplateRow, genCategoryRow, genTemplateRow, genAttributesRow] =
@@ -371,8 +367,7 @@ function optimizeRow(
     .filter((x: string) => x)
     .map((x: string) => x.trim());
 
-  // Collect all title features with priority on user provided data
-  // (use generated only when user provided data is not available)
+  // Use generated data only when user provided data is not available
   const titleFeatures: string[] = [];
   const gapAttributesAndValues: Record<string, string> = {};
 
@@ -388,7 +383,6 @@ function optimizeRow(
     titleFeatures.push(dataObj[attribute] || genAttributeValues[index]);
   });
 
-  // create title solely based on titleFeatures to reduce hallucination potential
   const genTitle = titleFeatures.join(' ');
 
   const inputWords = new Set<string>();
@@ -433,7 +427,7 @@ function optimizeRow(
 }
 
 function fetchTitleGenerationData(data: Record<string, unknown>): string {
-  // Extra lines instruct LLM to comlpete what is missing. Don't remove.
+  // Extra lines (\n) instruct LLM to comlpete what is missing. Don't remove.
   const dataContext = `Context: ${JSON.stringify(data)}\n\n`;
   const prompt =
     getConfigSheetValue(CONFIG.userSettings.title.fullPrompt) + dataContext;
@@ -550,20 +544,14 @@ export function clearGeneratedRows() {
  */
 export function approveFiltered() {
   MultiLogger.getInstance().log('Approving filtered rows...');
-  // Load 'Generated' sheet
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(
     CONFIG.sheets.generated.name
   );
-
-  // Load 'Generated' rows
-  //const rows = getSelectedGeneratedRows();
   const rows = getGeneratedRows();
 
   if (!sheet || !rows) return;
 
-  // Update status to 'Approved'
   rows.map((row, index) => {
-    // Update title status
     row[CONFIG.sheets.generated.cols.approval] = sheet.isRowHiddenByFilter(
       index + CONFIG.sheets.generated.startRow + 1
     )
@@ -572,10 +560,7 @@ export function approveFiltered() {
 
     return row;
   });
-
-  // Write back to 'FeedGen' sheet
   writeGeneratedRows(rows);
-
   MultiLogger.getInstance().log('Writing approved rows...');
 }
 
@@ -621,7 +606,6 @@ function getGapAndInventedAttributes(rows: string[][]) {
 export function exportApproved() {
   MultiLogger.getInstance().log('Exporting approved rows...');
 
-  // Load approved 'FeedGen' rows
   const feedGenRows = getGeneratedRows().filter(
     row => row[CONFIG.sheets.generated.cols.approval] === true
   );
@@ -673,10 +657,6 @@ export function exportApproved() {
 
     rowsToWrite.push(resRow);
   }
-
-  // Clear 'Approved' sheet
   clearApprovedData();
-
-  // Write to 'Approved' sheet
   writeApprovedData(outputHeader, rowsToWrite);
 }
