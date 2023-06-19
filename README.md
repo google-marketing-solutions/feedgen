@@ -87,13 +87,14 @@ button as shown below.
 
 Afterwards, users should navigate to the **Config** worksheet to configure feed
 settings, Vertex AI API settings as well as settings to control the content
-generation using few-shot prompting; this is where they would select the best
-3-10 samples from their own input feed as shown below to customise the model's
-responses towards their data.
+generation.
 
 <img src='./img/config.png' alt='Config' />
 
-To help with this process, FeedGen provides a utility Google Sheets formula:
+All available data is used to generate descriptions, while titles use few-shot
+prompting; a technique where users would select samples from their own input
+feed as shown below to customise the model's responses towards their data. To
+help with this process, FeedGen provides a utility Google Sheets formula:
 
 ```sql
 =FEEDGEN_CREATE_JSON_CONTEXT_FOR_ITEM('Input Feed'!A2)
