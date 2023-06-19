@@ -78,21 +78,25 @@ const CONFIG = {
         row: 17,
         col: 5,
       },
+      preferGeneratedAttributes: {
+        row: 18,
+        col: 2,
+      },
       modelParameters: {
         temperature: {
-          row: 18,
-          col: 2,
-        },
-        maxOutputTokens: {
           row: 19,
           col: 2,
         },
-        topK: {
+        maxOutputTokens: {
           row: 20,
           col: 2,
         },
-        topP: {
+        topK: {
           row: 21,
+          col: 2,
+        },
+        topP: {
+          row: 22,
           col: 2,
         },
       },
@@ -606,6 +610,9 @@ function optimizeRow(headers, data) {
     .split(SEPARATOR)
     .filter(x => x)
     .map(x => x.trim());
+  const preferGeneratedAttributes = getConfigSheetValue(
+    CONFIG.userSettings.title.preferGeneratedAttributes
+  );
   const titleFeatures = [];
   const gapAttributesAndValues = {};
   genAttributes.forEach((attribute, index) => {
@@ -617,7 +624,13 @@ function optimizeRow(headers, data) {
     ) {
       gapAttributesAndValues[attribute] = genAttributeValues[index];
     }
-    titleFeatures.push(dataObj[attribute] || genAttributeValues[index]);
+    titleFeatures.push(
+      `${
+        preferGeneratedAttributes
+          ? genAttributeValues[index]
+          : dataObj[attribute] || genAttributeValues[index]
+      }`.trim()
+    );
   });
   const genTitle = titleFeatures.join(' ');
   const genDescription = fetchDescriptionGenerationData(dataObj, genTitle);

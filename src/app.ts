@@ -380,6 +380,10 @@ function optimizeRow(
     .map((x: string) => x.trim());
 
   // Use generated data only when user provided data is not available
+  // Override with preferGeneratedAttributes
+  const preferGeneratedAttributes = getConfigSheetValue(
+    CONFIG.userSettings.title.preferGeneratedAttributes
+  );
   const titleFeatures: string[] = [];
   const gapAttributesAndValues: Record<string, string> = {};
 
@@ -393,7 +397,13 @@ function optimizeRow(
     ) {
       gapAttributesAndValues[attribute] = genAttributeValues[index];
     }
-    titleFeatures.push(dataObj[attribute] || genAttributeValues[index]);
+    titleFeatures.push(
+      `${
+        preferGeneratedAttributes
+          ? genAttributeValues[index]
+          : dataObj[attribute] || genAttributeValues[index]
+      }`.trim()
+    );
   });
 
   const genTitle = titleFeatures.join(' ');

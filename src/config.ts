@@ -78,21 +78,25 @@ export const CONFIG = {
         row: 17,
         col: 5,
       },
+      preferGeneratedAttributes: {
+        row: 18,
+        col: 2,
+      },
       modelParameters: {
         temperature: {
-          row: 18,
-          col: 2,
-        },
-        maxOutputTokens: {
           row: 19,
           col: 2,
         },
-        topK: {
+        maxOutputTokens: {
           row: 20,
           col: 2,
         },
-        topP: {
+        topK: {
           row: 21,
+          col: 2,
+        },
+        topP: {
+          row: 22,
           col: 2,
         },
       },

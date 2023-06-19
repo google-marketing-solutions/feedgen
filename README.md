@@ -104,10 +104,19 @@ Which can be used to fill up the “Context” information field in the few-shot
 prompt examples table by dragging it down, just as for other Sheets formulas.
 Afterwards, users must manually fill in the remaining columns of the few-shot
 prompt examples table, which define the expected output by the LLM. These
-examples are very important as they provide the basis upon which the LLM learns
-how it should generate content for the rest of the input feed.
+examples are very important as they provide the basis upon which the LLM will
+learn how it should generate content for the rest of the input feed.
 
 <img src='./img/few-shot.png' alt='Few-Shot' />
+
+FeedGen defaults to using attributes from the input feed instead of generated
+attribute values for composing the title, to avoid LLM hallucinations and ensure
+consistency. For example, the value `Blue` from the input feed attribute
+**Color** for a specific feed item will be used for its corresponding title
+instead of, say, a generated value `Navy`. This behaviour can be overriden with
+the `Prefer Generated Attributes over Input` checkbox in the
+**Title Prompt Settings**, and is useful whenever the input feed itself contains
+erroneous or poor quality data.
 
 Now users are ready to optimise their feeds. Use the top navigation menu to
 launch the FeedGen sidebar and start generating and validating content in the
