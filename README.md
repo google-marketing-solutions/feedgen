@@ -187,8 +187,8 @@ the following points, which contribute either positively or negatively to the sc
 |-|-|-|-|-|-|
 |0.8|+0.2|+0.2|0|+0.2|+0.2|
 
-Once you have completed all the necessary approval and are satisfied with the
-output, clicking **Export to Output Feed** will transfer all approved feed items
+Once you have completed all the necessary approvals and are satisfied with the
+output, click **Export to Output Feed** to transfer all approved feed items
 to the **Output Feed** worksheet.
 
 The last step is to connect the spreadsheet to MC as a supplemental feed,
