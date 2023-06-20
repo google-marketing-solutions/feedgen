@@ -36,7 +36,8 @@ const CATEGORY_PROMPT_PART = 'product category:';
 const TEMPLATE_PROMPT_PART = 'product attribute keys:';
 const ATTRIBUTES_PROMPT_PART = 'product attribute values:';
 const SEPARATOR = '|';
-const WORD_MATCH_REGEX = /(\w|\s)*\w(?=")|\w+/g;
+const WORD_MATCH_REGEX =
+  /([A-Za-zÀ-ÖØ-öø-ÿ0-9]|\s)*\[A-Za-zÀ-ÖØ-öø-ÿ0-9](?=")|\[A-Za-zÀ-ÖØ-öø-ÿ0-9]+/g;
 
 const [
   vertexAiGcpProjectId,
@@ -380,6 +381,10 @@ function optimizeRow(
     .map((x: string) => x.trim());
 
   // Use generated data only when user provided data is not available
+  // Override with preferGeneratedAttributes
+  const preferGeneratedAttributes = getConfigSheetValue(
+    CONFIG.userSettings.title.preferGeneratedAttributes
+  );
   const titleFeatures: string[] = [];
   const gapAttributesAndValues: Record<string, string> = {};
 
@@ -393,7 +398,13 @@ function optimizeRow(
     ) {
       gapAttributesAndValues[attribute] = genAttributeValues[index];
     }
-    titleFeatures.push(dataObj[attribute] || genAttributeValues[index]);
+    titleFeatures.push(
+      `${
+        preferGeneratedAttributes
+          ? genAttributeValues[index]
+          : dataObj[attribute] || genAttributeValues[index]
+      }`.trim()
+    );
   });
 
   const genTitle = titleFeatures.join(' ');
