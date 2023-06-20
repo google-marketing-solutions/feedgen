@@ -113,7 +113,7 @@ FeedGen defaults to using attributes from the input feed instead of generated
 attribute values for composing the title, to avoid LLM hallucinations and ensure
 consistency. For example, the value `Blue` from the input feed attribute
 **Color** for a specific feed item will be used for its corresponding title
-instead of, say, a generated value `Navy`. This behaviour can be overriden with
+instead of, say, a generated value `Navy`. This behaviour can be overridden with
 the `Prefer Generated Attributes over Input` checkbox in the
 **Title Prompt Settings**, and is useful whenever the input feed itself contains
 erroneous or poor quality data.
