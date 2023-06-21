@@ -149,10 +149,7 @@ limitations under the License.
       },
     };
 
-    let startTime = Date.now();
-    let processedRowsCount = 1;
     let cancelled = false;
-    //let interval;
 
     function setStatus(status, error = undefined, customText = undefined) {
       const statusElem = document.getElementById('status');
@@ -176,17 +173,6 @@ limitations under the License.
       errorElem.innerHTML = errorMessage;
     }
 
-    function updateElapsed() {
-      const elapsed = Math.floor((Date.now() - startTime)/1000);
-      const timePerRow = Math.round(elapsed/processedRowsCount);
-
-      setText('metrics', `Running for ${elapsed} seconds (${timePerRow}s/row)`);
-    }
-
-    function setText(id, message) {
-      document.getElementById(id).textContent = message
-    }
-
     function log(message) {
       console.log(message);
       const node = document.createElement('li');
@@ -195,6 +181,7 @@ limitations under the License.
     }
 
     async function startGenerating(resume = false) {
+      cancelled = false;
       setStatus(STATUS.running);
 
       // Hide 'Start' button
@@ -203,11 +190,7 @@ limitations under the License.
       // Show 'Stop' button
       document.getElementById('stop-generating').classList.remove('hidden');
 
-      cancelled = false;
-      startTime = Date.now();
-
       if (!resume) {
-        // Clear Generated Rows
         await new Promise((resolve, reject) => {
           google.script.run
             .withSuccessHandler(res => resolve(res))
@@ -215,37 +198,33 @@ limitations under the License.
             .clearGeneratedRows();
         });
       }
-
-      // Get input rows count
-      let totalRows = await new Promise((resolve, reject) => {
+      const unprocessedInputRows = await new Promise((resolve, reject) => {
         google.script.run
           .withSuccessHandler(res => resolve(res))
           .withFailureHandler(err => log(err))
-          .getTotalInputRows();
+          .getUnprocessedInputRows(resume);
       });
+      const inputHeaders = unprocessedInputRows.shift();
+      inputHeaders.pop();
+      const maxBatchSize = 30;
 
-      // Get generated rows count
-      let currentlyProcessedRow = 0;
-
-      do {
+      for (let i = 0; i < unprocessedInputRows.length; i += maxBatchSize) {
         if (cancelled) {
           break;
         }
+        const batch = unprocessedInputRows.slice(i, i + maxBatchSize);
 
-        // Update status
-        setStatus(STATUS.running, null, `Processed ${currentlyProcessedRow}/${totalRows}`)
-
-        // Generate next row
-        currentlyProcessedRow = await new Promise((resolve, reject) => {
-            google.script.run
-            .withSuccessHandler(res => resolve(res + 1))
-            .withFailureHandler(err => log(err))
-            .generateNextRow();
-          });
-
-        processedRowsCount++;
-      } while (currentlyProcessedRow > 0);
-
+        await Promise.all(
+          batch.map(row => {
+            return new Promise((resolve, reject) => {
+              google.script.run
+                .withSuccessHandler(res => resolve(res))
+                .withFailureHandler(err => log(err))
+                .generateRow(inputHeaders, row);
+            });
+          })
+        );
+      }
       stopGenerating();
     }
 
@@ -288,13 +267,6 @@ limitations under the License.
         .querySelectorAll('section')
         .forEach(elem => elem.classList.add('hidden'));
       document.getElementById(sectionId).classList.remove('hidden');
-    }
-
-    function goBack() {
-      document
-        .querySelectorAll('section')
-        .forEach(elem => elem.classList.add('hidden'));
-      document.getElementById('main').classList.remove('hidden');
     }
   </script>
 </head>

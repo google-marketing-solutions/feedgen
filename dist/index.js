@@ -401,39 +401,6 @@ function init() {
     .getSheetByName(CONFIG.sheets.config.name)
     ?.getDataRange();
 }
-function findRowIndex(
-  sheetName,
-  searchValues,
-  column,
-  offset = 0,
-  negate = false
-) {
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(sheetName);
-  if (!sheet) {
-    throw new Error(`Sheet ${sheetName} not found`);
-  }
-  if (sheet.getLastRow() - offset + 1 === 0) {
-    return 0;
-  }
-  const range = sheet?.getRange(
-    offset,
-    column,
-    sheet.getLastRow() - offset + 1,
-    1
-  );
-  if (!range) {
-    throw new Error('Invalid range');
-  }
-  const data = range.getValues();
-  const rowIndex = data.flat().findIndex(cell => {
-    if (negate) {
-      return !searchValues.includes(cell);
-    } else {
-      return searchValues.includes(cell);
-    }
-  });
-  return rowIndex >= 0 ? rowIndex : -1;
-}
 function showSidebar() {
   const html = HtmlService.createTemplateFromFile('static/index').evaluate();
   html.setTitle('FeedGen');
@@ -457,83 +424,63 @@ function FEEDGEN_CREATE_JSON_CONTEXT_FOR_ITEM(itemId) {
   );
   return JSON.stringify(contextObject);
 }
-function getNextRowIndexToBeGenerated() {
-  const index = findRowIndex(
-    CONFIG.sheets.generated.name,
-    [Status.SUCCESS],
-    CONFIG.sheets.generated.cols.status + 1,
-    CONFIG.sheets.generated.startRow + 1,
-    true
-  );
-  if (index < 0) {
-    const totalGeneratedRows = SheetsService.getInstance().getTotalRows(
-      CONFIG.sheets.generated.name
-    );
-    if (typeof totalGeneratedRows === 'undefined') {
-      throw new Error('Error reading generated rows');
-    }
-    return totalGeneratedRows - CONFIG.sheets.generated.startRow;
-  }
-  return index;
-}
-function generateNextRow() {
+function getUnprocessedInputRows(filterExisting) {
   const inputSheet = SpreadsheetApp.getActive().getSheetByName(
     CONFIG.sheets.input.name
   );
   const generatedSheet = SpreadsheetApp.getActive().getSheetByName(
     CONFIG.sheets.generated.name
   );
-  if (!inputSheet || !generatedSheet) return;
-  const rowIndex = getNextRowIndexToBeGenerated();
-  if (rowIndex >= inputSheet.getLastRow() - CONFIG.sheets.input.startRow) {
-    return -1;
-  }
-  MultiLogger.getInstance().log(`Generating for row ${rowIndex}`);
-  const row = inputSheet
-    .getRange(
-      CONFIG.sheets.input.startRow + 1 + rowIndex,
-      1,
-      1,
-      inputSheet.getLastColumn()
+  let inputRows = SheetsService.getInstance().getNonEmptyRows(inputSheet);
+  inputRows.forEach((row, index) => {
+    row.push(CONFIG.sheets.generated.startRow + index);
+  });
+  const generatedRowIds = SheetsService.getInstance()
+    .getNonEmptyRows(generatedSheet)
+    .filter(
+      row => String(row[CONFIG.sheets.generated.cols.status]) === Status.SUCCESS
     )
-    .getValues()[0];
+    .map(row => String(row[CONFIG.sheets.generated.cols.id]));
+  if (filterExisting && generatedRowIds.length) {
+    const itemIdIndex = inputRows[0].indexOf(
+      String(getConfigSheetValue(CONFIG.userSettings.feed.itemIdColumnName))
+    );
+    inputRows = inputRows.filter(
+      row => !generatedRowIds.includes(String(row[itemIdIndex]))
+    );
+  }
+  return inputRows;
+}
+function generateRow(headers, row) {
+  const rowIndex = Number(row.pop());
   try {
-    const inputHeaders = SheetsService.getInstance().getHeaders(inputSheet);
-    const optimizedRow = optimizeRow(inputHeaders, row);
+    const optimizedRow = optimizeRow(headers, row);
     SheetsService.getInstance().setValuesInDefinedRange(
       CONFIG.sheets.generated.name,
-      CONFIG.sheets.generated.startRow + 1 + rowIndex,
+      rowIndex,
       1,
       [optimizedRow]
     );
     MultiLogger.getInstance().log(Status.SUCCESS);
   } catch (e) {
     MultiLogger.getInstance().log(`Error: ${e}`);
+    const itemIdIndex = headers.indexOf(
+      String(getConfigSheetValue(CONFIG.userSettings.feed.itemIdColumnName))
+    );
     const failedRow = [];
     failedRow[
       CONFIG.sheets.generated.cols.status
     ] = `${Status.FAILED}. See log for more details.`;
-    generatedSheet.appendRow(failedRow);
+    failedRow[CONFIG.sheets.generated.cols.id] = String(row[itemIdIndex]);
+    SheetsService.getInstance().setValuesInDefinedRange(
+      CONFIG.sheets.generated.name,
+      rowIndex,
+      1,
+      [failedRow]
+    );
   }
-  return rowIndex;
 }
-function getTotalInputRows() {
-  const totalRows = SheetsService.getInstance().getTotalRows(
-    CONFIG.sheets.input.name
-  );
-  return typeof totalRows === 'undefined'
-    ? 0
-    : totalRows - CONFIG.sheets.input.startRow;
-}
-function getTotalGeneratedRows() {
-  const totalRows = SheetsService.getInstance().getTotalRows(
-    CONFIG.sheets.generated.name
-  );
-  return typeof totalRows === 'undefined'
-    ? 0
-    : totalRows - CONFIG.sheets.generated.startRow;
-}
-const getGenerationMetrics = (
+function getGenerationMetrics(
   origTitle,
   genTitle,
   origAttributes,
@@ -541,7 +488,7 @@ const getGenerationMetrics = (
   inputWords,
   gapAttributesAndValues,
   originalInput
-) => {
+) {
   const titleChanged = origTitle !== genTitle;
   const addedAttributes = Util.getSetDifference(genAttributes, origAttributes);
   const newWordsAdded = new Set();
@@ -570,7 +517,7 @@ const getGenerationMetrics = (
     addedAttributes: addedAttributes.map(attr => `<${attr}>`).join(' '),
     newWordsAdded: [...newWordsAdded].join(` ${SEPARATOR} `),
   };
-};
+}
 function getConfigSheetValue(field) {
   return SheetsService.getInstance().getCellValue(
     CONFIG.sheets.config.name,
