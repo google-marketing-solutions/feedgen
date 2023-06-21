@@ -78,7 +78,8 @@ export function showSidebar() {
 }
 
 /**
- * Sheets utility function to fetch JSON'd context from input feed for few shot examples.
+ * Sheets utility function to fetch JSON'd context from input feed for few-shot
+ * examples.
  */
 export function FEEDGEN_CREATE_JSON_CONTEXT_FOR_ITEM(itemId: string) {
   const inputSheet = SpreadsheetApp.getActive().getSheetByName(
@@ -104,7 +105,13 @@ export function FEEDGEN_CREATE_JSON_CONTEXT_FOR_ITEM(itemId: string) {
   return JSON.stringify(contextObject);
 }
 
-export function getUnprocessedInputRows(filterExisting: boolean) {
+/**
+ * Fetch all unprocessed rows, optionally filtering out already processed ones.
+ *
+ * @param filterProcessed Whether to filter processed rows or not.
+ * @returns All unprocessed rows, with or without already processed ones.
+ */
+export function getUnprocessedInputRows(filterProcessed: boolean) {
   const inputSheet = SpreadsheetApp.getActive().getSheetByName(
     CONFIG.sheets.input.name
   );
@@ -112,16 +119,23 @@ export function getUnprocessedInputRows(filterExisting: boolean) {
     CONFIG.sheets.generated.name
   );
   let inputRows = SheetsService.getInstance().getNonEmptyRows(inputSheet!);
+
+  // Add a 'target ouput row' index value to each input row, except header row
   inputRows.forEach((row, index) => {
-    row.push(CONFIG.sheets.generated.startRow + index);
+    if (index > 0) {
+      row.push(CONFIG.sheets.generated.startRow + index);
+    }
   });
+
   const generatedRowIds = SheetsService.getInstance()
     .getNonEmptyRows(generatedSheet!)
     .filter(
       row => String(row[CONFIG.sheets.generated.cols.status]) === Status.SUCCESS
     )
     .map(row => String(row[CONFIG.sheets.generated.cols.id]));
-  if (filterExisting && generatedRowIds.length) {
+
+  if (filterProcessed && generatedRowIds.length) {
+    // Fetch index of the ItemId column from the headers row
     const itemIdIndex = inputRows[0].indexOf(
       String(getConfigSheetValue(CONFIG.userSettings.feed.itemIdColumnName))
     );
@@ -132,35 +146,42 @@ export function getUnprocessedInputRows(filterExisting: boolean) {
   return inputRows;
 }
 
+/**
+ * Generates content for a single feed input row and writes it to the output
+ * sheet at the row's defined "target output row" index value, whether as a
+ * success or failure. This method is the target of async requests fired by the
+ * HTML sidebar defined in `index.html`, and therefore must be a self-contained
+ * unit; all needed inputs are provided, and its outcome must always be
+ * deterministic.
+ *
+ * @param headers The header row freom the input feed.
+ * @param row The corresponding input row data that needs to be generated. A
+ *     'target output row' index value is appened to the input row.
+ */
 export function generateRow(headers: string[], row: string[]) {
+  // Get the 'target output row' index value
   const rowIndex = Number(row.pop());
-  try {
-    const optimizedRow = optimizeRow(headers, row);
+  let outputRow: (string | number | boolean)[] = [];
 
-    SheetsService.getInstance().setValuesInDefinedRange(
-      CONFIG.sheets.generated.name,
-      rowIndex,
-      1,
-      [optimizedRow]
-    );
+  try {
+    outputRow = optimizeRow(headers, row);
     MultiLogger.getInstance().log(Status.SUCCESS);
   } catch (e) {
     MultiLogger.getInstance().log(`Error: ${e}`);
     const itemIdIndex = headers.indexOf(
       String(getConfigSheetValue(CONFIG.userSettings.feed.itemIdColumnName))
     );
-    const failedRow = [];
-    failedRow[
+    outputRow[
       CONFIG.sheets.generated.cols.status
     ] = `${Status.FAILED}. See log for more details.`;
-    failedRow[CONFIG.sheets.generated.cols.id] = String(row[itemIdIndex]);
-    SheetsService.getInstance().setValuesInDefinedRange(
-      CONFIG.sheets.generated.name,
-      rowIndex,
-      1,
-      [failedRow]
-    );
+    outputRow[CONFIG.sheets.generated.cols.id] = String(row[itemIdIndex]);
   }
+  SheetsService.getInstance().setValuesInDefinedRange(
+    CONFIG.sheets.generated.name,
+    rowIndex,
+    1,
+    [outputRow]
+  );
 }
 
 function getGenerationMetrics(

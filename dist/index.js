@@ -424,7 +424,7 @@ function FEEDGEN_CREATE_JSON_CONTEXT_FOR_ITEM(itemId) {
   );
   return JSON.stringify(contextObject);
 }
-function getUnprocessedInputRows(filterExisting) {
+function getUnprocessedInputRows(filterProcessed) {
   const inputSheet = SpreadsheetApp.getActive().getSheetByName(
     CONFIG.sheets.input.name
   );
@@ -433,7 +433,9 @@ function getUnprocessedInputRows(filterExisting) {
   );
   let inputRows = SheetsService.getInstance().getNonEmptyRows(inputSheet);
   inputRows.forEach((row, index) => {
-    row.push(CONFIG.sheets.generated.startRow + index);
+    if (index > 0) {
+      row.push(CONFIG.sheets.generated.startRow + index);
+    }
   });
   const generatedRowIds = SheetsService.getInstance()
     .getNonEmptyRows(generatedSheet)
@@ -441,7 +443,7 @@ function getUnprocessedInputRows(filterExisting) {
       row => String(row[CONFIG.sheets.generated.cols.status]) === Status.SUCCESS
     )
     .map(row => String(row[CONFIG.sheets.generated.cols.id]));
-  if (filterExisting && generatedRowIds.length) {
+  if (filterProcessed && generatedRowIds.length) {
     const itemIdIndex = inputRows[0].indexOf(
       String(getConfigSheetValue(CONFIG.userSettings.feed.itemIdColumnName))
     );
@@ -453,32 +455,26 @@ function getUnprocessedInputRows(filterExisting) {
 }
 function generateRow(headers, row) {
   const rowIndex = Number(row.pop());
+  let outputRow = [];
   try {
-    const optimizedRow = optimizeRow(headers, row);
-    SheetsService.getInstance().setValuesInDefinedRange(
-      CONFIG.sheets.generated.name,
-      rowIndex,
-      1,
-      [optimizedRow]
-    );
+    outputRow = optimizeRow(headers, row);
     MultiLogger.getInstance().log(Status.SUCCESS);
   } catch (e) {
     MultiLogger.getInstance().log(`Error: ${e}`);
     const itemIdIndex = headers.indexOf(
       String(getConfigSheetValue(CONFIG.userSettings.feed.itemIdColumnName))
     );
-    const failedRow = [];
-    failedRow[
+    outputRow[
       CONFIG.sheets.generated.cols.status
     ] = `${Status.FAILED}. See log for more details.`;
-    failedRow[CONFIG.sheets.generated.cols.id] = String(row[itemIdIndex]);
-    SheetsService.getInstance().setValuesInDefinedRange(
-      CONFIG.sheets.generated.name,
-      rowIndex,
-      1,
-      [failedRow]
-    );
+    outputRow[CONFIG.sheets.generated.cols.id] = String(row[itemIdIndex]);
   }
+  SheetsService.getInstance().setValuesInDefinedRange(
+    CONFIG.sheets.generated.name,
+    rowIndex,
+    1,
+    [outputRow]
+  );
 }
 function getGenerationMetrics(
   origTitle,

@@ -205,13 +205,16 @@ limitations under the License.
           .getUnprocessedInputRows(resume);
       });
       const inputHeaders = unprocessedInputRows.shift();
-      inputHeaders.pop();
       const maxBatchSize = 30;
 
       for (let i = 0; i < unprocessedInputRows.length; i += maxBatchSize) {
         if (cancelled) {
           break;
         }
+        setStatus(
+          STATUS.running,
+          null,
+          `Processing ${i}-${Math.min(i + maxBatchSize, unprocessedInputRows.length)} / ${unprocessedInputRows.length}`)
         const batch = unprocessedInputRows.slice(i, i + maxBatchSize);
 
         await Promise.all(
