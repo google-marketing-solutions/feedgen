@@ -451,7 +451,7 @@ function getUnprocessedInputRows(filterProcessed) {
       row => !generatedRowIds.includes(String(row[itemIdIndex]))
     );
   }
-  return inputRows;
+  return JSON.stringify(inputRows);
 }
 function generateRow(headers, row) {
   const rowIndex = Number(row.pop());
