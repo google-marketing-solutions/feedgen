@@ -332,29 +332,45 @@ function optimizeRow(
   const preferGeneratedAttributes = getConfigSheetValue(
     CONFIG.userSettings.title.preferGeneratedAttributes
   );
+
+  const blocklistedAttributes = getConfigSheetValue(
+    CONFIG.userSettings.title.blocklistedAttributes
+  )
+    .split(SEPARATOR)
+    .filter(Boolean)
+    .map((x: string) => x.trim().toLowerCase())
+    .filter(
+      (x: string, index: number, array: string[]) => array.indexOf(x) === index
+    );
+
   const titleFeatures: string[] = [];
   const gapAttributesAndValues: Record<string, string> = {};
   const validGenAttributes: string[] = [];
 
-  genAttributes.forEach((attribute: string, index: number) => {
-    if (
-      !dataObj[attribute] && // matches gaps ({color: ""}) AND invented
-      genAttributeValues[index] && // non-empty generated value
-      (!origAttributes.includes(attribute) ||
-        // force include gaps even if in generated template for original title
-        Object.keys(dataObj).includes(attribute))
-    ) {
-      gapAttributesAndValues[attribute] = genAttributeValues[index];
-    }
-    const value = preferGeneratedAttributes
-      ? genAttributeValues[index]
-      : dataObj[attribute] ?? genAttributeValues[index];
+  genAttributes
+    .filter(
+      (attribute: string) =>
+        blocklistedAttributes.indexOf(attribute.trim().toLowerCase()) === -1
+    )
+    .forEach((attribute: string, index: number) => {
+      if (
+        !dataObj[attribute] && // matches gaps ({color: ""}) AND invented
+        genAttributeValues[index] && // non-empty generated value
+        (!origAttributes.includes(attribute) ||
+          // force include gaps even if in generated template for original title
+          Object.keys(dataObj).includes(attribute))
+      ) {
+        gapAttributesAndValues[attribute] = genAttributeValues[index];
+      }
+      const value = preferGeneratedAttributes
+        ? genAttributeValues[index]
+        : dataObj[attribute] ?? genAttributeValues[index];
 
-    if (value && String(value).trim()) {
-      validGenAttributes.push(attribute);
-      titleFeatures.push(String(value).trim());
-    }
-  });
+      if (value && String(value).trim()) {
+        validGenAttributes.push(attribute);
+        titleFeatures.push(String(value).trim());
+      }
+    });
 
   const origTemplate = origAttributes
     .filter(Boolean)

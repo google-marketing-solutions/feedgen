@@ -83,6 +83,10 @@ const CONFIG = {
         row: 18,
         col: 2,
       },
+      blocklistedAttributes: {
+        row: 19,
+        col: 2,
+      },
       modelParameters: {
         temperature: {
           row: 14,
@@ -596,26 +600,38 @@ function optimizeRow(headers, data) {
   const preferGeneratedAttributes = getConfigSheetValue(
     CONFIG.userSettings.title.preferGeneratedAttributes
   );
+  const blocklistedAttributes = getConfigSheetValue(
+    CONFIG.userSettings.title.blocklistedAttributes
+  )
+    .split(SEPARATOR)
+    .filter(Boolean)
+    .map(x => x.trim().toLowerCase())
+    .filter((x, index, array) => array.indexOf(x) === index);
   const titleFeatures = [];
   const gapAttributesAndValues = {};
   const validGenAttributes = [];
-  genAttributes.forEach((attribute, index) => {
-    if (
-      !dataObj[attribute] &&
-      genAttributeValues[index] &&
-      (!origAttributes.includes(attribute) ||
-        Object.keys(dataObj).includes(attribute))
-    ) {
-      gapAttributesAndValues[attribute] = genAttributeValues[index];
-    }
-    const value = preferGeneratedAttributes
-      ? genAttributeValues[index]
-      : dataObj[attribute] ?? genAttributeValues[index];
-    if (value && String(value).trim()) {
-      validGenAttributes.push(attribute);
-      titleFeatures.push(String(value).trim());
-    }
-  });
+  genAttributes
+    .filter(
+      attribute =>
+        blocklistedAttributes.indexOf(attribute.trim().toLowerCase()) === -1
+    )
+    .forEach((attribute, index) => {
+      if (
+        !dataObj[attribute] &&
+        genAttributeValues[index] &&
+        (!origAttributes.includes(attribute) ||
+          Object.keys(dataObj).includes(attribute))
+      ) {
+        gapAttributesAndValues[attribute] = genAttributeValues[index];
+      }
+      const value = preferGeneratedAttributes
+        ? genAttributeValues[index]
+        : dataObj[attribute] ?? genAttributeValues[index];
+      if (value && String(value).trim()) {
+        validGenAttributes.push(attribute);
+        titleFeatures.push(String(value).trim());
+      }
+    });
   const origTemplate = origAttributes
     .filter(Boolean)
     .map(x => `<${x}>`)
@@ -911,6 +927,13 @@ function exportApproved() {
   }
   clearApprovedData();
   writeApprovedData(outputHeader, rowsToWrite);
+}
+function _testGenerateNextRow() {
+  const unprocessedInputRows = JSON.parse(getUnprocessedInputRows());
+  const inputHeaders = unprocessedInputRows.shift();
+  const row = unprocessedInputRows.shift();
+  const generatedRow = generateRow(inputHeaders, row);
+  console.log(generatedRow);
 }
 
 app;

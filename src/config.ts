@@ -83,6 +83,10 @@ export const CONFIG = {
         row: 18,
         col: 2,
       },
+      blocklistedAttributes: {
+        row: 19,
+        col: 2,
+      },
       modelParameters: {
         temperature: {
           row: 14,
