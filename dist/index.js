@@ -121,6 +121,7 @@ const CONFIG = {
         descriptionGenerated: 4,
         gapAttributes: 12,
         originalInput: 13,
+        fullApiResponse: 16,
       },
     },
     output: {
@@ -291,15 +292,15 @@ class Util {
       try {
         return fn();
       } catch (err) {
-        const error = err;
-        MultiLogger.getInstance().log(`Error: ${error.message}`);
-        retryCount++;
         if (delayMillies) {
           Utilities.sleep(delayMillies);
         }
+        retryCount++;
+        if (retryCount === maxRetries) {
+          throw err;
+        }
       }
     }
-    throw new Error(`Exceeded maximum number of retries (${maxRetries}).`);
   }
   static splitWords(text) {
     return new Set(text.match(/\w+/g));
@@ -353,9 +354,11 @@ class VertexHelper {
     );
     MultiLogger.getInstance().log(res);
     if (res.predictions[0].safetyAttributes.blocked) {
-      throw new Error('Blocked for safety reasons.');
+      throw new Error(
+        `Request was blocked as it triggered API safety filters. Prompt: ${prompt}`
+      );
     } else if (!res.predictions[0].content) {
-      throw new Error('No content');
+      throw new Error(`Received empty response from API. Prompt: ${prompt}`);
     }
     return res.predictions[0].content;
   }
@@ -458,16 +461,15 @@ function generateRow(headers, row) {
   let outputRow = [];
   try {
     outputRow = optimizeRow(headers, row);
-    MultiLogger.getInstance().log(Status.SUCCESS);
   } catch (e) {
-    MultiLogger.getInstance().log(`Error: ${e}`);
     const itemIdIndex = headers.indexOf(
       String(getConfigSheetValue(CONFIG.userSettings.feed.itemIdColumnName))
     );
     outputRow[
       CONFIG.sheets.generated.cols.status
-    ] = `${Status.FAILED}. See log for more details.`;
+    ] = `${Status.FAILED}. Check the 'Full API Response' column for details.`;
     outputRow[CONFIG.sheets.generated.cols.id] = String(row[itemIdIndex]);
+    outputRow[CONFIG.sheets.generated.cols.fullApiResponse] = String(e);
   }
   SheetsService.getInstance().setValuesInDefinedRange(
     CONFIG.sheets.generated.name,
@@ -540,25 +542,24 @@ function optimizeRow(headers, data) {
   const genAttributes = genTemplateRow
     .replace(TEMPLATE_PROMPT_PART, '')
     .split(SEPARATOR)
-    .filter(x => x)
+    .filter(Boolean)
     .map(x => x.trim());
-  const genTemplate = genAttributes.map(x => `<${x.trim()}>`).join(' ');
   const origAttributes = origTemplateRow
     .replace(ORIGINAL_TITLE_TEMPLATE_PROMPT_PART, '')
     .split(SEPARATOR)
-    .filter(x => x)
+    .filter(Boolean)
     .map(x => x.trim());
-  const origTemplate = origAttributes.map(x => `<${x.trim()}>`).join(' ');
   const genAttributeValues = genAttributesRow
     .replace(ATTRIBUTES_PROMPT_PART, '')
     .split(SEPARATOR)
-    .filter(x => x)
+    .filter(Boolean)
     .map(x => x.trim());
   const preferGeneratedAttributes = getConfigSheetValue(
     CONFIG.userSettings.title.preferGeneratedAttributes
   );
   const titleFeatures = [];
   const gapAttributesAndValues = {};
+  const validGenAttributes = [];
   genAttributes.forEach((attribute, index) => {
     if (
       !dataObj[attribute] &&
@@ -568,14 +569,16 @@ function optimizeRow(headers, data) {
     ) {
       gapAttributesAndValues[attribute] = genAttributeValues[index];
     }
-    titleFeatures.push(
-      `${
-        preferGeneratedAttributes
-          ? genAttributeValues[index]
-          : dataObj[attribute] || genAttributeValues[index]
-      }`.trim()
-    );
+    const value = preferGeneratedAttributes
+      ? genAttributeValues[index]
+      : dataObj[attribute] || genAttributeValues[index];
+    if (value && value.trim()) {
+      validGenAttributes.push(attribute);
+      titleFeatures.push(value.trim());
+    }
   });
+  const origTemplate = origAttributes.map(x => `<${x}>`).join(' ');
+  const genTemplate = validGenAttributes.map(x => `<${x}>`).join(' ');
   const genTitle = titleFeatures.join(' ');
   const genDescription = fetchDescriptionGenerationData(dataObj, genTitle);
   const inputWords = new Set();
@@ -590,7 +593,7 @@ function optimizeRow(headers, data) {
       origTitle,
       genTitle,
       new Set(origAttributes),
-      new Set(genAttributes),
+      new Set(validGenAttributes),
       inputWords,
       gapAttributesAndValues,
       dataObj
