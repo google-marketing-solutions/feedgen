@@ -167,16 +167,15 @@ export function generateRow(headers: string[], row: string[]) {
 
   try {
     outputRow = optimizeRow(headers, row);
-    MultiLogger.getInstance().log(Status.SUCCESS);
   } catch (e) {
-    MultiLogger.getInstance().log(`Error: ${e}`);
     const itemIdIndex = headers.indexOf(
       String(getConfigSheetValue(CONFIG.userSettings.feed.itemIdColumnName))
     );
     outputRow[
       CONFIG.sheets.generated.cols.status
-    ] = `${Status.FAILED}. See log for more details.`;
+    ] = `${Status.FAILED}. Check the 'Full API Response' column for details.`;
     outputRow[CONFIG.sheets.generated.cols.id] = String(row[itemIdIndex]);
+    outputRow[CONFIG.sheets.generated.cols.fullApiResponse] = String(e);
   }
   SheetsService.getInstance().setValuesInDefinedRange(
     CONFIG.sheets.generated.name,
@@ -273,27 +272,19 @@ function optimizeRow(
   const genAttributes = genTemplateRow
     .replace(TEMPLATE_PROMPT_PART, '')
     .split(SEPARATOR)
-    .filter((x: string) => x)
+    .filter(Boolean)
     .map((x: string) => x.trim());
-
-  const genTemplate = genAttributes
-    .map((x: string) => `<${x.trim()}>`)
-    .join(' ');
 
   const origAttributes = origTemplateRow
     .replace(ORIGINAL_TITLE_TEMPLATE_PROMPT_PART, '')
     .split(SEPARATOR)
-    .filter((x: string) => x)
+    .filter(Boolean)
     .map((x: string) => x.trim());
-
-  const origTemplate = origAttributes
-    .map((x: string) => `<${x.trim()}>`)
-    .join(' ');
 
   const genAttributeValues = genAttributesRow
     .replace(ATTRIBUTES_PROMPT_PART, '')
     .split(SEPARATOR)
-    .filter((x: string) => x)
+    .filter(Boolean)
     .map((x: string) => x.trim());
 
   // Use generated data only when user provided data is not available
@@ -303,6 +294,7 @@ function optimizeRow(
   );
   const titleFeatures: string[] = [];
   const gapAttributesAndValues: Record<string, string> = {};
+  const validGenAttributes: string[] = [];
 
   genAttributes.forEach((attribute: string, index: number) => {
     if (
@@ -314,14 +306,18 @@ function optimizeRow(
     ) {
       gapAttributesAndValues[attribute] = genAttributeValues[index];
     }
-    titleFeatures.push(
-      `${
-        preferGeneratedAttributes
-          ? genAttributeValues[index]
-          : dataObj[attribute] || genAttributeValues[index]
-      }`.trim()
-    );
+    const value = preferGeneratedAttributes
+      ? genAttributeValues[index]
+      : dataObj[attribute] || genAttributeValues[index];
+
+    if (value && value.trim()) {
+      validGenAttributes.push(attribute);
+      titleFeatures.push(value.trim());
+    }
   });
+
+  const origTemplate = origAttributes.map((x: string) => `<${x}>`).join(' ');
+  const genTemplate = validGenAttributes.map((x: string) => `<${x}>`).join(' ');
 
   const genTitle = titleFeatures.join(' ');
   const genDescription = fetchDescriptionGenerationData(dataObj, genTitle);
@@ -339,7 +335,7 @@ function optimizeRow(
       origTitle,
       genTitle,
       new Set(origAttributes),
-      new Set(genAttributes),
+      new Set(validGenAttributes),
       inputWords,
       gapAttributesAndValues,
       dataObj

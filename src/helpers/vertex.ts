@@ -95,9 +95,11 @@ export class VertexHelper {
     MultiLogger.getInstance().log(res);
 
     if (res.predictions[0].safetyAttributes.blocked) {
-      throw new Error('Blocked for safety reasons.');
+      throw new Error(
+        `Request was blocked as it triggered API safety filters. Prompt: ${prompt}`
+      );
     } else if (!res.predictions[0].content) {
-      throw new Error('No content');
+      throw new Error(`Received empty response from API. Prompt: ${prompt}`);
     }
 
     return res.predictions[0].content;

@@ -121,6 +121,7 @@ export const CONFIG = {
         descriptionGenerated: 4,
         gapAttributes: 12,
         originalInput: 13,
+        fullApiResponse: 16,
       },
     },
     output: {

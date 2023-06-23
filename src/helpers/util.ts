@@ -1,5 +1,3 @@
-import { MultiLogger } from './logger';
-
 /**
  * Copyright 2023 Google LLC
  *
@@ -23,16 +21,15 @@ export class Util {
       try {
         return fn();
       } catch (err) {
-        const error = err as Error;
-        MultiLogger.getInstance().log(`Error: ${error.message}`);
-        retryCount++;
         if (delayMillies) {
           Utilities.sleep(delayMillies);
         }
+        retryCount++;
+        if (retryCount === maxRetries) {
+          throw err;
+        }
       }
     }
-
-    throw new Error(`Exceeded maximum number of retries (${maxRetries}).`);
   }
 
   static splitWords(text: string) {
