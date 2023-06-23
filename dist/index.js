@@ -572,9 +572,9 @@ function optimizeRow(headers, data) {
     const value = preferGeneratedAttributes
       ? genAttributeValues[index]
       : dataObj[attribute] || genAttributeValues[index];
-    if (value && value.trim()) {
+    if (value && String(value).trim()) {
       validGenAttributes.push(attribute);
-      titleFeatures.push(value.trim());
+      titleFeatures.push(String(value).trim());
     }
   });
   const origTemplate = origAttributes.map(x => `<${x}>`).join(' ');
