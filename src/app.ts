@@ -43,10 +43,12 @@ const [
   vertexAiGcpProjectId,
   vertexAiGcpProjectLocation,
   vertexAiLanguageModelId,
+  autoApproveScoreThreshold,
 ] = [
   getConfigSheetValue(CONFIG.userSettings.vertexAi.gcpProjectId),
   getConfigSheetValue(CONFIG.userSettings.vertexAi.gcpProjectLocation),
   getConfigSheetValue(CONFIG.userSettings.vertexAi.languageModelId),
+  getConfigSheetValue(CONFIG.userSettings.feed.autoApproveThreshold),
 ];
 
 /**
@@ -341,8 +343,13 @@ function optimizeRow(
       dataObj
     );
 
+  const preApprovalStatus =
+    autoApproveScoreThreshold === ''
+      ? false
+      : totalScore >= autoApproveScoreThreshold;
+
   return [
-    false, // approval
+    preApprovalStatus, // approval
     'Success', // status
     itemId,
     genTitle,

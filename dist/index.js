@@ -34,6 +34,10 @@ const CONFIG = {
         row: 4,
         col: 2,
       },
+      autoApproveThreshold: {
+        row: 5,
+        col: 2,
+      },
     },
     vertexAi: {
       gcpProjectId: {
@@ -51,52 +55,52 @@ const CONFIG = {
     },
     description: {
       fullPrompt: {
-        row: 9,
+        row: 10,
         col: 5,
       },
       modelParameters: {
         temperature: {
-          row: 10,
-          col: 2,
-        },
-        maxOutputTokens: {
           row: 11,
           col: 2,
         },
-        topK: {
+        maxOutputTokens: {
           row: 12,
           col: 2,
         },
-        topP: {
+        topK: {
           row: 13,
+          col: 2,
+        },
+        topP: {
+          row: 14,
           col: 2,
         },
       },
     },
     title: {
       fullPrompt: {
-        row: 17,
+        row: 18,
         col: 5,
       },
       preferGeneratedAttributes: {
-        row: 18,
+        row: 19,
         col: 2,
       },
       modelParameters: {
         temperature: {
-          row: 19,
-          col: 2,
-        },
-        maxOutputTokens: {
           row: 20,
           col: 2,
         },
-        topK: {
+        maxOutputTokens: {
           row: 21,
           col: 2,
         },
-        topP: {
+        topK: {
           row: 22,
+          col: 2,
+        },
+        topP: {
+          row: 23,
           col: 2,
         },
       },
@@ -388,10 +392,12 @@ const [
   vertexAiGcpProjectId,
   vertexAiGcpProjectLocation,
   vertexAiLanguageModelId,
+  autoApproveScoreThreshold,
 ] = [
   getConfigSheetValue(CONFIG.userSettings.vertexAi.gcpProjectId),
   getConfigSheetValue(CONFIG.userSettings.vertexAi.gcpProjectLocation),
   getConfigSheetValue(CONFIG.userSettings.vertexAi.languageModelId),
+  getConfigSheetValue(CONFIG.userSettings.feed.autoApproveThreshold),
 ];
 function onOpen() {
   SpreadsheetApp.getUi()
@@ -598,8 +604,12 @@ function optimizeRow(headers, data) {
       gapAttributesAndValues,
       dataObj
     );
+  const preApprovalStatus =
+    autoApproveScoreThreshold === ''
+      ? false
+      : totalScore >= autoApproveScoreThreshold;
   return [
-    false,
+    preApprovalStatus,
     'Success',
     itemId,
     genTitle,
