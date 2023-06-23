@@ -35,7 +35,7 @@ const CONFIG = {
         col: 2,
       },
       autoApproveThreshold: {
-        row: 5,
+        row: 6,
         col: 2,
       },
     },
