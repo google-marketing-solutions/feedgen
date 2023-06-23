@@ -82,21 +82,25 @@ const CONFIG = {
         row: 18,
         col: 2,
       },
+      blocklistedAttributes: {
+        row: 19,
+        col: 2,
+      },
       modelParameters: {
         temperature: {
-          row: 19,
-          col: 2,
-        },
-        maxOutputTokens: {
           row: 20,
           col: 2,
         },
-        topK: {
+        maxOutputTokens: {
           row: 21,
           col: 2,
         },
-        topP: {
+        topK: {
           row: 22,
+          col: 2,
+        },
+        topP: {
+          row: 23,
           col: 2,
         },
       },
@@ -557,26 +561,38 @@ function optimizeRow(headers, data) {
   const preferGeneratedAttributes = getConfigSheetValue(
     CONFIG.userSettings.title.preferGeneratedAttributes
   );
+  const blocklistedAttributes = getConfigSheetValue(
+    CONFIG.userSettings.title.blocklistedAttributes
+  )
+    .split(SEPARATOR)
+    .filter(Boolean)
+    .map(x => x.trim().toLowerCase())
+    .filter((x, index, array) => array.indexOf(x) === index);
   const titleFeatures = [];
   const gapAttributesAndValues = {};
   const validGenAttributes = [];
-  genAttributes.forEach((attribute, index) => {
-    if (
-      !dataObj[attribute] &&
-      genAttributeValues[index] &&
-      (!origAttributes.includes(attribute) ||
-        Object.keys(dataObj).includes(attribute))
-    ) {
-      gapAttributesAndValues[attribute] = genAttributeValues[index];
-    }
-    const value = preferGeneratedAttributes
-      ? genAttributeValues[index]
-      : dataObj[attribute] || genAttributeValues[index];
-    if (value && value.trim()) {
-      validGenAttributes.push(attribute);
-      titleFeatures.push(value.trim());
-    }
-  });
+  genAttributes
+    .filter(
+      attribute =>
+        blocklistedAttributes.indexOf(attribute.trim().toLowerCase()) === -1
+    )
+    .forEach((attribute, index) => {
+      if (
+        !dataObj[attribute] &&
+        genAttributeValues[index] &&
+        (!origAttributes.includes(attribute) ||
+          Object.keys(dataObj).includes(attribute))
+      ) {
+        gapAttributesAndValues[attribute] = genAttributeValues[index];
+      }
+      const value = preferGeneratedAttributes
+        ? genAttributeValues[index]
+        : dataObj[attribute] || genAttributeValues[index];
+      if (value && value.trim()) {
+        validGenAttributes.push(attribute);
+        titleFeatures.push(value.trim());
+      }
+    });
   const origTemplate = origAttributes.map(x => `<${x}>`).join(' ');
   const genTemplate = validGenAttributes.map(x => `<${x}>`).join(' ');
   const genTitle = titleFeatures.join(' ');

@@ -82,21 +82,25 @@ export const CONFIG = {
         row: 18,
         col: 2,
       },
+      blocklistedAttributes: {
+        row: 19,
+        col: 2,
+      },
       modelParameters: {
         temperature: {
-          row: 19,
-          col: 2,
-        },
-        maxOutputTokens: {
           row: 20,
           col: 2,
         },
-        topK: {
+        maxOutputTokens: {
           row: 21,
           col: 2,
         },
-        topP: {
+        topK: {
           row: 22,
+          col: 2,
+        },
+        topP: {
+          row: 23,
           col: 2,
         },
       },
