@@ -18,6 +18,7 @@ var Status;
 (function (Status) {
   Status['SUCCESS'] = 'Success';
   Status['FAILED'] = 'Failed';
+  Status['NON_COMPLIANT'] = 'Failed compliance checks';
 })(Status || (Status = {}));
 const CONFIG = {
   userSettings: {
@@ -118,10 +119,10 @@ const CONFIG = {
         status: 1,
         id: 2,
         titleGenerated: 3,
-        gapAttributes: 11,
-        descriptionGenerated: 12,
-        fullApiResponse: 15,
-        originalInput: 16,
+        gapAttributes: 12,
+        descriptionGenerated: 13,
+        fullApiResponse: 17,
+        originalInput: 18,
       },
     },
     output: {
@@ -384,6 +385,8 @@ const ATTRIBUTES_PROMPT_PART = 'product attribute values:';
 const SEPARATOR = '|';
 const WORD_MATCH_REGEX =
   /([A-Za-zÀ-ÖØ-öø-ÿ0-9]|\s)*\[A-Za-zÀ-ÖØ-öø-ÿ0-9](?=")|\[A-Za-zÀ-ÖØ-öø-ÿ0-9]+/g;
+const TITLE_MAX_LENGTH = 150;
+const DESCRIPTION_MAX_LENGTH = 5000;
 const [
   vertexAiGcpProjectId,
   vertexAiGcpProjectLocation,
@@ -571,7 +574,7 @@ function optimizeRow(headers, data) {
     }
     const value = preferGeneratedAttributes
       ? genAttributeValues[index]
-      : dataObj[attribute] || genAttributeValues[index];
+      : dataObj[attribute] ?? genAttributeValues[index];
     if (value && String(value).trim()) {
       validGenAttributes.push(attribute);
       titleFeatures.push(String(value).trim());
@@ -598,14 +601,22 @@ function optimizeRow(headers, data) {
       gapAttributesAndValues,
       dataObj
     );
+  const status =
+    genTitle.length <= TITLE_MAX_LENGTH &&
+    genTitle.length > 0 &&
+    genDescription.length <= DESCRIPTION_MAX_LENGTH &&
+    genDescription.length > 0
+      ? Status.SUCCESS
+      : Status.NON_COMPLIANT;
   return [
     false,
-    'Success',
+    status,
     itemId,
     genTitle,
     origTitle,
-    totalScore,
+    status === Status.NON_COMPLIANT ? String(0) : totalScore,
     titleChanged,
+    String(genTitle.length),
     origTemplate,
     genTemplate,
     addedAttributes,
@@ -615,6 +626,7 @@ function optimizeRow(headers, data) {
       : '',
     genDescription,
     origDescription,
+    String(genDescription.length),
     genCategory,
     `${res}\nproduct description: ${genDescription}`,
     JSON.stringify(dataObj),

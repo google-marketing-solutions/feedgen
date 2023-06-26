@@ -17,6 +17,7 @@
 export enum Status {
   SUCCESS = 'Success',
   FAILED = 'Failed',
+  NON_COMPLIANT = 'Failed compliance checks',
 }
 
 export const CONFIG = {
@@ -118,10 +119,10 @@ export const CONFIG = {
         status: 1,
         id: 2,
         titleGenerated: 3,
-        gapAttributes: 11,
-        descriptionGenerated: 12,
-        fullApiResponse: 15,
-        originalInput: 16,
+        gapAttributes: 12,
+        descriptionGenerated: 13,
+        fullApiResponse: 17,
+        originalInput: 18,
       },
     },
     output: {

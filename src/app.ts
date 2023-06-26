@@ -39,6 +39,9 @@ const SEPARATOR = '|';
 const WORD_MATCH_REGEX =
   /([A-Za-zÀ-ÖØ-öø-ÿ0-9]|\s)*\[A-Za-zÀ-ÖØ-öø-ÿ0-9](?=")|\[A-Za-zÀ-ÖØ-öø-ÿ0-9]+/g;
 
+const TITLE_MAX_LENGTH = 150;
+const DESCRIPTION_MAX_LENGTH = 5000;
+
 const [
   vertexAiGcpProjectId,
   vertexAiGcpProjectLocation,
@@ -309,7 +312,7 @@ function optimizeRow(
     }
     const value = preferGeneratedAttributes
       ? genAttributeValues[index]
-      : dataObj[attribute] || genAttributeValues[index];
+      : dataObj[attribute] ?? genAttributeValues[index];
 
     if (value && String(value).trim()) {
       validGenAttributes.push(attribute);
@@ -342,14 +345,23 @@ function optimizeRow(
       dataObj
     );
 
+  const status =
+    genTitle.length <= TITLE_MAX_LENGTH &&
+    genTitle.length > 0 &&
+    genDescription.length <= DESCRIPTION_MAX_LENGTH &&
+    genDescription.length > 0
+      ? Status.SUCCESS
+      : Status.NON_COMPLIANT;
+
   return [
     false, // approval
-    'Success', // status
+    status,
     itemId,
     genTitle,
     origTitle,
-    totalScore,
+    status === Status.NON_COMPLIANT ? String(0) : totalScore,
     titleChanged,
+    String(genTitle.length),
     origTemplate,
     genTemplate,
     addedAttributes,
@@ -359,6 +371,7 @@ function optimizeRow(
       : '',
     genDescription,
     origDescription,
+    String(genDescription.length),
     genCategory,
     `${res}\nproduct description: ${genDescription}`, // API response
     JSON.stringify(dataObj),
