@@ -25,31 +25,51 @@ limitations under the License.
     button {
       margin-top: 10px;
       width: 100%;
-      background-color: #027ad6;
+      background-color: #1a73e8;
       font-weight: bold;
-      border-radius: 2px;
+      border-radius: 30px;
       outline: none;
-      border: 1px solid #027ad6;
+      border: 1px solid #1a73e8;
       color: white;
       transition: background-color 150ms linear;
       cursor: pointer;
     }
-    button:not(.flat-button) {
+    .sidebar-button {
       padding: 15px;
     }
-    button:hover:not(:disabled),
-    button.back {
-      background-color: white;
-      border: 1px solid #027ad6;
-      color: #027ad6;
-    }
-    button.back:hover {
-      background-color: #027ad6;
-      border: 1px solid #027ad6;
+    .sidebar-button:hover:not(:disabled) {
+      background-color: #185abc;
+      border: 1px solid #185abc;
       color: white;
     }
-    button:disabled,
-    button[disabled] {
+    #approve-filtered {
+      background-color: #669df6;
+      border-color: #669df6;
+    }
+    #export-approved {
+      background-color: #5bb974;
+      border-color: #5bb974;
+    }
+    #clear-generated,
+    #stop-generating {
+      background-color: #ee675c;
+      border-color: #ee675c;
+    }
+    #approve-filtered:hover:not(:disabled) {
+      background-color: #1a73e8;
+      color: white;
+    }
+    #export-approved:hover:not(:disabled) {
+      background-color: #1e8e3e;
+      color: white;
+    }
+    #clear-generated:hover:not(:disabled),
+    #stop-generating:hover {
+      background-color: #d93025;
+      color: white;
+    }
+    .sidebar-button:disabled,
+    .sidebar-button[disabled] {
       cursor: auto;
       background-color: #ccc !important;
       border-color: #bbb !important;
@@ -58,70 +78,35 @@ limitations under the License.
     .hidden {
       display: none !important;
     }
-    .loading {
-      font-weight: bold;
-      text-align: center;
-      color: green;
-    }
     #header {
       position: fixed;
-      padding: 8px;
+      padding-top: 8px;
+      padding-bottom: 8px;
       width: 100%;
       background-color: white;
+      text-align: center;
     }
     #brand {
-      text-align: center;
-      color: #027ad6;
+      color: #1a73e8;
       font-size: 24px;
+    }
+    #slogan {
+      font-size: 20px;
     }
     #status {
       font-weight: bold;
-      text-align: center;
-    }
-    #metrics {
-      text-align: center;
-    }
-    #summary {
-      color: #1e8e3e;
-      font-weight: bold;
-      text-align: center;
+      padding-top: 25px;
     }
     #content {
+      position: relative;
       padding: 8px;
-      padding-top: 100px;
-    }
-    #run {
-      background-color: #005495;
-      border: 1px solid #005495;
-    }
-    #run:hover {
-      background-color: white;
-      color: #005495;
-    }
-    #stop-generating {
-      background-color: #ea4335;
-      border-color: #ea4335;
-      color: white;
-    }
-    #stop-generating:hover {
-      background-color: #c5221f;
-    }
-    .selector-controls {
-      justify-content: space-between;
-      display: flex;
-      gap: 10px;
-    }
-    #selector-form {
-      margin-top: 10px;
-    }
-    .checkbox-content {
-      margin-left: 10px;
+      padding-top: 275px;
     }
     .active {
-      color: green;
+      color: #34a853;
     }
     .not-active {
-      color: #777777;
+      color: #9aa0a6;
     }
     .error {
       color: #ea4335;
@@ -180,29 +165,18 @@ limitations under the License.
       document.getElementById('content').appendChild(node);
     }
 
-    async function startGenerating(resume = false) {
+    async function generate() {
       cancelled = false;
       setStatus(STATUS.running);
 
-      // Hide 'Start' button
-      document.querySelectorAll('#start-generating, #continue-generating').forEach(elem => (elem.classList.add('hidden')));
-
-      // Show 'Stop' button
+      document.getElementById('generate').classList.add('hidden');
       document.getElementById('stop-generating').classList.remove('hidden');
 
-      if (!resume) {
-        await new Promise((resolve, reject) => {
-          google.script.run
-            .withSuccessHandler(res => resolve(res))
-            .withFailureHandler(err => log(err))
-            .clearGeneratedRows();
-        });
-      }
       const unprocessedInputRows = await new Promise((resolve, reject) => {
         google.script.run
           .withSuccessHandler(rowsString => resolve(JSON.parse(rowsString)))
           .withFailureHandler(err => log(err))
-          .getUnprocessedInputRows(resume);
+          .getUnprocessedInputRows();
       });
       const inputHeaders = unprocessedInputRows.shift();
       const maxBatchSize = 30;
@@ -231,6 +205,17 @@ limitations under the License.
       stopGenerating();
     }
 
+    function clearGenerated() {
+      setStatus(STATUS.running);
+
+      google.script.run
+        .withSuccessHandler(res => {
+          setStatus(STATUS.idle);
+        })
+        .withFailureHandler(err => log(err))
+        .clearGeneratedRows();
+    }
+
     function approveFiltered() {
       setStatus(STATUS.running);
 
@@ -239,7 +224,7 @@ limitations under the License.
           setStatus(STATUS.idle);
         })
         .withFailureHandler(err => log(err))
-        .approveFiltered()
+        .approveFiltered();
     }
 
     function exportApproved() {
@@ -250,44 +235,43 @@ limitations under the License.
           setStatus(STATUS.idle);
         })
         .withFailureHandler(err => log(err))
-        .exportApproved()
+        .exportApproved();
     }
 
     function stopGenerating() {
       cancelled = true;
-
-      // Show 'Start' button
-      document.querySelectorAll('#start-generating, #continue-generating').forEach(elem => (elem.classList.remove('hidden')));
-
-      // Hide 'Stop' button
+      document.getElementById('generate').classList.remove('hidden');
       document.getElementById('stop-generating').classList.add('hidden');
 
       setStatus(STATUS.idle);
     }
-
-    function openSection(sectionId) {
-      document
-        .querySelectorAll('section')
-        .forEach(elem => elem.classList.add('hidden'));
-      document.getElementById(sectionId).classList.remove('hidden');
-    }
   </script>
 </head>
-<body onload='openSection("main");'>
-  <div id='header'>
-    <h1 id='brand'>FeedGen</h1>
-    <div id='status' class='not-active'>Ready</div>
+<body>
+  <div id="header">
+    <img src="https://services.google.com/fh/files/misc/feedgen_logo.png" alt="FeedGen Logo" height="100px" />
+    <h1 id="brand">FeedGen</h1>
+    <span id="slogan">Optimise Shopping Ads feeds with Generative AI</span>
+    <div id="status" class="not-active">Ready</div>
   </div>
 
-  <div id='content'>
-    <section id='main'>
-      <button id='start-generating' onclick='startGenerating()'>Start Generating</button>
-      <button id='continue-generating' onclick='startGenerating(true)'>Continue Generating</button>
-      <button id='stop-generating' class='hidden' onclick='stopGenerating()'>Stop Generating</button>
-      <button onclick='approveFiltered()'>Approve Filtered</button>
-      <button onclick='exportApproved()'>Export to Output Feed</button>
+  <div id="content">
+    <section id="main">
+      <button id="generate" class="sidebar-button" onclick="generate()">Generate</button>
+      <button id="stop-generating" class="sidebar-button hidden" onclick="stopGenerating()">
+        Stop Generating
+      </button>
+      <button id="approve-filtered" class="sidebar-button" onclick="approveFiltered()">
+        Approve Filtered
+      </button>
+      <button id="export-approved" class="sidebar-button" onclick="exportApproved()">
+        Export to Output Feed
+      </button>
+      <button id="clear-generated" class="sidebar-button" onclick="clearGenerated()">
+        Clear Generated Data
+      </button>
     </section>
 
-  <div id='error' class='error-message'></div>
+  <div id="error" class="error-message"></div>
 </body>
 </html>

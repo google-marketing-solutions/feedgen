@@ -27,56 +27,56 @@ export const CONFIG = {
         col: 2,
       },
       titleColumnName: {
-        row: 3,
-        col: 2,
+        row: 2,
+        col: 3,
       },
       descriptionColumnName: {
-        row: 4,
-        col: 2,
+        row: 2,
+        col: 4,
       },
     },
     vertexAi: {
       gcpProjectId: {
-        row: 2,
-        col: 5,
+        row: 5,
+        col: 2,
       },
       gcpProjectLocation: {
-        row: 3,
-        col: 5,
+        row: 5,
+        col: 3,
       },
       languageModelId: {
-        row: 4,
-        col: 5,
+        row: 5,
+        col: 4,
       },
     },
     description: {
       fullPrompt: {
-        row: 9,
-        col: 5,
+        row: 10,
+        col: 2,
       },
       modelParameters: {
         temperature: {
-          row: 10,
+          row: 8,
           col: 2,
         },
         maxOutputTokens: {
-          row: 11,
-          col: 2,
+          row: 8,
+          col: 3,
         },
         topK: {
-          row: 12,
-          col: 2,
+          row: 8,
+          col: 4,
         },
         topP: {
-          row: 13,
-          col: 2,
+          row: 8,
+          col: 5,
         },
       },
     },
     title: {
       fullPrompt: {
-        row: 17,
-        col: 5,
+        row: 16,
+        col: 2,
       },
       preferGeneratedAttributes: {
         row: 18,
@@ -84,20 +84,20 @@ export const CONFIG = {
       },
       modelParameters: {
         temperature: {
-          row: 19,
+          row: 14,
           col: 2,
         },
         maxOutputTokens: {
-          row: 20,
-          col: 2,
+          row: 14,
+          col: 3,
         },
         topK: {
-          row: 21,
-          col: 2,
+          row: 14,
+          col: 4,
         },
         topP: {
-          row: 22,
-          col: 2,
+          row: 14,
+          col: 5,
         },
       },
     },
@@ -112,16 +112,16 @@ export const CONFIG = {
     },
     generated: {
       name: 'Generated Content Validation',
-      startRow: 5,
+      startRow: 3,
       cols: {
         approval: 0,
         status: 1,
         id: 2,
         titleGenerated: 3,
-        descriptionGenerated: 4,
-        gapAttributes: 12,
-        originalInput: 13,
-        fullApiResponse: 16,
+        gapAttributes: 11,
+        descriptionGenerated: 12,
+        fullApiResponse: 15,
+        originalInput: 16,
       },
     },
     output: {

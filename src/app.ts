@@ -108,12 +108,13 @@ export function FEEDGEN_CREATE_JSON_CONTEXT_FOR_ITEM(itemId: string) {
 /**
  * Fetch all unprocessed rows, optionally filtering out already processed ones.
  *
- * @param filterProcessed Whether to filter processed rows or not.
+ * @param filterProcessed Whether to filter processed rows or not. Defaults to
+ *     True.
  * @returns JSON string corresponding to all unprocessed rows, with or without
  *     already processed ones. Needs to be a JSON string as Apps Script may end
  *     up nullifying the array if it contained a non-primitive data type.
  */
-export function getUnprocessedInputRows(filterProcessed: boolean) {
+export function getUnprocessedInputRows(filterProcessed = true) {
   const inputSheet = SpreadsheetApp.getActive().getSheetByName(
     CONFIG.sheets.input.name
   );
@@ -346,8 +347,7 @@ function optimizeRow(
     'Success', // status
     itemId,
     genTitle,
-    genDescription,
-    genCategory,
+    origTitle,
     totalScore,
     titleChanged,
     origTemplate,
@@ -357,10 +357,11 @@ function optimizeRow(
     Object.keys(gapAttributesAndValues).length > 0
       ? JSON.stringify(gapAttributesAndValues)
       : '',
-    JSON.stringify(dataObj),
-    origTitle,
+    genDescription,
     origDescription,
+    genCategory,
     `${res}\nproduct description: ${genDescription}`, // API response
+    JSON.stringify(dataObj),
   ];
 }
 
@@ -531,7 +532,9 @@ export function approveFiltered() {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(
     CONFIG.sheets.generated.name
   );
-  const rows = getGeneratedRows();
+  const rows = getGeneratedRows().filter(
+    (row: string[]) => row.join('').length > 0
+  );
 
   if (!sheet || !rows) return;
 
