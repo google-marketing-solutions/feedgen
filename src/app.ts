@@ -36,8 +36,10 @@ const CATEGORY_PROMPT_PART = 'product category:';
 const TEMPLATE_PROMPT_PART = 'product attribute keys:';
 const ATTRIBUTES_PROMPT_PART = 'product attribute values:';
 const SEPARATOR = '|';
-const WORD_MATCH_REGEX =
-  /([A-Za-zÀ-ÖØ-öø-ÿ0-9]|\s)*\[A-Za-zÀ-ÖØ-öø-ÿ0-9](?=")|\[A-Za-zÀ-ÖØ-öø-ÿ0-9]+/g;
+const WORD_MATCH_REGEX = /[A-Za-zÀ-ÖØ-öø-ÿ0-9]+/g;
+
+const TITLE_MAX_LENGTH = 150;
+const DESCRIPTION_MAX_LENGTH = 5000;
 
 const [
   vertexAiGcpProjectId,
@@ -81,7 +83,7 @@ export function showSidebar() {
  * Sheets utility function to fetch JSON'd context from input feed for few-shot
  * examples.
  */
-export function FEEDGEN_CREATE_JSON_CONTEXT_FOR_ITEM(itemId: string) {
+export function FEEDGEN_CREATE_CONTEXT_JSON(itemId: string) {
   const inputSheet = SpreadsheetApp.getActive().getSheetByName(
     CONFIG.sheets.input.name
   );
@@ -108,12 +110,13 @@ export function FEEDGEN_CREATE_JSON_CONTEXT_FOR_ITEM(itemId: string) {
 /**
  * Fetch all unprocessed rows, optionally filtering out already processed ones.
  *
- * @param filterProcessed Whether to filter processed rows or not.
+ * @param filterProcessed Whether to filter processed rows or not. Defaults to
+ *     True.
  * @returns JSON string corresponding to all unprocessed rows, with or without
  *     already processed ones. Needs to be a JSON string as Apps Script may end
  *     up nullifying the array if it contained a non-primitive data type.
  */
-export function getUnprocessedInputRows(filterProcessed: boolean) {
+export function getUnprocessedInputRows(filterProcessed = true) {
   const inputSheet = SpreadsheetApp.getActive().getSheetByName(
     CONFIG.sheets.input.name
   );
@@ -194,16 +197,36 @@ function getGenerationMetrics(
   gapAttributesAndValues: Record<string, string>,
   originalInput: { [k: string]: string }
 ): Record<string, string> {
-  const titleChanged = origTitle !== genTitle;
   const addedAttributes = Util.getSetDifference(genAttributes, origAttributes);
+  const removedAttributes = Util.getSetDifference(
+    origAttributes,
+    genAttributes
+  );
   const newWordsAdded = new Set<String>();
-  const genTitleWords = genTitle.match(WORD_MATCH_REGEX);
-  if (genTitleWords) {
-    genTitleWords
+  const genTitleWords = new Set<String>();
+  const genTitleWordsMatcher = String(genTitle)
+    .replace("'s", '')
+    .match(WORD_MATCH_REGEX);
+  if (genTitleWordsMatcher) {
+    genTitleWordsMatcher.forEach((word: string) =>
+      genTitleWords.add(word.toLowerCase())
+    );
+    genTitleWordsMatcher
+      .filter((word: string) => !inputWords.has(word.toLowerCase()))
+      .forEach((word: string) => newWordsAdded.add(word));
+  }
+  const wordsRemoved = new Set<String>();
+  const origTitleWordsMatcher = String(origTitle)
+    .replace("'s", '')
+    .match(WORD_MATCH_REGEX);
+  if (origTitleWordsMatcher) {
+    origTitleWordsMatcher
       .filter(
-        (genTitleWord: string) => !inputWords.has(genTitleWord.toLowerCase())
+        (word: string) =>
+          !genTitleWords.has(word.toLowerCase()) &&
+          !genTitle.replace("'", '').includes(word)
       )
-      .forEach((newWord: string) => newWordsAdded.add(newWord));
+      .forEach((word: string) => wordsRemoved.add(word));
   }
 
   const gapAttributesPresent = Object.keys(gapAttributesAndValues).filter(
@@ -213,20 +236,37 @@ function getGenerationMetrics(
     gapKey => !(gapKey in originalInput)
   );
 
-  const totalScore =
-    (Number(addedAttributes.length > 0) +
-      Number(titleChanged) +
-      Number(newWordsAdded.size === 0) +
-      Number(gapAttributesPresent.length > 0) +
-      Number(gapAttributesInvented.length > 0)) /
-    5;
+  const filledOrInventedFeedAttributes =
+    gapAttributesPresent.length > 0 || gapAttributesInvented.length > 0;
+  const addedTitleAttributes = addedAttributes.filter(Boolean).length > 0;
+  const removedTitleAttributes =
+    removedAttributes.filter(Boolean).length > 0 || wordsRemoved.size > 0;
+  const hallucinatedTitle = newWordsAdded.size > 0;
+
+  let score = 0;
+
+  if (hallucinatedTitle) {
+    score = -1;
+  } else if (removedTitleAttributes) {
+    score = -0.5;
+  } else {
+    score =
+      (Number(filledOrInventedFeedAttributes) + Number(addedTitleAttributes)) /
+      2;
+  }
   return {
-    totalScore: totalScore.toString(),
-    titleChanged: titleChanged.toString(),
+    totalScore: score.toString(),
+    titleChanged: String(score !== 0),
     addedAttributes: addedAttributes
+      .filter(Boolean)
+      .map((attr: string) => `<${attr}>`)
+      .join(' '),
+    removedAttributes: removedAttributes
+      .filter(Boolean)
       .map((attr: string) => `<${attr}>`)
       .join(' '),
     newWordsAdded: [...newWordsAdded].join(` ${SEPARATOR} `),
+    wordsRemoved: [...wordsRemoved].join(` ${SEPARATOR} `),
   };
 }
 
@@ -308,7 +348,7 @@ function optimizeRow(
     }
     const value = preferGeneratedAttributes
       ? genAttributeValues[index]
-      : dataObj[attribute] || genAttributeValues[index];
+      : dataObj[attribute] ?? genAttributeValues[index];
 
     if (value && String(value).trim()) {
       validGenAttributes.push(attribute);
@@ -316,51 +356,80 @@ function optimizeRow(
     }
   });
 
-  const origTemplate = origAttributes.map((x: string) => `<${x}>`).join(' ');
-  const genTemplate = validGenAttributes.map((x: string) => `<${x}>`).join(' ');
+  const origTemplate = origAttributes
+    .filter(Boolean)
+    .map((x: string) => `<${x}>`)
+    .join(' ');
+  const genTemplate = validGenAttributes
+    .filter(Boolean)
+    .map((x: string) => `<${x}>`)
+    .join(' ');
 
   const genTitle = titleFeatures.join(' ');
   const genDescription = fetchDescriptionGenerationData(dataObj, genTitle);
 
   const inputWords = new Set<string>();
-  Object.values(dataObj).forEach((value: string) => {
-    const match = new String(value).match(WORD_MATCH_REGEX);
+  for (const [key, value] of Object.entries(dataObj)) {
+    const keyAndValue = [String(key), String(value).replace("'s", '')].join(
+      ' '
+    );
+    const match = keyAndValue.match(WORD_MATCH_REGEX);
     if (match) {
       match.forEach((word: string) => inputWords.add(word.toLowerCase()));
     }
-  });
+  }
 
-  const { totalScore, titleChanged, addedAttributes, newWordsAdded } =
-    getGenerationMetrics(
-      origTitle,
-      genTitle,
-      new Set(origAttributes),
-      new Set(validGenAttributes),
-      inputWords,
-      gapAttributesAndValues,
-      dataObj
-    );
-
-  return [
-    false, // approval
-    'Success', // status
-    itemId,
-    genTitle,
-    genDescription,
-    genCategory,
+  const {
     totalScore,
     titleChanged,
+    addedAttributes,
+    removedAttributes,
+    newWordsAdded,
+    wordsRemoved,
+  } = getGenerationMetrics(
+    origTitle,
+    genTitle,
+    new Set(origAttributes),
+    new Set(validGenAttributes),
+    inputWords,
+    gapAttributesAndValues,
+    dataObj
+  );
+
+  const status =
+    genTitle.length <= TITLE_MAX_LENGTH &&
+    genTitle.length > 0 &&
+    genDescription.length <= DESCRIPTION_MAX_LENGTH &&
+    genDescription.length > 0
+      ? Status.SUCCESS
+      : Status.NON_COMPLIANT;
+
+  const approval = Number(totalScore) > 0;
+
+  return [
+    approval,
+    status,
+    itemId,
+    genTitle,
+    origTitle,
+    status === Status.NON_COMPLIANT ? String(-1) : totalScore,
+    titleChanged,
+    String(genTitle.length),
+    newWordsAdded,
+    wordsRemoved,
     origTemplate,
     genTemplate,
     addedAttributes,
-    newWordsAdded,
+    removedAttributes,
     Object.keys(gapAttributesAndValues).length > 0
       ? JSON.stringify(gapAttributesAndValues)
       : '',
-    JSON.stringify(dataObj),
-    origTitle,
+    genDescription,
     origDescription,
+    String(genDescription.length),
+    genCategory,
     `${res}\nproduct description: ${genDescription}`, // API response
+    JSON.stringify(dataObj),
   ];
 }
 
@@ -531,7 +600,9 @@ export function approveFiltered() {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(
     CONFIG.sheets.generated.name
   );
-  const rows = getGeneratedRows();
+  const rows = getGeneratedRows().filter(
+    (row: string[]) => row.join('').length > 0
+  );
 
   if (!sheet || !rows) return;
 

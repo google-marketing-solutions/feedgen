@@ -53,12 +53,12 @@ gTech representative to have the FeedGen team generate the output for you.
 ## Challenges
 
 Optimising Shopping Ads feeds is a goal for every advertiser working with Google
-Merchant Center (MC), as doing so would help improve query matching,
-click-through rates (CTR), and conversions. However, it is cumbersome to sift
-through product disapprovals in Merchant Center or manually fix quality issues.
+Merchant Center (MC) in order to improve query matching, click-through rates
+(CTR), and conversions. However, it is cumbersome to sift through product
+disapprovals in MC or manually fix quality issues.
 
 FeedGen tackles this using Generative AI - allowing users to surface and fix
-quality issues, and fill attribute gaps in their feeds in an automated fashion.
+quality issues, and fill attribute gaps in their feeds, in an automated fashion.
 
 ## Solution Overview
 
@@ -68,8 +68,8 @@ details) in Google Sheets. The associated Google Sheets
 [spreadsheet template](https://docs.google.com/spreadsheets/d/1L8cgQCppRwIOvNYR3kqelPuSfAYFhhLi8gvIcknnwNo/edit#gid=92939291)
 is where all the magic happens; it holds the input feed that needs optimisation,
 along with specific configuration values that control how content is generated.
-The spreadsheet is also used for both (optional) human validation and setting up a
-**supplemental feed** in Google Merchant Center (MC).
+The spreadsheet is also used for both (optional) human validation and setting up
+a **supplemental feed** in Google Merchant Center (MC).
 
 > Generative Language in Vertex AI, and in general, is an experimental feature /
 technology. We highly recommend manually reviewing and verifying the generated
@@ -78,31 +78,30 @@ a score between 0 and 1 (along with detailed score components) that represents
 how "good" the generated content is, along with a Sheets-native way for
 bulk-approving generated content via data filters.
 
-First, make a copy of the [template spreadsheet](https://docs.google.com/spreadsheets/d/1L8cgQCppRwIOvNYR3kqelPuSfAYFhhLi8gvIcknnwNo/edit#gid=92939291) and follow the
-instructions defined in the **Getting Started** section. The first step is for
-users to authenticate to the Apps Script environment via the **Initialise**
+First, make a copy of the [template spreadsheet](https://docs.google.com/spreadsheets/d/1L8cgQCppRwIOvNYR3kqelPuSfAYFhhLi8gvIcknnwNo/edit#gid=92939291)
+and follow the instructions defined in the **Getting Started** section. The
+first step to authenticate to the Apps Script environment via the **Initialise**
 button as shown below.
 
 <img src='./img/getting-started.png' alt='Getting Started' />
 
-Afterwards, users should navigate to the **Config** worksheet to configure feed
-settings, Vertex AI API settings as well as settings to control the content
-generation.
+Afterwards, navigate to the **Config** worksheet to configure feed settings,
+Vertex AI API settings, and settings to control the content generation.
 
 <img src='./img/config.png' alt='Config' />
 
 All available data is used to generate descriptions, while titles use few-shot
-prompting; a technique where users would select samples from their own input
+prompting; a technique where one would select samples from their own input
 feed as shown below to customise the model's responses towards their data. To
 help with this process, FeedGen provides a utility Google Sheets formula:
 
 ```sql
-=FEEDGEN_CREATE_JSON_CONTEXT_FOR_ITEM('Input Feed'!A2)
+=FEEDGEN_CREATE_CONTEXT_JSON('Input Feed'!A2)
 ```
 
 Which can be used to fill up the “Context” information field in the few-shot
 prompt examples table by dragging it down, just as for other Sheets formulas.
-Afterwards, users must manually fill in the remaining columns of the few-shot
+Afterwards, you must manually fill in the remaining columns of the few-shot
 prompt examples table, which define the expected output by the LLM. These
 examples are very important as they provide the basis upon which the LLM will
 learn how it should generate content for the rest of the input feed.
@@ -118,78 +117,37 @@ the `Prefer Generated Attributes over Input` checkbox in the
 **Title Prompt Settings**, and is useful whenever the input feed itself contains
 erroneous or poor quality data.
 
-Now users are ready to optimise their feeds. Use the top navigation menu to
+Now you are ready to optimise the feeds. Use the top navigation menu to
 launch the FeedGen sidebar and start generating and validating content in the
 **Generated Content Validation** worksheet.
 
 <img src='./img/generated.png' alt='Generated' />
 
-Users would typically work within this view to approve / regenerate content for
-each feed item as desired:
+You would typically work within this view to understand, approve and/or
+regenerate content for each feed item as follows:
 
-- Approval can be done in bulk via filtering the provided view and using the
-  **Approve Filtered** button, or individually using the checkboxes in the
-  Approval column.
-- If an error occurs, it will be reflected in the **Status** column as "Failed".
-- Clicking **Continue Generating** will first regenerate all columns with an
-  *empty* or *failed* status before continuing on with the rest of the feed.
-  For example, clearing row 7 above and clicking *Continue Generating* will
-  start the generation process at row 7 first, before continuing on with the
-  next feed item (53/1000).
-  - This means that users may clear the value of the **Status** column for any
+- The **Generate** button controls the generation process, and will first
+  regenerate all columns with an *empty* or *failed* status before continuing on
+  with the rest of the feed. For example, clearing row 7 above and clicking
+  *Generate* will start the generation process at row 7 first, before continuing
+  on with the next feed item.
+  - This means that you may clear the value of the **Status** column for any
     feed item in order to *regenerate* it.
-
-<img src='./img/approval.png' alt='Approval' />
-
-FeedGen provides a score for each feed item that may act as a quality indicator.
-Let’s examine an entire row and walk through the individual components to
-understand the scoring system:
-
-- **Original Title**: 2XU Men's Swimmers Compression Long Sleeve Top
-- **Generated Title**: 2XU Men's Swim Compression Long Sleeve Top Black M PWX
-  Fabric UV Protection
-
-First FeedGen extracts "features" of both the original and generated title in
-order to compare them together. This is referred to as the **template** in our
-ubiquitous language.
-
-- **Original Title Template**: `<Brand> <Gender> <Category> <Product Type>`
-- **Generated Title Template**: `<Brand> <Gender> <Category> <Product Type> <Color> <Size> <Material> <Highlights>`
-
-We can directly see that 4 new attributes have been added. Great! But is that
-really a good thing? Let’s dive deeper. The templates are compared to surface
-the following points, which contribute either positively or negatively to the score:
-
-1. Has the title changed? Yes!
-1. Have attributes been added to the title? Yes! *Color*, *Size*, *Material* and
-   *Highlights*.
-1. Were there completely new words added that may have been *hallucinated* by
-   the language model? Yes! The LLM added "UV Protection" which is not mentioned
-   anywhere in the provided input feed. As a result the scoring system will
-   incur a penalty for this behaviour. Examining the feed item more clearly
-   however surfaces that the description indeed contained the value *UPF 50+*,
-   so the addition of UV Protection is actually a *positive* thing, but since we
-   have no way of assessing this (without applying a more granular semantic text
-   analysis) we default to penalising the score.
-1. Were there any feed **gap** attributes? In other words, did an attribute key
-   (e.g. size) exist in the feed without a value, and FeedGen filled it up? Yes!
-   The attribute **Color** is in the feed but missing. FeedGen inferred the
-   value from the other feed input columns (in this case, **Description**) and
-   filled it in. Great!
-1. Were there any **newly added** attributes that did not previously exist in
-   the feed? Yes! The **Highlights** attribute is entirely new and did not exist
-   in the feed before. Completely new feed attributes will be prefixed with
-  **new_** in the **Output Feed** (e.g. new_Highlights) and will be sorted to
-  the end of the output sheet so that users can decide whether to include them
-  or not.
-
-|Score|Has the title changed?|Template changed?|New Words Added|Attributes Filled (gap)|Attributes Added|
-|-|-|-|-|-|-|
-|0.8|+0.2|+0.2|0|+0.2|+0.2|
+  - To start from scratch, click **Clear Generated Data** first before
+    *Generate*.
+- If an error occurs, it will be reflected in the **Status** column as "Failed".
+- Approval can be done in bulk via filtering the view and using the
+  **Approve Filtered** button, or individually using the checkboxes in the
+  **Approval** column. All entries with a score above 0 will already be
+  pre-approved (read more about FeedGen's scoring system [below](#scoring)).
+- Additional columns for titles and descriptions are grouped, so that you may
+  expand the group you are interested in examining.
 
 Once you have completed all the necessary approvals and are satisfied with the
 output, click **Export to Output Feed** to transfer all approved feed items
 to the **Output Feed** worksheet.
+
+<img src='./img/output.png' alt='Output' />
 
 The last step is to connect the spreadsheet to MC as a supplemental feed,
 this can be done as described by this
@@ -198,12 +156,66 @@ standard MC accounts, and this
 [Help Center article](https://support.google.com/merchants/answer/9651854)
 for multi-client accounts (MCA).
 
-<img src='./img/output.png' alt='Output' />
-
 Notice that there is a **custom_attribute_feedgen** column in the output feed.
 This column name is completely flexible and can be changed directly in the
 output worksheet. It adds a custom attribute to the supplemental feed for
 reporting and performance measurement purposes.
+
+### Scoring
+
+FeedGen provides a score between -1 and 1 for each feed item that acts as a
+quality indicator. Positive scores indicate varying degrees of good quality,
+while negative scores represent uncertainty over the generated content.
+
+Let's take a closer look with some fictitous examples:
+
+- **Original Title**: 2XU Men's Swim Compression Long Sleeve Top
+- **Original Description**: 2XU Men's Swim Compression Long Sleeve Top,
+  lightweight, breathable PWX fabric, UPF 50+ protects you from the sun.
+- **Generated Title**: 2XU Men's Swim Compression Long Sleeve Top Black Size M
+  PWX Fabric UV Protection
+- **Score**: -1
+- Reasoning: New words, namely "UV Protection", were added that may have been
+  *hallucinated* by the language model. Indeed, "UV Protection" is not
+  explicitly mentioned anywhere in the input feed. Examining the feed item more
+  clearly however surfaces that the description contains the value *UPF 50+*, so
+  the addition of *UV Protection* is actually a *positive* thing, but since we
+  have no way of assessing this (without applying a more granular semantic text
+  analysis) we default to penalising the score.
+
+let's look at another example for the same product:
+
+- **Original Title**: 2XU Men's Swim Compression Long Sleeve Top
+- **Generated Title**: 2XU Men's Swim Compression Top Black Size M PWX Fabric
+- **Score**: -0.5
+- Reasoning: Key attribtues were removed from the title, namely "Long Sleeve",
+  which describes the type of the product.
+
+Alright, so what makes a good title? Let's look at another example:
+
+- **Original Title**: 2XU Men's Swim Compression Long Sleeve Top
+- **Generated Title**: 2XU Men's Swim Compression Top Sleeve Top Size M
+- **Score**: 0.5
+- Reasoning: Nothing was changed or lost in the original title, and we added a
+  key attribute, "Size". If this product was offered in different sizes this new
+  title would be vital in preventing all feed items for this product from
+  getting rejected by Merchant Center (due to duplicate titles).
+
+Finally, what's the ideal case? Let's take a look at one last example:
+
+- **Original Title**: 2XU Men's Swim Compression Long Sleeve Top
+- **Input: Color**: *missing*
+- **Generated Title**: 2XU Men's Swim Compression Top Sleeve Top Black Size M
+- **Output: Color**: Black
+- **Score**: 1
+- Reasoning: This is the best possible scenario; we optimised the title and
+  filled feed attribtues gaps, a score of 1 is definitely well-deserved.
+
+So in summary, the scoring systems works as follows:
+
+|Are there hallucinations?|Have we removed key attributes / words?|No change at all?|Have we optimised the title?|Did we fill in missing gaps?|
+|-|-|-|-|-|
+|-1|-0.5|0|Add 0.5|Add 0.5|
 
 ### Best Practices
 
