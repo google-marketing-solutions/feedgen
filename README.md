@@ -188,7 +188,7 @@ let's look at another example for the same product:
 - **Original Title**: 2XU Men's Swim Compression Long Sleeve Top
 - **Generated Title**: 2XU Men's Swim Compression Top Black Size M PWX Fabric
 - **Score**: -0.5
-- Reasoning: Key attribtues were removed from the title, namely "Long Sleeve",
+- Reasoning: Key attributes were removed from the title, namely "Long Sleeve",
   which describes the type of the product.
 
 Alright, so what makes a good title? Let's look at another example:
@@ -209,7 +209,7 @@ Finally, what's the ideal case? Let's take a look at one last example:
 - **Output: Color**: Black
 - **Score**: 1
 - Reasoning: This is the best possible scenario; we optimised the title and
-  filled feed attribtues gaps, a score of 1 is definitely well-deserved.
+  filled feed attribute gaps, a score of 1 is definitely well-deserved.
 
 So in summary, the scoring systems works as follows:
 
