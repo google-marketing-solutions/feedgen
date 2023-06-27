@@ -403,7 +403,7 @@ function optimizeRow(
     genDescription.length > 0
       ? Status.SUCCESS
       : Status.NON_COMPLIANT;
-
+  const score = status === Status.NON_COMPLIANT ? String(-1) : totalScore;
   const approval = Number(totalScore) > 0;
 
   return [
@@ -412,7 +412,7 @@ function optimizeRow(
     itemId,
     genTitle,
     origTitle,
-    status === Status.NON_COMPLIANT ? String(-1) : totalScore,
+    score,
     titleChanged,
     String(genTitle.length),
     newWordsAdded,
