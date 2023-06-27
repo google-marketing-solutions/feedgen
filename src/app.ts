@@ -404,7 +404,7 @@ function optimizeRow(
       ? Status.SUCCESS
       : Status.NON_COMPLIANT;
   const score = status === Status.NON_COMPLIANT ? String(-1) : totalScore;
-  const approval = Number(totalScore) > 0;
+  const approval = Number(score) > 0;
 
   return [
     approval,
