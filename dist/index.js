@@ -119,10 +119,10 @@ const CONFIG = {
         status: 1,
         id: 2,
         titleGenerated: 3,
-        gapAttributes: 12,
-        descriptionGenerated: 13,
-        fullApiResponse: 17,
-        originalInput: 18,
+        gapAttributes: 14,
+        descriptionGenerated: 15,
+        fullApiResponse: 19,
+        originalInput: 20,
       },
     },
     output: {
@@ -383,8 +383,7 @@ const CATEGORY_PROMPT_PART = 'product category:';
 const TEMPLATE_PROMPT_PART = 'product attribute keys:';
 const ATTRIBUTES_PROMPT_PART = 'product attribute values:';
 const SEPARATOR = '|';
-const WORD_MATCH_REGEX =
-  /([A-Za-zÀ-ÖØ-öø-ÿ0-9]|\s)*\[A-Za-zÀ-ÖØ-öø-ÿ0-9](?=")|\[A-Za-zÀ-ÖØ-öø-ÿ0-9]+/g;
+const WORD_MATCH_REGEX = /[A-Za-zÀ-ÖØ-öø-ÿ0-9]+/g;
 const TITLE_MAX_LENGTH = 150;
 const DESCRIPTION_MAX_LENGTH = 5000;
 const [
@@ -490,14 +489,34 @@ function getGenerationMetrics(
   gapAttributesAndValues,
   originalInput
 ) {
-  const titleChanged = origTitle !== genTitle;
   const addedAttributes = Util.getSetDifference(genAttributes, origAttributes);
+  const removedAttributes = Util.getSetDifference(
+    origAttributes,
+    genAttributes
+  );
   const newWordsAdded = new Set();
-  const genTitleWords = genTitle.match(WORD_MATCH_REGEX);
-  if (genTitleWords) {
-    genTitleWords
-      .filter(genTitleWord => !inputWords.has(genTitleWord.toLowerCase()))
-      .forEach(newWord => newWordsAdded.add(newWord));
+  const genTitleWords = new Set();
+  const genTitleWordsMatcher = String(genTitle)
+    .replace("'s", '')
+    .match(WORD_MATCH_REGEX);
+  if (genTitleWordsMatcher) {
+    genTitleWordsMatcher.forEach(word => genTitleWords.add(word.toLowerCase()));
+    genTitleWordsMatcher
+      .filter(word => !inputWords.has(word.toLowerCase()))
+      .forEach(word => newWordsAdded.add(word));
+  }
+  const wordsRemoved = new Set();
+  const origTitleWordsMatcher = String(origTitle)
+    .replace("'s", '')
+    .match(WORD_MATCH_REGEX);
+  if (origTitleWordsMatcher) {
+    origTitleWordsMatcher
+      .filter(
+        word =>
+          !genTitleWords.has(word.toLowerCase()) &&
+          !genTitle.replace("'", '').includes(word)
+      )
+      .forEach(word => wordsRemoved.add(word));
   }
   const gapAttributesPresent = Object.keys(gapAttributesAndValues).filter(
     gapKey => gapKey in originalInput
@@ -505,18 +524,35 @@ function getGenerationMetrics(
   const gapAttributesInvented = Object.keys(gapAttributesAndValues).filter(
     gapKey => !(gapKey in originalInput)
   );
-  const totalScore =
-    (Number(addedAttributes.length > 0) +
-      Number(titleChanged) +
-      Number(newWordsAdded.size === 0) +
-      Number(gapAttributesPresent.length > 0) +
-      Number(gapAttributesInvented.length > 0)) /
-    5;
+  const filledOrInventedFeedAttributes =
+    gapAttributesPresent.length > 0 || gapAttributesInvented.length > 0;
+  const addedTitleAttributes = addedAttributes.filter(Boolean).length > 0;
+  const removedTitleAttributes =
+    removedAttributes.filter(Boolean).length > 0 || wordsRemoved.size > 0;
+  const hallucinatedTitle = newWordsAdded.size > 0;
+  let score = 0;
+  if (hallucinatedTitle) {
+    score = -1;
+  } else if (removedTitleAttributes) {
+    score = -0.5;
+  } else {
+    score =
+      (Number(filledOrInventedFeedAttributes) + Number(addedTitleAttributes)) /
+      2;
+  }
   return {
-    totalScore: totalScore.toString(),
-    titleChanged: titleChanged.toString(),
-    addedAttributes: addedAttributes.map(attr => `<${attr}>`).join(' '),
+    totalScore: score.toString(),
+    titleChanged: String(score !== 0),
+    addedAttributes: addedAttributes
+      .filter(Boolean)
+      .map(attr => `<${attr}>`)
+      .join(' '),
+    removedAttributes: removedAttributes
+      .filter(Boolean)
+      .map(attr => `<${attr}>`)
+      .join(' '),
     newWordsAdded: [...newWordsAdded].join(` ${SEPARATOR} `),
+    wordsRemoved: [...wordsRemoved].join(` ${SEPARATOR} `),
   };
 }
 function getConfigSheetValue(field) {
@@ -580,27 +616,42 @@ function optimizeRow(headers, data) {
       titleFeatures.push(String(value).trim());
     }
   });
-  const origTemplate = origAttributes.map(x => `<${x}>`).join(' ');
-  const genTemplate = validGenAttributes.map(x => `<${x}>`).join(' ');
+  const origTemplate = origAttributes
+    .filter(Boolean)
+    .map(x => `<${x}>`)
+    .join(' ');
+  const genTemplate = validGenAttributes
+    .filter(Boolean)
+    .map(x => `<${x}>`)
+    .join(' ');
   const genTitle = titleFeatures.join(' ');
   const genDescription = fetchDescriptionGenerationData(dataObj, genTitle);
   const inputWords = new Set();
-  Object.values(dataObj).forEach(value => {
-    const match = new String(value).match(WORD_MATCH_REGEX);
+  for (const [key, value] of Object.entries(dataObj)) {
+    const keyAndValue = [String(key), String(value).replace("'s", '')].join(
+      ' '
+    );
+    const match = keyAndValue.match(WORD_MATCH_REGEX);
     if (match) {
       match.forEach(word => inputWords.add(word.toLowerCase()));
     }
-  });
-  const { totalScore, titleChanged, addedAttributes, newWordsAdded } =
-    getGenerationMetrics(
-      origTitle,
-      genTitle,
-      new Set(origAttributes),
-      new Set(validGenAttributes),
-      inputWords,
-      gapAttributesAndValues,
-      dataObj
-    );
+  }
+  const {
+    totalScore,
+    titleChanged,
+    addedAttributes,
+    removedAttributes,
+    newWordsAdded,
+    wordsRemoved,
+  } = getGenerationMetrics(
+    origTitle,
+    genTitle,
+    new Set(origAttributes),
+    new Set(validGenAttributes),
+    inputWords,
+    gapAttributesAndValues,
+    dataObj
+  );
   const status =
     genTitle.length <= TITLE_MAX_LENGTH &&
     genTitle.length > 0 &&
@@ -608,19 +659,22 @@ function optimizeRow(headers, data) {
     genDescription.length > 0
       ? Status.SUCCESS
       : Status.NON_COMPLIANT;
+  const approval = Number(totalScore) > 0;
   return [
-    false,
+    approval,
     status,
     itemId,
     genTitle,
     origTitle,
-    status === Status.NON_COMPLIANT ? String(0) : totalScore,
+    status === Status.NON_COMPLIANT ? String(-1) : totalScore,
     titleChanged,
     String(genTitle.length),
+    newWordsAdded,
+    wordsRemoved,
     origTemplate,
     genTemplate,
     addedAttributes,
-    newWordsAdded,
+    removedAttributes,
     Object.keys(gapAttributesAndValues).length > 0
       ? JSON.stringify(gapAttributesAndValues)
       : '',
