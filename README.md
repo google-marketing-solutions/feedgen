@@ -117,8 +117,8 @@ the `Prefer Generated Attributes over Input` checkbox in the
 **Title Prompt Settings**, and is useful whenever the input feed itself contains
 erroneous or poor quality data.
 
-Now you are ready to optimise the feeds. Use the top navigation menu to
-launch the FeedGen sidebar and start generating and validating content in the
+Now you are ready to optimise your feed. Use the top navigation menu to launch
+the FeedGen sidebar and start generating and validating content in the
 **Generated Content Validation** worksheet.
 
 <img src='./img/generated.png' alt='Generated' />
@@ -139,7 +139,7 @@ regenerate content for each feed item as follows:
 - Approval can be done in bulk via filtering the view and using the
   **Approve Filtered** button, or individually using the checkboxes in the
   **Approval** column. All entries with a score above 0 will already be
-  pre-approved (read more about FeedGen's scoring system [below](#scoring)).
+  pre-approved (read more about FeedGen's [scoring system](#scoring) below).
 - Additional columns for titles and descriptions are grouped, so that you may
   expand the group you are interested in examining.
 
@@ -183,33 +183,50 @@ Let's take a closer look with some fictitous examples:
   have no way of assessing this (without applying a more granular semantic text
   analysis) we default to penalising the score.
 
-let's look at another example for the same product:
+Let's look at another example for the same product:
 
 - **Original Title**: 2XU Men's Swim Compression Long Sleeve Top
-- **Generated Title**: 2XU Men's Swim Compression Top Black Size M PWX Fabric
+- **Generated Title**: 2XU Men's Swim Compression Top Size M
 - **Score**: -0.5
 - Reasoning: Key attributes were removed from the title, namely "Long Sleeve",
-  which describes the type of the product.
+  which describes the type of the product. FeedGen identifies this information
+  by first examining the structure of titles via what we refer to as
+  **templates** in our uniquitous language, before diving deeper and comparing
+  the individual words that compose the titles. Let's check the templates for
+  our example:
+  - **Original Title Template**: `<Brand> <Gender> <Category> <Product Type>`
+  - **Generated Title Template**: `<Brand> <Gender> <Category> <Product Type> <Size>`
+  - As you can see no attributes were actually removed, but rather the
+    components of the `Product Type` attribute changed in a worse way, hence the
+    negative score.
+
+> FeedGen is conservative in its scoring; it will assign a score of -0.5
+  whenever *any* attributes or words get removed, even if those words were
+  promotional phrases such as `get yours now` or `while stocks last`, which
+  should not be part of titles as per the [Best Practices](#best-practices)
+  outlined by Google Merchant Center.
 
 Alright, so what makes a good title? Let's look at another example:
 
 - **Original Title**: 2XU Men's Swim Compression Long Sleeve Top
-- **Generated Title**: 2XU Men's Swim Compression Top Sleeve Top Size M
+- **Generated Title**: 2XU Men's Swim Compression Long Sleeve Top Size M
 - **Score**: 0.5
 - Reasoning: Nothing was changed or lost in the original title, and we added a
-  key attribute, "Size". If this product was offered in different sizes this new
-  title would be vital in preventing all feed items for this product from
-  getting rejected by Merchant Center (due to duplicate titles).
+  new attribute, "Size". If the product was being offered in different sizes,
+  this new title would now be vital in preventing all feed items for the product
+  from getting rejected by Merchant Center (due to their titles being
+  duplicates).
 
 Finally, what's the ideal case? Let's take a look at one last example:
 
 - **Original Title**: 2XU Men's Swim Compression Long Sleeve Top
-- **Input: Color**: *missing*
-- **Generated Title**: 2XU Men's Swim Compression Top Sleeve Top Black Size M
-- **Output: Color**: Black
+- **Input - Color**: *missing*
+- **Generated Title**: 2XU Men's Swim Compression Long Sleeve Top Black Size M
+- **Output - Color**: Black
 - **Score**: 1
 - Reasoning: This is the best possible scenario; we optimised the title and
-  filled feed attribute gaps, a score of 1 is definitely well-deserved.
+  filled feed attribute gaps along the way, a score of 1 is definitely
+  well-deserved.
 
 So in summary, the scoring systems works as follows:
 
