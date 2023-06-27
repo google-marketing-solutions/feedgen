@@ -412,7 +412,7 @@ function showSidebar() {
   html.setTitle('FeedGen');
   SpreadsheetApp.getUi().showSidebar(html);
 }
-function FEEDGEN_CREATE_JSON_CONTEXT_FOR_ITEM(itemId) {
+function FEEDGEN_CREATE_CONTEXT_JSON(itemId) {
   const inputSheet = SpreadsheetApp.getActive().getSheetByName(
     CONFIG.sheets.input.name
   );
