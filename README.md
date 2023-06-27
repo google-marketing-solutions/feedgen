@@ -139,7 +139,8 @@ regenerate content for each feed item as follows:
 - Approval can be done in bulk via filtering the view and using the
   **Approve Filtered** button, or individually using the checkboxes in the
   **Approval** column. All entries with a score above 0 will already be
-  pre-approved (read more about FeedGen's [scoring system](#scoring) below).
+  pre-approved (read more about FeedGen's
+  [Scoring / Evaluation](#scoring--evaluation) system below).
 - Additional columns for titles and descriptions are grouped, so that you may
   expand the group you are interested in examining.
 
@@ -161,9 +162,9 @@ This column name is completely flexible and can be changed directly in the
 output worksheet. It adds a custom attribute to the supplemental feed for
 reporting and performance measurement purposes.
 
-### Scoring
+### Scoring / Evaluation
 
-FeedGen provides a score between -1 and 1 for each feed item that acts as a
+FeedGen provides a score for generated titles between -1 and 1 that acts as a
 quality indicator. Positive scores indicate varying degrees of good quality,
 while negative scores represent uncertainty over the generated content.
 
@@ -204,7 +205,7 @@ Let's look at another example for the same product:
   whenever *any* attributes or words get removed, even if those words were
   promotional phrases such as `get yours now` or `while stocks last`, which
   should not be part of titles as per the [Best Practices](#best-practices)
-  outlined by Google Merchant Center.
+  outlined by Merchant Center (MC).
 
 Alright, so what makes a good title? Let's look at another example:
 
@@ -214,8 +215,7 @@ Alright, so what makes a good title? Let's look at another example:
 - Reasoning: Nothing was changed or lost in the original title, and we added a
   new attribute, "Size". If the product was being offered in different sizes,
   this new title would now be vital in preventing all feed items for the product
-  from getting rejected by Merchant Center (due to their titles being
-  duplicates).
+  from getting rejected by MC (due to their titles being duplicates).
 
 Finally, what's the ideal case? Let's take a look at one last example:
 
@@ -233,6 +233,13 @@ So in summary, the scoring systems works as follows:
 |Are there hallucinations?|Have we removed key attributes / words?|No change at all?|Have we optimised the title?|Did we fill in missing gaps?|
 |-|-|-|-|-|
 |-1|-0.5|0|Add 0.5|Add 0.5|
+
+FeedGen also applies some basic MC compliance checks, such as titles and
+descriptions must not be longer than 150 and 5000 characters, respectively. If
+the generated content fails these checks, the value
+`Failed compliance checks` will be output in the **Status** column. As
+mentioned above, FeedGen will attempt to regenerate `Failed` items first
+whenever the **Generate** button is clicked.
 
 ### Best Practices
 
