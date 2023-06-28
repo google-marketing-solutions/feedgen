@@ -65,11 +65,12 @@ quality issues, and fill attribute gaps in their feeds, in an automated fashion.
 
 FeedGen is an Apps Script based application that runs as an HTML sidebar (see
 [HtmlService](https://developers.google.com/apps-script/guides/html) for
-details) in Google Sheets. The associated Google Sheets spreadsheet template
-is where all the magic happens; it holds the input feed that needs optimisation,
-along with specific configuration values that control how content is generated.
-The spreadsheet is also used for both (optional) human validation and setting up
-a **supplemental feed** in Google Merchant Center (MC).
+details) in Google Sheets. The associated Google Sheets
+[spreadsheet template](#get-started) is where all the magic happens; it holds
+the input feed that needs optimisation, along with specific configuration values
+that control how content is generated. The spreadsheet is also used for both
+(optional) human validation and setting up a **supplemental feed** in Google
+Merchant Center (MC).
 
 > Generative Language in Vertex AI, and in general, is an experimental feature /
 technology. We highly recommend manually reviewing and verifying the generated
