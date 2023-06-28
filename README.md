@@ -25,7 +25,8 @@ limitations under the License.
 [Overview](#overview) •
 [What it solves](#challenges) •
 [How it works](#solution-overview) •
-[Get started](#get-started)
+[Get started](#get-started) •
+[How to Contribute](#how-to-contribute)
 
 ## Overview
 
@@ -277,3 +278,22 @@ To get started with FeedGen:
 1. Make a copy of the Google Sheets
 [spreadsheet template](https://docs.google.com/spreadsheets/d/1L8cgQCppRwIOvNYR3kqelPuSfAYFhhLi8gvIcknnwNo/edit#gid=92939291)
 1. Follow the instructions detailed in the `Getting Started` worksheet
+
+## How to Contribute
+
+Beyond the information outlined in our [Contributing Guide](CONTRIBUTING.md),
+you would need to follow these additional steps to build FeedGen locally:
+
+1. Make sure your system has an up-to-date installation of
+   [Node.js and npm](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm).
+1. Navigate to the directory where the FeedGen source code lives.
+1. Run `npm install`.
+1. Run `npx @google/aside init` and click through the prompts.
+   - Input the Apps Script `Script ID` associated with your target Google Sheets
+     spreadsheet. You can find out this value by clicking on
+     `Extensions > Apps Script` in the top navigation menu of your target sheet,
+     then navigating to `Project Settings` (the gear icon) in the resulting
+     [Apps Script](https://script.google.com) view.
+1. Run `npm run deploy` to build, test and deploy (via
+   [clasp](https://github.com/google/clasp)) all code to the target spreadsheet
+   / Apps Script project.
