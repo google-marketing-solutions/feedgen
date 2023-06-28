@@ -65,8 +65,7 @@ quality issues, and fill attribute gaps in their feeds, in an automated fashion.
 
 FeedGen is an Apps Script based application that runs as an HTML sidebar (see
 [HtmlService](https://developers.google.com/apps-script/guides/html) for
-details) in Google Sheets. The associated Google Sheets
-[spreadsheet template](https://docs.google.com/spreadsheets/d/1L8cgQCppRwIOvNYR3kqelPuSfAYFhhLi8gvIcknnwNo/edit#gid=92939291)
+details) in Google Sheets. The associated Google Sheets spreadsheet template
 is where all the magic happens; it holds the input feed that needs optimisation,
 along with specific configuration values that control how content is generated.
 The spreadsheet is also used for both (optional) human validation and setting up
@@ -276,7 +275,7 @@ guides for more information.
 To get started with FeedGen:
 
 1. Make a copy of the Google Sheets
-[spreadsheet template](https://docs.google.com/spreadsheets/d/1L8cgQCppRwIOvNYR3kqelPuSfAYFhhLi8gvIcknnwNo/edit#gid=92939291)
+[spreadsheet template](https://docs.google.com/spreadsheets/d/19eKTJrbZaUfipAvL5ZQmq_hoxEbLQIlDqURKFJA2OBU/edit#gid=1661242997)
 1. Follow the instructions detailed in the `Getting Started` worksheet
 
 ## How to Contribute
