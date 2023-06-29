@@ -127,6 +127,7 @@ const CONFIG = {
     },
     output: {
       name: 'Output Feed',
+      newAttributesPrefix: 'feedgen-',
       startRow: 1,
       cols: {
         modificationTimestamp: 0,
@@ -878,7 +879,9 @@ function exportApproved() {
     CONFIG.sheets.output.cols.title.name,
     CONFIG.sheets.output.cols.description.name,
     ...gapAttributes,
-    ...inventedAttributes.map(key => `new_${key}`),
+    ...inventedAttributes.map(
+      key => `${CONFIG.sheets.output.newAttributesPrefix}${key}`
+    ),
   ];
   const rowsToWrite = [];
   for (const row of feedGenRows) {
