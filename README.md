@@ -248,8 +248,8 @@ FeedGen does not just fill gaps in your feed, but might also create completely
 **new** attributes that were not provided in the *Input Feed*. This is
 controllable via the few-shot prompting examples in the *Config* sheet; by
 providing "new" attributes that do not exist in the input within those examples,
-FeedGen will attempt to *infer* values for those new attribute from other values
-in the input feed. Let's take a look at an example:
+FeedGen will attempt to *infer* values for those new attributes from other
+values in the input feed. Let's take a look at an example:
 
 |Original Title|Product Attributes in Original Title|Product Attributes in Generated Title|Generated Attribute Values|
 |---|---|---|---|
