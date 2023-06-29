@@ -364,7 +364,7 @@ function optimizeRow(
       }
       const value = preferGeneratedAttributes
         ? genAttributeValues[index]
-        : dataObj[attribute] ?? genAttributeValues[index];
+        : dataObj[attribute] || genAttributeValues[index];
 
       if (value && String(value).trim()) {
         validGenAttributes.push(attribute);
@@ -693,7 +693,9 @@ export function exportApproved() {
     CONFIG.sheets.output.cols.title.name,
     CONFIG.sheets.output.cols.description.name,
     ...gapAttributes,
-    ...inventedAttributes.map(key => `new_${key}`),
+    ...inventedAttributes.map(
+      key => `${CONFIG.sheets.output.newAttributesPrefix}${key}`
+    ),
   ];
 
   const rowsToWrite: string[][] = [];

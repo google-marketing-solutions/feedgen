@@ -131,6 +131,7 @@ export const CONFIG = {
     },
     output: {
       name: 'Output Feed',
+      newAttributesPrefix: 'feedgen-',
       startRow: 1,
       cols: {
         modificationTimestamp: 0,
