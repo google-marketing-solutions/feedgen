@@ -262,8 +262,8 @@ so for example it will extract the value `Relaxed` as *Fit* from the title
 created, make sure you only use attributes that exist in the input feed for your
 few-shot prompting examples. Furthermore, those completely new feed attributes
 will be prefixed with **feedgen-** in the **Output Feed** (e.g. feedgen-Fit) and
-will be sorted to the end of the output sheet to make it easier for you to
-locate and delete should you not want to use them.
+will be sorted to the end of the sheet to make it easier for you to locate and
+delete should you not want to use them.
 
 ### Best Practices
 
