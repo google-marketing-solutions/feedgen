@@ -732,3 +732,11 @@ export function exportApproved() {
   clearApprovedData();
   writeApprovedData(outputHeader, rowsToWrite);
 }
+
+function _testGenerateNextRow() {
+  const unprocessedInputRows = JSON.parse(getUnprocessedInputRows());
+  const inputHeaders = unprocessedInputRows.shift();
+  const row = unprocessedInputRows.shift();
+  const generatedRow = generateRow(inputHeaders, row);
+  console.log(generatedRow);
+}
