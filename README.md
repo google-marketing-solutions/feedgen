@@ -158,7 +158,7 @@ standard MC accounts, and this
 [Help Center article](https://support.google.com/merchants/answer/9651854)
 for multi-client accounts (MCA).
 
-Notice that there is a **custom_attribute_feedgen** column in the output feed.
+Notice that there is a **att-p-feedgen** column in the output feed.
 This column name is completely flexible and can be changed directly in the
 output worksheet. It adds a custom attribute to the supplemental feed for
 reporting and performance measurement purposes.
