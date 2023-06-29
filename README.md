@@ -108,9 +108,9 @@ examples are very important as they provide the basis upon which the LLM will
 learn how it should generate content for the rest of the input feed.
 
 The best examples to pick are products where:
-* You can identify product attributes of the existing title   
+* You can identify product attributes in the existing title   
 * You can propose a title that is better than the existing one
-* Proposed title has a structure that uses product attributes in fixed order
+* Proposed title has a structure that uses product attributes in a fixed order
 
 "Context" is a full content of product entry in input feed - and all data in the "Title Fed-Shot Prompting Examples" will be present in the prompts sent to Generation AI for each row of input.
 
