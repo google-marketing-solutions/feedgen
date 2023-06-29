@@ -256,14 +256,14 @@ values in the input feed. Let's take a look at an example:
 |ASICS Women's Performance Running Capri Tight|Brand, Gender, Product Type| Brand, Gender, Product Type, **Fit**| ASICS, Women's Performance, Running Capri, Tight|
 
 Notice here how the **Fit** attribute was extracted out of *Product Type*.
-FeedGen would now to attempt to do the same for all other products in the feed,
+FeedGen would now attempt to do the same for all other products in the feed,
 so for example it will extract the value `Relaxed` as *Fit* from the title
 `Agave Men's Jeans Waterman Relaxed`. If you do not want those attributes to be
 created, make sure you only use attributes that exist in the input feed for your
 few-shot prompting examples. Furthermore, those completely new feed attributes
 will be prefixed with **feedgen-** in the **Output Feed** (e.g. feedgen-Fit) and
 will be sorted to the end of the output sheet to make it easier for you to
-locate and delete.
+locate and delete should you not want to use them.
 
 ### Best Practices
 
