@@ -611,7 +611,7 @@ function optimizeRow(headers, data) {
     }
     const value = preferGeneratedAttributes
       ? genAttributeValues[index]
-      : dataObj[attribute] ?? genAttributeValues[index];
+      : dataObj[attribute] || genAttributeValues[index];
     if (value && String(value).trim()) {
       validGenAttributes.push(attribute);
       titleFeatures.push(String(value).trim());
