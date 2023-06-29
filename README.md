@@ -231,7 +231,7 @@ Finally, what's the ideal case? Let's take a look at one last example:
 
 So in summary, the scoring systems works as follows:
 
-|Are there hallucinations?|Have we removed key attributes / words?|No change at all?|Have we optimised the title?|Did we fill in missing gaps?|
+|Are there hallucinations?|Have we removed key attributes / words?|No change at all?|Have we optimised the title?|Did we fill in missing gaps or create [new attributes](#feed-gaps-and-new-attributes)?|
 |-|-|-|-|-|
 |-1|-0.5|0|Add 0.5|Add 0.5|
 
@@ -241,6 +241,29 @@ the generated content fails these checks, the value
 `Failed compliance checks` will be output in the **Status** column. As
 mentioned above, FeedGen will attempt to regenerate `Failed` items first
 whenever the **Generate** button is clicked.
+
+### Feed Gaps and New Attributes
+
+FeedGen does not just fill gaps in your feed, but might also create completely
+**new** attributes that were not provided in the *Input Feed*. This is
+controllable via the few-shot prompting examples in the *Config* sheet; by
+providing "new" attributes that do not exist in the input within those examples,
+FeedGen will attempt to *infer* values for those new attributes from other
+values in the input feed. Let's take a look at an example:
+
+|Original Title|Product Attributes in Original Title|Product Attributes in Generated Title|Generated Attribute Values|
+|---|---|---|---|
+|ASICS Women's Performance Running Capri Tight|Brand, Gender, Product Type| Brand, Gender, Product Type, **Fit**| ASICS, Women's Performance, Running Capri, Tight|
+
+Notice here how the **Fit** attribute was extracted out of *Product Type*.
+FeedGen would now attempt to do the same for all other products in the feed,
+so for example it will extract the value `Relaxed` as *Fit* from the title
+`Agave Men's Jeans Waterman Relaxed`. If you do not want those attributes to be
+created, make sure you only use attributes that exist in the input feed for your
+few-shot prompting examples. Furthermore, those completely new feed attributes
+will be prefixed with **feedgen-** in the **Output Feed** (e.g. feedgen-Fit) and
+will be sorted to the end of the sheet to make it easier for you to locate and
+delete should you not want to use them.
 
 ### Best Practices
 
