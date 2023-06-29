@@ -75,9 +75,9 @@ Merchant Center (MC).
 > Generative Language in Vertex AI, and in general, is an experimental feature /
 technology. We highly recommend manually reviewing and verifying the generated
 titles and descriptions. FeedGen helps users expedite this process by providing
-a score between 0 and 1 (along with detailed score components) that represents
-how "good" the generated content is, along with a Sheets-native way for
-bulk-approving generated content via data filters.
+a [score](#scoring--evaluation) between -1 and 1 (along with detailed components)
+that represents how "good" the generated content is, along with a Sheets-native
+way for bulk-approving generated content via data filters.
 
 First, make a copy of the [template spreadsheet](https://docs.google.com/spreadsheets/d/1L8cgQCppRwIOvNYR3kqelPuSfAYFhhLi8gvIcknnwNo/edit#gid=92939291)
 and follow the instructions defined in the **Getting Started** section. The
