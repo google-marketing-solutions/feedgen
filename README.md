@@ -23,9 +23,9 @@ limitations under the License.
 **Disclaimer: This is not an official Google product.**
 
 [Overview](#overview) •
+[Get started](#get-started) •
 [What it solves](#challenges) •
 [How it works](#solution-overview) •
-[Get started](#get-started) •
 [How to Contribute](#how-to-contribute)
 
 ## Overview
@@ -51,6 +51,14 @@ models with Vertex AI, along with the benefits of doing so, at this
 For non-English language generation, please reach out to your Google Sales /
 gTech representative to have the FeedGen team generate the output for you.
 
+## Get Started
+
+To get started with FeedGen:
+
+1. Make a copy of the Google Sheets
+[spreadsheet template](https://docs.google.com/spreadsheets/d/19eKTJrbZaUfipAvL5ZQmq_hoxEbLQIlDqURKFJA2OBU/edit#gid=1661242997)
+1. Follow the instructions detailed in the `Getting Started` worksheet
+
 ## Challenges
 
 Optimising Shopping Ads feeds is a goal for every advertiser working with Google
@@ -65,12 +73,11 @@ quality issues, and fill attribute gaps in their feeds, in an automated fashion.
 
 FeedGen is an Apps Script based application that runs as an HTML sidebar (see
 [HtmlService](https://developers.google.com/apps-script/guides/html) for
-details) in Google Sheets. The associated Google Sheets
-[spreadsheet template](#get-started) is where all the magic happens; it holds
-the input feed that needs optimisation, along with specific configuration values
-that control how content is generated. The spreadsheet is also used for both
-(optional) human validation and setting up a **supplemental feed** in Google
-Merchant Center (MC).
+details) in Google Sheets. The associated Google Sheets spreadsheet template is
+where all the magic happens; it holds the input feed that needs optimisation,
+along with specific configuration values that control how content is generated.
+The spreadsheet is also used for both (optional) human validation and setting up
+a **supplemental feed** in Google Merchant Center (MC).
 
 > Generative Language in Vertex AI, and in general, is an experimental feature /
 technology. We highly recommend manually reviewing and verifying the generated
@@ -293,14 +300,6 @@ Please refer to the Vertex AI
 [Pricing](https://cloud.google.com/vertex-ai/pricing#generative_ai_models) and
 [Quotas and Limits](https://cloud.google.com/vertex-ai/docs/quotas#request_quotas)
 guides for more information.
-
-## Get Started
-
-To get started with FeedGen:
-
-1. Make a copy of the Google Sheets
-[spreadsheet template](https://docs.google.com/spreadsheets/d/19eKTJrbZaUfipAvL5ZQmq_hoxEbLQIlDqURKFJA2OBU/edit#gid=1661242997)
-1. Follow the instructions detailed in the `Getting Started` worksheet
 
 ## How to Contribute
 
