@@ -156,6 +156,7 @@ export const CONFIG = {
       name: 'Log',
       startRow: 0,
     },
+    formulaError: '#ERROR!',
   },
   vertexAi: {
     endpoint: 'aiplatform.googleapis.com',

@@ -112,6 +112,7 @@ export function FEEDGEN_CREATE_CONTEXT_JSON(itemId: string) {
  *     up nullifying the array if it contained a non-primitive data type.
  */
 export function getUnprocessedInputRows(filterProcessed = true) {
+  SpreadsheetApp.flush();
   const inputSheet = SpreadsheetApp.getActive().getSheetByName(
     CONFIG.sheets.input.name
   );
@@ -445,6 +446,14 @@ function fetchTitleGenerationData(data: Record<string, unknown>): string {
   const dataContext = `Context: ${JSON.stringify(data)}\n\n`;
   const prompt =
     getConfigSheetValue(CONFIG.userSettings.title.fullPrompt) + dataContext;
+
+  if (prompt.startsWith(CONFIG.sheets.formulaError)) {
+    throw new Error(
+      'Could not read the title prompt from the "Config" sheet. ' +
+        'Please refresh the sheet by adding a new row before the ' +
+        '"Title Prompt Settings" section then immediately deleting it.'
+    );
+  }
   const res = Util.executeWithRetry(CONFIG.vertexAi.maxRetries, () =>
     VertexHelper.getInstance(vertexAiGcpProjectId, vertexAiLanguageModelId, {
       temperature: Number(
@@ -483,6 +492,14 @@ function fetchDescriptionGenerationData(
   const prompt =
     getConfigSheetValue(CONFIG.userSettings.description.fullPrompt) +
     dataContext;
+
+  if (prompt.startsWith(CONFIG.sheets.formulaError)) {
+    throw new Error(
+      'Could not read the description prompt from the "Config" sheet. ' +
+        'Please refresh the sheet by adding a new row before the ' +
+        '"Description Prompt Settings" section then immediately deleting it.'
+    );
+  }
   const res = Util.executeWithRetry(CONFIG.vertexAi.maxRetries, () =>
     VertexHelper.getInstance(vertexAiGcpProjectId, vertexAiLanguageModelId, {
       temperature: Number(

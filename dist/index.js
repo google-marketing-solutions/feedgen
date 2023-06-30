@@ -156,6 +156,7 @@ const CONFIG = {
       name: 'Log',
       startRow: 0,
     },
+    formulaError: '#ERROR!',
   },
   vertexAi: {
     endpoint: 'aiplatform.googleapis.com',
@@ -700,6 +701,13 @@ function fetchTitleGenerationData(data) {
   const dataContext = `Context: ${JSON.stringify(data)}\n\n`;
   const prompt =
     getConfigSheetValue(CONFIG.userSettings.title.fullPrompt) + dataContext;
+  if (prompt.startsWith(CONFIG.sheets.formulaError)) {
+    throw new Error(
+      'Could not read the title prompt from the "Config" sheet. ' +
+        'Please refresh the sheet by adding a new row before the ' +
+        '"Title Prompt Settings" section then immediately deleting it.'
+    );
+  }
   const res = Util.executeWithRetry(CONFIG.vertexAi.maxRetries, () =>
     VertexHelper.getInstance(vertexAiGcpProjectId, vertexAiLanguageModelId, {
       temperature: Number(
@@ -733,6 +741,13 @@ function fetchDescriptionGenerationData(data, generatedTitle) {
   const prompt =
     getConfigSheetValue(CONFIG.userSettings.description.fullPrompt) +
     dataContext;
+  if (prompt.startsWith(CONFIG.sheets.formulaError)) {
+    throw new Error(
+      'Could not read the description prompt from the "Config" sheet. ' +
+        'Please refresh the sheet by adding a new row before the ' +
+        '"Description Prompt Settings" section then immediately deleting it.'
+    );
+  }
   const res = Util.executeWithRetry(CONFIG.vertexAi.maxRetries, () =>
     VertexHelper.getInstance(vertexAiGcpProjectId, vertexAiLanguageModelId, {
       temperature: Number(
