@@ -336,7 +336,7 @@ function optimizeRow(
   const blocklistedAttributes = getConfigSheetValue(
     CONFIG.userSettings.title.blocklistedAttributes
   )
-    .split(SEPARATOR)
+    .split(',')
     .filter(Boolean)
     .map((x: string) => x.trim().toLowerCase());
 
