@@ -121,13 +121,22 @@ attribute values for composing the title, to avoid LLM hallucinations and ensure
 consistency. For example, the value `Blue` from the input feed attribute
 **Color** for a specific feed item will be used for its corresponding title
 instead of, say, a generated value `Navy`. This behaviour can be overridden with
-the `Prefer Generated Attributes over Input` checkbox in the
-**Title Prompt Settings**, and is useful whenever the input feed itself contains
-erroneous or poor quality data.
+the `Prefer Generated Values` checkbox in the **Advanced Settings** section of
+the *Title Prompt Settings*, and is useful whenever the input feed itself
+contains erroneous or poor quality data.
 
-Now you are ready to optimise your feed. Use the top navigation menu to launch
-the FeedGen sidebar and start generating and validating content in the
-**Generated Content Validation** worksheet.
+Within this same section you can also specify a list of attribute keys that
+should not be used for composing the generated titles. Examples are attributes
+like `Price` or `Promotion`, which should not be part of titles at all as per the
+[Best Practices](#best-practices) outlined by MC. Additionally, you can specify
+a list of *safe* words that can be output in generated titles even if they did
+not exist beforehand in your feed. For example, you can add the word "Size" to
+this list if you would like to prefix all values of the `Size` attribute with it
+(i.e. "Size M" instead of "M").
+
+Now you are done with the configuration and ready to optimise your feed. Use the
+top navigation menu to launch the FeedGen sidebar and start generating and
+validating content in the **Generated Content Validation** worksheet.
 
 <img src='./img/generated.png' alt='Generated' />
 

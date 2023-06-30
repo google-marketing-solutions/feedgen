@@ -75,8 +75,16 @@ export const CONFIG = {
         row: 16,
         col: 2,
       },
-      preferGeneratedAttributes: {
-        row: 18,
+      preferGeneratedValues: {
+        row: 19,
+        col: 2,
+      },
+      blockedAttributes: {
+        row: 20,
+        col: 2,
+      },
+      allowedWords: {
+        row: 21,
         col: 2,
       },
       modelParameters: {

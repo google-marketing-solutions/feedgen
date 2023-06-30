@@ -322,16 +322,24 @@ function optimizeRow(
     .filter(Boolean)
     .map((x: string) => x.trim());
 
-  // Use generated data only when user provided data is not available
-  // Override with preferGeneratedAttributes
-  const preferGeneratedAttributes = getConfigSheetValue(
-    CONFIG.userSettings.title.preferGeneratedAttributes
-  );
+  // Title advanced settings
+  const [preferGeneratedValues, blockedAttributes, allowedWords] = [
+    getConfigSheetValue(CONFIG.userSettings.title.preferGeneratedValues),
+    getConfigSheetValue(CONFIG.userSettings.title.blockedAttributes)
+      .split(',')
+      .filter(Boolean)
+      .map((attribute: string) => attribute.trim().toLowerCase()),
+    getConfigSheetValue(CONFIG.userSettings.title.allowedWords)
+      .split(',')
+      .filter(Boolean)
+      .map((word: string) => word.trim().toLowerCase()),
+  ];
   const titleFeatures: string[] = [];
   const gapAttributesAndValues: Record<string, string> = {};
   const validGenAttributes: string[] = [];
 
-  genAttributes.forEach((attribute: string, index: number) => {
+  for (const [index, attribute] of genAttributes.entries()) {
+    if (blockedAttributes.includes(attribute)) continue;
     if (
       !dataObj[attribute] && // matches gaps ({color: ""}) AND invented
       genAttributeValues[index] && // non-empty generated value
@@ -341,15 +349,18 @@ function optimizeRow(
     ) {
       gapAttributesAndValues[attribute] = genAttributeValues[index];
     }
-    const value = preferGeneratedAttributes
+    const value = preferGeneratedValues
       ? genAttributeValues[index]
-      : dataObj[attribute] || genAttributeValues[index];
+      : typeof dataObj[attribute] !== 'undefined' &&
+        String(dataObj[attribute]).length
+      ? dataObj[attribute]
+      : genAttributeValues[index];
 
-    if (value && String(value).trim()) {
+    if (typeof value !== 'undefined' && String(value).trim()) {
       validGenAttributes.push(attribute);
       titleFeatures.push(String(value).trim());
     }
-  });
+  }
 
   const origTemplate = origAttributes
     .filter(Boolean)
@@ -373,6 +384,7 @@ function optimizeRow(
       match.forEach((word: string) => inputWords.add(word.toLowerCase()));
     }
   }
+  allowedWords.forEach((word: string) => inputWords.add(word));
 
   const {
     totalScore,
