@@ -41,13 +41,9 @@ export const CONFIG = {
         row: 5,
         col: 2,
       },
-      gcpProjectLocation: {
-        row: 5,
-        col: 3,
-      },
       languageModelId: {
         row: 5,
-        col: 4,
+        col: 3,
       },
     },
     description: {
@@ -79,8 +75,16 @@ export const CONFIG = {
         row: 16,
         col: 2,
       },
-      preferGeneratedAttributes: {
-        row: 18,
+      preferGeneratedValues: {
+        row: 19,
+        col: 2,
+      },
+      blockedAttributes: {
+        row: 20,
+        col: 2,
+      },
+      allowedWords: {
+        row: 21,
         col: 2,
       },
       modelParameters: {
@@ -152,9 +156,11 @@ export const CONFIG = {
       name: 'Log',
       startRow: 0,
     },
+    formulaError: '#ERROR!',
   },
   vertexAi: {
     endpoint: 'aiplatform.googleapis.com',
+    location: 'us-central1',
     maxRetries: 3,
     quotaLimitDelay: 30 * 1000, // 30s
   },

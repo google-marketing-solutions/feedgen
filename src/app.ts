@@ -41,13 +41,8 @@ const WORD_MATCH_REGEX = /[A-Za-zÀ-ÖØ-öø-ÿ0-9]+/g;
 const TITLE_MAX_LENGTH = 150;
 const DESCRIPTION_MAX_LENGTH = 5000;
 
-const [
-  vertexAiGcpProjectId,
-  vertexAiGcpProjectLocation,
-  vertexAiLanguageModelId,
-] = [
+const [vertexAiGcpProjectId, vertexAiLanguageModelId] = [
   getConfigSheetValue(CONFIG.userSettings.vertexAi.gcpProjectId),
-  getConfigSheetValue(CONFIG.userSettings.vertexAi.gcpProjectLocation),
   getConfigSheetValue(CONFIG.userSettings.vertexAi.languageModelId),
 ];
 
@@ -117,6 +112,7 @@ export function FEEDGEN_CREATE_CONTEXT_JSON(itemId: string) {
  *     up nullifying the array if it contained a non-primitive data type.
  */
 export function getUnprocessedInputRows(filterProcessed = true) {
+  SpreadsheetApp.flush();
   const inputSheet = SpreadsheetApp.getActive().getSheetByName(
     CONFIG.sheets.input.name
   );
@@ -327,16 +323,24 @@ function optimizeRow(
     .filter(Boolean)
     .map((x: string) => x.trim());
 
-  // Use generated data only when user provided data is not available
-  // Override with preferGeneratedAttributes
-  const preferGeneratedAttributes = getConfigSheetValue(
-    CONFIG.userSettings.title.preferGeneratedAttributes
-  );
+  // Title advanced settings
+  const [preferGeneratedValues, blockedAttributes, allowedWords] = [
+    getConfigSheetValue(CONFIG.userSettings.title.preferGeneratedValues),
+    getConfigSheetValue(CONFIG.userSettings.title.blockedAttributes)
+      .split(',')
+      .filter(Boolean)
+      .map((attribute: string) => attribute.trim().toLowerCase()),
+    getConfigSheetValue(CONFIG.userSettings.title.allowedWords)
+      .split(',')
+      .filter(Boolean)
+      .map((word: string) => word.trim().toLowerCase()),
+  ];
   const titleFeatures: string[] = [];
   const gapAttributesAndValues: Record<string, string> = {};
   const validGenAttributes: string[] = [];
 
-  genAttributes.forEach((attribute: string, index: number) => {
+  for (const [index, attribute] of genAttributes.entries()) {
+    if (blockedAttributes.includes(attribute)) continue;
     if (
       !dataObj[attribute] && // matches gaps ({color: ""}) AND invented
       genAttributeValues[index] && // non-empty generated value
@@ -346,15 +350,18 @@ function optimizeRow(
     ) {
       gapAttributesAndValues[attribute] = genAttributeValues[index];
     }
-    const value = preferGeneratedAttributes
+    const value = preferGeneratedValues
       ? genAttributeValues[index]
-      : dataObj[attribute] || genAttributeValues[index];
+      : typeof dataObj[attribute] !== 'undefined' &&
+        String(dataObj[attribute]).length
+      ? dataObj[attribute]
+      : genAttributeValues[index];
 
-    if (value && String(value).trim()) {
+    if (typeof value !== 'undefined' && String(value).trim()) {
       validGenAttributes.push(attribute);
       titleFeatures.push(String(value).trim());
     }
-  });
+  }
 
   const origTemplate = origAttributes
     .filter(Boolean)
@@ -378,6 +385,7 @@ function optimizeRow(
       match.forEach((word: string) => inputWords.add(word.toLowerCase()));
     }
   }
+  allowedWords.forEach((word: string) => inputWords.add(word));
 
   const {
     totalScore,
@@ -438,30 +446,33 @@ function fetchTitleGenerationData(data: Record<string, unknown>): string {
   const dataContext = `Context: ${JSON.stringify(data)}\n\n`;
   const prompt =
     getConfigSheetValue(CONFIG.userSettings.title.fullPrompt) + dataContext;
+
+  if (prompt.startsWith(CONFIG.sheets.formulaError)) {
+    throw new Error(
+      'Could not read the title prompt from the "Config" sheet. ' +
+        'Please refresh the sheet by adding a new row before the ' +
+        '"Title Prompt Settings" section then immediately deleting it.'
+    );
+  }
   const res = Util.executeWithRetry(CONFIG.vertexAi.maxRetries, () =>
-    VertexHelper.getInstance(
-      vertexAiGcpProjectId,
-      vertexAiGcpProjectLocation,
-      vertexAiLanguageModelId,
-      {
-        temperature: Number(
-          getConfigSheetValue(
-            CONFIG.userSettings.title.modelParameters.temperature
-          )
-        ),
-        maxOutputTokens: Number(
-          getConfigSheetValue(
-            CONFIG.userSettings.title.modelParameters.maxOutputTokens
-          )
-        ),
-        topK: Number(
-          getConfigSheetValue(CONFIG.userSettings.title.modelParameters.topK)
-        ),
-        topP: Number(
-          getConfigSheetValue(CONFIG.userSettings.title.modelParameters.topP)
-        ),
-      }
-    ).predict(prompt)
+    VertexHelper.getInstance(vertexAiGcpProjectId, vertexAiLanguageModelId, {
+      temperature: Number(
+        getConfigSheetValue(
+          CONFIG.userSettings.title.modelParameters.temperature
+        )
+      ),
+      maxOutputTokens: Number(
+        getConfigSheetValue(
+          CONFIG.userSettings.title.modelParameters.maxOutputTokens
+        )
+      ),
+      topK: Number(
+        getConfigSheetValue(CONFIG.userSettings.title.modelParameters.topK)
+      ),
+      topP: Number(
+        getConfigSheetValue(CONFIG.userSettings.title.modelParameters.topP)
+      ),
+    }).predict(prompt)
   );
   return res;
 }
@@ -481,34 +492,37 @@ function fetchDescriptionGenerationData(
   const prompt =
     getConfigSheetValue(CONFIG.userSettings.description.fullPrompt) +
     dataContext;
+
+  if (prompt.startsWith(CONFIG.sheets.formulaError)) {
+    throw new Error(
+      'Could not read the description prompt from the "Config" sheet. ' +
+        'Please refresh the sheet by adding a new row before the ' +
+        '"Description Prompt Settings" section then immediately deleting it.'
+    );
+  }
   const res = Util.executeWithRetry(CONFIG.vertexAi.maxRetries, () =>
-    VertexHelper.getInstance(
-      vertexAiGcpProjectId,
-      vertexAiGcpProjectLocation,
-      vertexAiLanguageModelId,
-      {
-        temperature: Number(
-          getConfigSheetValue(
-            CONFIG.userSettings.description.modelParameters.temperature
-          )
-        ),
-        maxOutputTokens: Number(
-          getConfigSheetValue(
-            CONFIG.userSettings.description.modelParameters.maxOutputTokens
-          )
-        ),
-        topK: Number(
-          getConfigSheetValue(
-            CONFIG.userSettings.description.modelParameters.topK
-          )
-        ),
-        topP: Number(
-          getConfigSheetValue(
-            CONFIG.userSettings.description.modelParameters.topP
-          )
-        ),
-      }
-    ).predict(prompt)
+    VertexHelper.getInstance(vertexAiGcpProjectId, vertexAiLanguageModelId, {
+      temperature: Number(
+        getConfigSheetValue(
+          CONFIG.userSettings.description.modelParameters.temperature
+        )
+      ),
+      maxOutputTokens: Number(
+        getConfigSheetValue(
+          CONFIG.userSettings.description.modelParameters.maxOutputTokens
+        )
+      ),
+      topK: Number(
+        getConfigSheetValue(
+          CONFIG.userSettings.description.modelParameters.topK
+        )
+      ),
+      topP: Number(
+        getConfigSheetValue(
+          CONFIG.userSettings.description.modelParameters.topP
+        )
+      ),
+    }).predict(prompt)
   );
   return res;
 }

@@ -37,18 +37,15 @@ interface VertexAiResponse {
 export class VertexHelper {
   private static instance: VertexHelper;
   private projectId: string;
-  private location: string;
   private modelId: string;
   private modelParams: VertexAiModelParams;
 
   constructor(
     projectId: string,
-    location: string,
     modelId: string,
     modelParams: VertexAiModelParams
   ) {
     this.projectId = projectId;
-    this.location = location;
     this.modelId = modelId;
     this.modelParams = modelParams;
   }
@@ -82,7 +79,7 @@ export class VertexHelper {
   predict(prompt: string) {
     MultiLogger.getInstance().log(`Prompt: ${prompt}`);
 
-    const predictEndpoint = `https://${this.location}-${CONFIG.vertexAi.endpoint}/v1/projects/${this.projectId}/locations/${this.location}/publishers/google/models/${this.modelId}:predict`;
+    const predictEndpoint = `https://${CONFIG.vertexAi.location}-${CONFIG.vertexAi.endpoint}/v1/projects/${this.projectId}/locations/${CONFIG.vertexAi.location}/publishers/google/models/${this.modelId}:predict`;
 
     const res = this.fetchJson(
       predictEndpoint,
@@ -109,7 +106,6 @@ export class VertexHelper {
    * Returns the VertexHelper instance, initializing it if it does not exist yet.
    *
    * @param {string} projectId
-   * @param {string} location
    * @param {string} endpoint
    * @param {string} modelId
    * @param {VertexAiModelParams} modelParams
@@ -117,17 +113,11 @@ export class VertexHelper {
    */
   static getInstance(
     projectId: string,
-    location: string,
     modelId: string,
     modelParams: VertexAiModelParams
   ) {
     if (typeof this.instance === 'undefined') {
-      this.instance = new VertexHelper(
-        projectId,
-        location,
-        modelId,
-        modelParams
-      );
+      this.instance = new VertexHelper(projectId, modelId, modelParams);
     }
     return this.instance;
   }

@@ -23,9 +23,9 @@ limitations under the License.
 **Disclaimer: This is not an official Google product.**
 
 [Overview](#overview) •
+[Get started](#get-started) •
 [What it solves](#challenges) •
 [How it works](#solution-overview) •
-[Get started](#get-started) •
 [How to Contribute](#how-to-contribute)
 
 ## Overview
@@ -51,6 +51,14 @@ models with Vertex AI, along with the benefits of doing so, at this
 For non-English language generation, please reach out to your Google Sales /
 gTech representative to have the FeedGen team generate the output for you.
 
+## Get Started
+
+To get started with FeedGen:
+
+1. Make a copy of the Google Sheets
+[spreadsheet template](https://docs.google.com/spreadsheets/d/19eKTJrbZaUfipAvL5ZQmq_hoxEbLQIlDqURKFJA2OBU/edit#gid=1661242997)
+1. Follow the instructions detailed in the `Getting Started` worksheet
+
 ## Challenges
 
 Optimising Shopping Ads feeds is a goal for every advertiser working with Google
@@ -65,12 +73,11 @@ quality issues, and fill attribute gaps in their feeds, in an automated fashion.
 
 FeedGen is an Apps Script based application that runs as an HTML sidebar (see
 [HtmlService](https://developers.google.com/apps-script/guides/html) for
-details) in Google Sheets. The associated Google Sheets
-[spreadsheet template](#get-started) is where all the magic happens; it holds
-the input feed that needs optimisation, along with specific configuration values
-that control how content is generated. The spreadsheet is also used for both
-(optional) human validation and setting up a **supplemental feed** in Google
-Merchant Center (MC).
+details) in Google Sheets. The associated Google Sheets spreadsheet template is
+where all the magic happens; it holds the input feed that needs optimisation,
+along with specific configuration values that control how content is generated.
+The spreadsheet is also used for both (optional) human validation and setting up
+a **supplemental feed** in Google Merchant Center (MC).
 
 > Generative Language in Vertex AI, and in general, is an experimental feature /
 technology. We highly recommend manually reviewing and verifying the generated
@@ -102,10 +109,21 @@ help with this process, FeedGen provides a utility Google Sheets formula:
 
 Which can be used to fill up the “Context” information field in the few-shot
 prompt examples table by dragging it down, just as for other Sheets formulas.
+This "Context" represents the entire row of data from the input feed for this
+item, and it will be sent as part of the prompt to the Vertex AI API.
+
 Afterwards, you must manually fill in the remaining columns of the few-shot
 prompt examples table, which define the expected output by the LLM. These
 examples are very important as they provide the basis upon which the LLM will
-learn how it should generate content for the rest of the input feed.
+learn how it should generate content for the rest of the input feed. The best
+examples to pick are products where:
+
+* You can identify attributes in the existing title that match *column names* from your input feed.
+* You can propose a new title that is better than the existing one (e.g. contains more attributes).
+* The proposed title has a structure that can be reused for other products within your feed.
+
+We would recommend adding at least one example per unique category within your
+feed, especially if the ideal title composition would differ.
 
 The best examples to pick are products where:
 * You can identify product attributes in the existing title   
@@ -121,35 +139,44 @@ attribute values for composing the title, to avoid LLM hallucinations and ensure
 consistency. For example, the value `Blue` from the input feed attribute
 **Color** for a specific feed item will be used for its corresponding title
 instead of, say, a generated value `Navy`. This behaviour can be overridden with
-the `Prefer Generated Attributes over Input` checkbox in the
-**Title Prompt Settings**, and is useful whenever the input feed itself contains
-erroneous or poor quality data.
+the `Prefer Generated Values` checkbox in the **Advanced Settings** section of
+the *Title Prompt Settings*, and is useful whenever the input feed itself
+contains erroneous or poor quality data.
 
-Now you are ready to optimise your feed. Use the top navigation menu to launch
-the FeedGen sidebar and start generating and validating content in the
-**Generated Content Validation** worksheet.
+Within this same section you can also specify a list of attribute keys that
+should not be used for composing the generated titles. Examples are attributes
+like `Price` or `Promotion`, which should not be part of titles at all as per the
+[Best Practices](#best-practices) outlined by MC. Additionally, you can specify
+a list of *safe* words that can be output in generated titles even if they did
+not exist beforehand in your feed. For example, you can add the word "Size" to
+this list if you would like to prefix all values of the `Size` attribute with it
+(i.e. "Size M" instead of "M").
+
+Now you are done with the configuration and ready to optimise your feed. Use the
+top navigation menu to launch the FeedGen sidebar and start generating and
+validating content in the **Generated Content Validation** worksheet.
 
 <img src='./img/generated.png' alt='Generated' />
 
 You would typically work within this view to understand, approve and/or
 regenerate content for each feed item as follows:
 
-- The **Generate** button controls the generation process, and will first
+* The **Generate** button controls the generation process, and will first
   regenerate all columns with an *empty* or *failed* status before continuing on
   with the rest of the feed. For example, clearing row 7 above and clicking
   *Generate* will start the generation process at row 7 first, before continuing
   on with the next feed item.
-  - This means that you may clear the value of the **Status** column for any
+  * This means that you may clear the value of the **Status** column for any
     feed item in order to *regenerate* it.
-  - To start from scratch, click **Clear Generated Data** first before
+  * To start from scratch, click **Clear Generated Data** first before
     *Generate*.
-- If an error occurs, it will be reflected in the **Status** column as "Failed".
-- Approval can be done in bulk via filtering the view and using the
+* If an error occurs, it will be reflected in the **Status** column as "Failed".
+* Approval can be done in bulk via filtering the view and using the
   **Approve Filtered** button, or individually using the checkboxes in the
   **Approval** column. All entries with a score above 0 will already be
   pre-approved (read more about FeedGen's
   [Scoring / Evaluation](#scoring--evaluation) system below).
-- Additional columns for titles and descriptions are grouped, so that you may
+* Additional columns for titles and descriptions are grouped, so that you may
   expand the group you are interested in examining.
 
 Once you have completed all the necessary approvals and are satisfied with the
@@ -178,13 +205,13 @@ while negative scores represent uncertainty over the generated content.
 
 Let's take a closer look with some fictitous examples:
 
-- **Original Title**: 2XU Men's Swim Compression Long Sleeve Top
-- **Original Description**: 2XU Men's Swim Compression Long Sleeve Top,
+* **Original Title**: 2XU Men's Swim Compression Long Sleeve Top
+* **Original Description**: 2XU Men's Swim Compression Long Sleeve Top,
   lightweight, breathable PWX fabric, UPF 50+ protects you from the sun.
-- **Generated Title**: 2XU Men's Swim Compression Long Sleeve Top Black Size M
+* **Generated Title**: 2XU Men's Swim Compression Long Sleeve Top Black Size M
   PWX Fabric UV Protection
-- **Score**: -1
-- Reasoning: New words, namely "UV Protection", were added that may have been
+* **Score**: -1
+* Reasoning: New words, namely "UV Protection", were added that may have been
   *hallucinated* by the language model. Indeed, "UV Protection" is not
   explicitly mentioned anywhere in the input feed. Examining the feed item more
   clearly however surfaces that the description contains the value *UPF 50+*, so
@@ -194,18 +221,18 @@ Let's take a closer look with some fictitous examples:
 
 Let's look at another example for the same product:
 
-- **Original Title**: 2XU Men's Swim Compression Long Sleeve Top
-- **Generated Title**: 2XU Men's Swim Compression Top Size M
-- **Score**: -0.5
-- Reasoning: Key attributes were removed from the title, namely "Long Sleeve",
+* **Original Title**: 2XU Men's Swim Compression Long Sleeve Top
+* **Generated Title**: 2XU Men's Swim Compression Top Size M
+* **Score**: -0.5
+* Reasoning: Key attributes were removed from the title, namely "Long Sleeve",
   which describes the type of the product. FeedGen identifies this information
   by first examining the structure of titles via what we refer to as
   **templates** in our uniquitous language, before diving deeper and comparing
   the individual words that compose the titles. Let's check the templates for
   our example:
-  - **Original Title Template**: `<Brand> <Gender> <Category> <Product Type>`
-  - **Generated Title Template**: `<Brand> <Gender> <Category> <Product Type> <Size>`
-  - As you can see no attributes were actually removed, but rather the
+  * **Original Title Template**: `<Brand> <Gender> <Category> <Product Type>`
+  * **Generated Title Template**: `<Brand> <Gender> <Category> <Product Type> <Size>`
+  * As you can see no attributes were actually removed, but rather the
     components of the `Product Type` attribute changed in a worse way, hence the
     negative score.
 
@@ -217,22 +244,22 @@ Let's look at another example for the same product:
 
 Alright, so what makes a good title? Let's look at another example:
 
-- **Original Title**: 2XU Men's Swim Compression Long Sleeve Top
-- **Generated Title**: 2XU Men's Swim Compression Long Sleeve Top Size M
-- **Score**: 0.5
-- Reasoning: Nothing was changed or lost in the original title, and we added a
+* **Original Title**: 2XU Men's Swim Compression Long Sleeve Top
+* **Generated Title**: 2XU Men's Swim Compression Long Sleeve Top Size M
+* **Score**: 0.5
+* Reasoning: Nothing was changed or lost in the original title, and we added a
   new attribute, "Size". If the product was being offered in different sizes,
   this new title would now be vital in preventing all feed items for the product
   from getting rejected by MC (due to their titles being duplicates).
 
 Finally, what's the ideal case? Let's take a look at one last example:
 
-- **Original Title**: 2XU Men's Swim Compression Long Sleeve Top
-- **Input - Color**: *missing*
-- **Generated Title**: 2XU Men's Swim Compression Long Sleeve Top Black Size M
-- **Output - Color**: Black
-- **Score**: 1
-- Reasoning: This is the best possible scenario; we optimised the title and
+* **Original Title**: 2XU Men's Swim Compression Long Sleeve Top
+* **Input - Color**: *missing*
+* **Generated Title**: 2XU Men's Swim Compression Long Sleeve Top Black Size M
+* **Output - Color**: Black
+* **Score**: 1
+* Reasoning: This is the best possible scenario; we optimised the title and
   filled feed attribute gaps along the way, a score of 1 is definitely
   well-deserved.
 
@@ -290,9 +317,9 @@ values generated by the model.
 
 We also suggest the following:
 
-- Provide as many product attributes as possible for enriching **description** generation.
-- Use **size**, **color**, and **gender / age group** for title generation, if available.
-- Do **NOT** use model numbers or promotional text in titles.
+* Provide as many product attributes as possible for enriching **description** generation.
+* Use **size**, **color**, and **gender / age group** for title generation, if available.
+* Do **NOT** use model numbers or promotional text in titles.
 
 ### Vertex AI Pricing and Quotas
 
@@ -300,14 +327,6 @@ Please refer to the Vertex AI
 [Pricing](https://cloud.google.com/vertex-ai/pricing#generative_ai_models) and
 [Quotas and Limits](https://cloud.google.com/vertex-ai/docs/quotas#request_quotas)
 guides for more information.
-
-## Get Started
-
-To get started with FeedGen:
-
-1. Make a copy of the Google Sheets
-[spreadsheet template](https://docs.google.com/spreadsheets/d/19eKTJrbZaUfipAvL5ZQmq_hoxEbLQIlDqURKFJA2OBU/edit#gid=1661242997)
-1. Follow the instructions detailed in the `Getting Started` worksheet
 
 ## How to Contribute
 
@@ -319,7 +338,7 @@ you would need to follow these additional steps to build FeedGen locally:
 1. Navigate to the directory where the FeedGen source code lives.
 1. Run `npm install`.
 1. Run `npx @google/aside init` and click through the prompts.
-   - Input the Apps Script `Script ID` associated with your target Google Sheets
+   * Input the Apps Script `Script ID` associated with your target Google Sheets
      spreadsheet. You can find out this value by clicking on
      `Extensions > Apps Script` in the top navigation menu of your target sheet,
      then navigating to `Project Settings` (the gear icon) in the resulting

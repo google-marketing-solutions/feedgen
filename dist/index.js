@@ -41,13 +41,9 @@ const CONFIG = {
         row: 5,
         col: 2,
       },
-      gcpProjectLocation: {
-        row: 5,
-        col: 3,
-      },
       languageModelId: {
         row: 5,
-        col: 4,
+        col: 3,
       },
     },
     description: {
@@ -79,8 +75,16 @@ const CONFIG = {
         row: 16,
         col: 2,
       },
-      preferGeneratedAttributes: {
-        row: 18,
+      preferGeneratedValues: {
+        row: 19,
+        col: 2,
+      },
+      blockedAttributes: {
+        row: 20,
+        col: 2,
+      },
+      allowedWords: {
+        row: 21,
         col: 2,
       },
       modelParameters: {
@@ -152,9 +156,11 @@ const CONFIG = {
       name: 'Log',
       startRow: 0,
     },
+    formulaError: '#ERROR!',
   },
   vertexAi: {
     endpoint: 'aiplatform.googleapis.com',
+    location: 'us-central1',
     maxRetries: 3,
     quotaLimitDelay: 30 * 1000,
   },
@@ -316,9 +322,8 @@ class Util {
 }
 
 class VertexHelper {
-  constructor(projectId, location, modelId, modelParams) {
+  constructor(projectId, modelId, modelParams) {
     this.projectId = projectId;
-    this.location = location;
     this.modelId = modelId;
     this.modelParams = modelParams;
   }
@@ -346,7 +351,7 @@ class VertexHelper {
   }
   predict(prompt) {
     MultiLogger.getInstance().log(`Prompt: ${prompt}`);
-    const predictEndpoint = `https://${this.location}-${CONFIG.vertexAi.endpoint}/v1/projects/${this.projectId}/locations/${this.location}/publishers/google/models/${this.modelId}:predict`;
+    const predictEndpoint = `https://${CONFIG.vertexAi.location}-${CONFIG.vertexAi.endpoint}/v1/projects/${this.projectId}/locations/${CONFIG.vertexAi.location}/publishers/google/models/${this.modelId}:predict`;
     const res = this.fetchJson(
       predictEndpoint,
       this.addAuth({
@@ -364,14 +369,9 @@ class VertexHelper {
     }
     return res.predictions[0].content;
   }
-  static getInstance(projectId, location, modelId, modelParams) {
+  static getInstance(projectId, modelId, modelParams) {
     if (typeof this.instance === 'undefined') {
-      this.instance = new VertexHelper(
-        projectId,
-        location,
-        modelId,
-        modelParams
-      );
+      this.instance = new VertexHelper(projectId, modelId, modelParams);
     }
     return this.instance;
   }
@@ -387,13 +387,8 @@ const SEPARATOR = '|';
 const WORD_MATCH_REGEX = /[A-Za-zÀ-ÖØ-öø-ÿ0-9]+/g;
 const TITLE_MAX_LENGTH = 150;
 const DESCRIPTION_MAX_LENGTH = 5000;
-const [
-  vertexAiGcpProjectId,
-  vertexAiGcpProjectLocation,
-  vertexAiLanguageModelId,
-] = [
+const [vertexAiGcpProjectId, vertexAiLanguageModelId] = [
   getConfigSheetValue(CONFIG.userSettings.vertexAi.gcpProjectId),
-  getConfigSheetValue(CONFIG.userSettings.vertexAi.gcpProjectLocation),
   getConfigSheetValue(CONFIG.userSettings.vertexAi.languageModelId),
 ];
 function onOpen() {
@@ -431,6 +426,7 @@ function FEEDGEN_CREATE_CONTEXT_JSON(itemId) {
   return JSON.stringify(contextObject);
 }
 function getUnprocessedInputRows(filterProcessed = true) {
+  SpreadsheetApp.flush();
   const inputSheet = SpreadsheetApp.getActive().getSheetByName(
     CONFIG.sheets.input.name
   );
@@ -594,13 +590,22 @@ function optimizeRow(headers, data) {
     .split(SEPARATOR)
     .filter(Boolean)
     .map(x => x.trim());
-  const preferGeneratedAttributes = getConfigSheetValue(
-    CONFIG.userSettings.title.preferGeneratedAttributes
-  );
+  const [preferGeneratedValues, blockedAttributes, allowedWords] = [
+    getConfigSheetValue(CONFIG.userSettings.title.preferGeneratedValues),
+    getConfigSheetValue(CONFIG.userSettings.title.blockedAttributes)
+      .split(',')
+      .filter(Boolean)
+      .map(attribute => attribute.trim().toLowerCase()),
+    getConfigSheetValue(CONFIG.userSettings.title.allowedWords)
+      .split(',')
+      .filter(Boolean)
+      .map(word => word.trim().toLowerCase()),
+  ];
   const titleFeatures = [];
   const gapAttributesAndValues = {};
   const validGenAttributes = [];
-  genAttributes.forEach((attribute, index) => {
+  for (const [index, attribute] of genAttributes.entries()) {
+    if (blockedAttributes.includes(attribute)) continue;
     if (
       !dataObj[attribute] &&
       genAttributeValues[index] &&
@@ -609,14 +614,17 @@ function optimizeRow(headers, data) {
     ) {
       gapAttributesAndValues[attribute] = genAttributeValues[index];
     }
-    const value = preferGeneratedAttributes
+    const value = preferGeneratedValues
       ? genAttributeValues[index]
-      : dataObj[attribute] || genAttributeValues[index];
-    if (value && String(value).trim()) {
+      : typeof dataObj[attribute] !== 'undefined' &&
+        String(dataObj[attribute]).length
+      ? dataObj[attribute]
+      : genAttributeValues[index];
+    if (typeof value !== 'undefined' && String(value).trim()) {
       validGenAttributes.push(attribute);
       titleFeatures.push(String(value).trim());
     }
-  });
+  }
   const origTemplate = origAttributes
     .filter(Boolean)
     .map(x => `<${x}>`)
@@ -637,6 +645,7 @@ function optimizeRow(headers, data) {
       match.forEach(word => inputWords.add(word.toLowerCase()));
     }
   }
+  allowedWords.forEach(word => inputWords.add(word));
   const {
     totalScore,
     titleChanged,
@@ -692,30 +701,32 @@ function fetchTitleGenerationData(data) {
   const dataContext = `Context: ${JSON.stringify(data)}\n\n`;
   const prompt =
     getConfigSheetValue(CONFIG.userSettings.title.fullPrompt) + dataContext;
+  if (prompt.startsWith(CONFIG.sheets.formulaError)) {
+    throw new Error(
+      'Could not read the title prompt from the "Config" sheet. ' +
+        'Please refresh the sheet by adding a new row before the ' +
+        '"Title Prompt Settings" section then immediately deleting it.'
+    );
+  }
   const res = Util.executeWithRetry(CONFIG.vertexAi.maxRetries, () =>
-    VertexHelper.getInstance(
-      vertexAiGcpProjectId,
-      vertexAiGcpProjectLocation,
-      vertexAiLanguageModelId,
-      {
-        temperature: Number(
-          getConfigSheetValue(
-            CONFIG.userSettings.title.modelParameters.temperature
-          )
-        ),
-        maxOutputTokens: Number(
-          getConfigSheetValue(
-            CONFIG.userSettings.title.modelParameters.maxOutputTokens
-          )
-        ),
-        topK: Number(
-          getConfigSheetValue(CONFIG.userSettings.title.modelParameters.topK)
-        ),
-        topP: Number(
-          getConfigSheetValue(CONFIG.userSettings.title.modelParameters.topP)
-        ),
-      }
-    ).predict(prompt)
+    VertexHelper.getInstance(vertexAiGcpProjectId, vertexAiLanguageModelId, {
+      temperature: Number(
+        getConfigSheetValue(
+          CONFIG.userSettings.title.modelParameters.temperature
+        )
+      ),
+      maxOutputTokens: Number(
+        getConfigSheetValue(
+          CONFIG.userSettings.title.modelParameters.maxOutputTokens
+        )
+      ),
+      topK: Number(
+        getConfigSheetValue(CONFIG.userSettings.title.modelParameters.topK)
+      ),
+      topP: Number(
+        getConfigSheetValue(CONFIG.userSettings.title.modelParameters.topP)
+      ),
+    }).predict(prompt)
   );
   return res;
 }
@@ -730,34 +741,36 @@ function fetchDescriptionGenerationData(data, generatedTitle) {
   const prompt =
     getConfigSheetValue(CONFIG.userSettings.description.fullPrompt) +
     dataContext;
+  if (prompt.startsWith(CONFIG.sheets.formulaError)) {
+    throw new Error(
+      'Could not read the description prompt from the "Config" sheet. ' +
+        'Please refresh the sheet by adding a new row before the ' +
+        '"Description Prompt Settings" section then immediately deleting it.'
+    );
+  }
   const res = Util.executeWithRetry(CONFIG.vertexAi.maxRetries, () =>
-    VertexHelper.getInstance(
-      vertexAiGcpProjectId,
-      vertexAiGcpProjectLocation,
-      vertexAiLanguageModelId,
-      {
-        temperature: Number(
-          getConfigSheetValue(
-            CONFIG.userSettings.description.modelParameters.temperature
-          )
-        ),
-        maxOutputTokens: Number(
-          getConfigSheetValue(
-            CONFIG.userSettings.description.modelParameters.maxOutputTokens
-          )
-        ),
-        topK: Number(
-          getConfigSheetValue(
-            CONFIG.userSettings.description.modelParameters.topK
-          )
-        ),
-        topP: Number(
-          getConfigSheetValue(
-            CONFIG.userSettings.description.modelParameters.topP
-          )
-        ),
-      }
-    ).predict(prompt)
+    VertexHelper.getInstance(vertexAiGcpProjectId, vertexAiLanguageModelId, {
+      temperature: Number(
+        getConfigSheetValue(
+          CONFIG.userSettings.description.modelParameters.temperature
+        )
+      ),
+      maxOutputTokens: Number(
+        getConfigSheetValue(
+          CONFIG.userSettings.description.modelParameters.maxOutputTokens
+        )
+      ),
+      topK: Number(
+        getConfigSheetValue(
+          CONFIG.userSettings.description.modelParameters.topK
+        )
+      ),
+      topP: Number(
+        getConfigSheetValue(
+          CONFIG.userSettings.description.modelParameters.topP
+        )
+      ),
+    }).predict(prompt)
   );
   return res;
 }
