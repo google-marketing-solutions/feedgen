@@ -109,10 +109,21 @@ help with this process, FeedGen provides a utility Google Sheets formula:
 
 Which can be used to fill up the “Context” information field in the few-shot
 prompt examples table by dragging it down, just as for other Sheets formulas.
+This "Context" represents the entire row of data from the input feed for this
+item, and it will be sent as part of the prompt to the Vertex AI API.
+
 Afterwards, you must manually fill in the remaining columns of the few-shot
 prompt examples table, which define the expected output by the LLM. These
 examples are very important as they provide the basis upon which the LLM will
-learn how it should generate content for the rest of the input feed.
+learn how it should generate content for the rest of the input feed. The best
+examples to pick are products where:
+
+* You can identify attributes in the existing title that match *column names* from your input feed.
+* You can propose a new title that is better than the existing one (e.g. contains more attributes).
+* The proposed title has a structure that can be reused for other products within your feed.
+
+We would recommend adding at least one example per unique category within your
+feed, especially if the ideal title composition would differ.
 
 <img src='./img/few-shot.png' alt='Few-Shot' />
 
@@ -143,22 +154,22 @@ validating content in the **Generated Content Validation** worksheet.
 You would typically work within this view to understand, approve and/or
 regenerate content for each feed item as follows:
 
-- The **Generate** button controls the generation process, and will first
+* The **Generate** button controls the generation process, and will first
   regenerate all columns with an *empty* or *failed* status before continuing on
   with the rest of the feed. For example, clearing row 7 above and clicking
   *Generate* will start the generation process at row 7 first, before continuing
   on with the next feed item.
-  - This means that you may clear the value of the **Status** column for any
+  * This means that you may clear the value of the **Status** column for any
     feed item in order to *regenerate* it.
-  - To start from scratch, click **Clear Generated Data** first before
+  * To start from scratch, click **Clear Generated Data** first before
     *Generate*.
-- If an error occurs, it will be reflected in the **Status** column as "Failed".
-- Approval can be done in bulk via filtering the view and using the
+* If an error occurs, it will be reflected in the **Status** column as "Failed".
+* Approval can be done in bulk via filtering the view and using the
   **Approve Filtered** button, or individually using the checkboxes in the
   **Approval** column. All entries with a score above 0 will already be
   pre-approved (read more about FeedGen's
   [Scoring / Evaluation](#scoring--evaluation) system below).
-- Additional columns for titles and descriptions are grouped, so that you may
+* Additional columns for titles and descriptions are grouped, so that you may
   expand the group you are interested in examining.
 
 Once you have completed all the necessary approvals and are satisfied with the
@@ -187,13 +198,13 @@ while negative scores represent uncertainty over the generated content.
 
 Let's take a closer look with some fictitous examples:
 
-- **Original Title**: 2XU Men's Swim Compression Long Sleeve Top
-- **Original Description**: 2XU Men's Swim Compression Long Sleeve Top,
+* **Original Title**: 2XU Men's Swim Compression Long Sleeve Top
+* **Original Description**: 2XU Men's Swim Compression Long Sleeve Top,
   lightweight, breathable PWX fabric, UPF 50+ protects you from the sun.
-- **Generated Title**: 2XU Men's Swim Compression Long Sleeve Top Black Size M
+* **Generated Title**: 2XU Men's Swim Compression Long Sleeve Top Black Size M
   PWX Fabric UV Protection
-- **Score**: -1
-- Reasoning: New words, namely "UV Protection", were added that may have been
+* **Score**: -1
+* Reasoning: New words, namely "UV Protection", were added that may have been
   *hallucinated* by the language model. Indeed, "UV Protection" is not
   explicitly mentioned anywhere in the input feed. Examining the feed item more
   clearly however surfaces that the description contains the value *UPF 50+*, so
@@ -203,18 +214,18 @@ Let's take a closer look with some fictitous examples:
 
 Let's look at another example for the same product:
 
-- **Original Title**: 2XU Men's Swim Compression Long Sleeve Top
-- **Generated Title**: 2XU Men's Swim Compression Top Size M
-- **Score**: -0.5
-- Reasoning: Key attributes were removed from the title, namely "Long Sleeve",
+* **Original Title**: 2XU Men's Swim Compression Long Sleeve Top
+* **Generated Title**: 2XU Men's Swim Compression Top Size M
+* **Score**: -0.5
+* Reasoning: Key attributes were removed from the title, namely "Long Sleeve",
   which describes the type of the product. FeedGen identifies this information
   by first examining the structure of titles via what we refer to as
   **templates** in our uniquitous language, before diving deeper and comparing
   the individual words that compose the titles. Let's check the templates for
   our example:
-  - **Original Title Template**: `<Brand> <Gender> <Category> <Product Type>`
-  - **Generated Title Template**: `<Brand> <Gender> <Category> <Product Type> <Size>`
-  - As you can see no attributes were actually removed, but rather the
+  * **Original Title Template**: `<Brand> <Gender> <Category> <Product Type>`
+  * **Generated Title Template**: `<Brand> <Gender> <Category> <Product Type> <Size>`
+  * As you can see no attributes were actually removed, but rather the
     components of the `Product Type` attribute changed in a worse way, hence the
     negative score.
 
@@ -226,22 +237,22 @@ Let's look at another example for the same product:
 
 Alright, so what makes a good title? Let's look at another example:
 
-- **Original Title**: 2XU Men's Swim Compression Long Sleeve Top
-- **Generated Title**: 2XU Men's Swim Compression Long Sleeve Top Size M
-- **Score**: 0.5
-- Reasoning: Nothing was changed or lost in the original title, and we added a
+* **Original Title**: 2XU Men's Swim Compression Long Sleeve Top
+* **Generated Title**: 2XU Men's Swim Compression Long Sleeve Top Size M
+* **Score**: 0.5
+* Reasoning: Nothing was changed or lost in the original title, and we added a
   new attribute, "Size". If the product was being offered in different sizes,
   this new title would now be vital in preventing all feed items for the product
   from getting rejected by MC (due to their titles being duplicates).
 
 Finally, what's the ideal case? Let's take a look at one last example:
 
-- **Original Title**: 2XU Men's Swim Compression Long Sleeve Top
-- **Input - Color**: *missing*
-- **Generated Title**: 2XU Men's Swim Compression Long Sleeve Top Black Size M
-- **Output - Color**: Black
-- **Score**: 1
-- Reasoning: This is the best possible scenario; we optimised the title and
+* **Original Title**: 2XU Men's Swim Compression Long Sleeve Top
+* **Input - Color**: *missing*
+* **Generated Title**: 2XU Men's Swim Compression Long Sleeve Top Black Size M
+* **Output - Color**: Black
+* **Score**: 1
+* Reasoning: This is the best possible scenario; we optimised the title and
   filled feed attribute gaps along the way, a score of 1 is definitely
   well-deserved.
 
@@ -299,9 +310,9 @@ values generated by the model.
 
 We also suggest the following:
 
-- Provide as many product attributes as possible for enriching **description** generation.
-- Use **size**, **color**, and **gender / age group** for title generation, if available.
-- Do **NOT** use model numbers or promotional text in titles.
+* Provide as many product attributes as possible for enriching **description** generation.
+* Use **size**, **color**, and **gender / age group** for title generation, if available.
+* Do **NOT** use model numbers or promotional text in titles.
 
 ### Vertex AI Pricing and Quotas
 
@@ -320,7 +331,7 @@ you would need to follow these additional steps to build FeedGen locally:
 1. Navigate to the directory where the FeedGen source code lives.
 1. Run `npm install`.
 1. Run `npx @google/aside init` and click through the prompts.
-   - Input the Apps Script `Script ID` associated with your target Google Sheets
+   * Input the Apps Script `Script ID` associated with your target Google Sheets
      spreadsheet. You can find out this value by clicking on
      `Extensions > Apps Script` in the top navigation menu of your target sheet,
      then navigating to `Project Settings` (the gear icon) in the resulting
