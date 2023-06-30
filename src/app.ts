@@ -735,10 +735,17 @@ export function exportApproved() {
   writeApprovedData(outputHeader, rowsToWrite);
 }
 
-function _testGenerateNextRow() {
-  const unprocessedInputRows = JSON.parse(getUnprocessedInputRows());
-  const inputHeaders = unprocessedInputRows.shift();
-  const row = unprocessedInputRows.shift();
-  const generatedRow = generateRow(inputHeaders, row);
-  console.log(generatedRow);
+function _generateRowByRowNumber(inputRowNumber: number) {
+  const inputSheet = SpreadsheetApp.getActive().getSheetByName(
+    CONFIG.sheets.input.name
+  );
+  const inputRows = SheetsService.getInstance().getNonEmptyRows(inputSheet!);
+  const header = inputRows[0];
+  const row = inputRows[inputRowNumber];
+  return generateRow(header, row);
+}
+
+function debugGenerateRowByNumber() {
+  const rowNumber = 2;
+  console.log(_generateRowByRowNumber(rowNumber));
 }
