@@ -338,10 +338,7 @@ function optimizeRow(
   )
     .split(SEPARATOR)
     .filter(Boolean)
-    .map((x: string) => x.trim().toLowerCase())
-    .filter(
-      (x: string, index: number, array: string[]) => array.indexOf(x) === index
-    );
+    .map((x: string) => x.trim().toLowerCase());
 
   const titleFeatures: string[] = [];
   const gapAttributesAndValues: Record<string, string> = {};
@@ -350,7 +347,7 @@ function optimizeRow(
   genAttributes
     .filter(
       (attribute: string) =>
-        blocklistedAttributes.indexOf(attribute.trim().toLowerCase()) === -1
+        !blocklistedAttributes.includes(attribute.toLowerCase())
     )
     .forEach((attribute: string, index: number) => {
       if (

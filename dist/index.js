@@ -606,15 +606,13 @@ function optimizeRow(headers, data) {
   )
     .split(SEPARATOR)
     .filter(Boolean)
-    .map(x => x.trim().toLowerCase())
-    .filter((x, index, array) => array.indexOf(x) === index);
+    .map(x => x.trim().toLowerCase());
   const titleFeatures = [];
   const gapAttributesAndValues = {};
   const validGenAttributes = [];
   genAttributes
     .filter(
-      attribute =>
-        blocklistedAttributes.indexOf(attribute.trim().toLowerCase()) === -1
+      attribute => !blocklistedAttributes.includes(attribute.toLowerCase())
     )
     .forEach((attribute, index) => {
       if (
@@ -931,12 +929,18 @@ function exportApproved() {
   clearApprovedData();
   writeApprovedData(outputHeader, rowsToWrite);
 }
-function _testGenerateNextRow() {
-  const unprocessedInputRows = JSON.parse(getUnprocessedInputRows());
-  const inputHeaders = unprocessedInputRows.shift();
-  const row = unprocessedInputRows.shift();
-  const generatedRow = generateRow(inputHeaders, row);
-  console.log(generatedRow);
+function _generateRowByRowNumber(inputRowNumber) {
+  const inputSheet = SpreadsheetApp.getActive().getSheetByName(
+    CONFIG.sheets.input.name
+  );
+  const inputRows = SheetsService.getInstance().getNonEmptyRows(inputSheet);
+  const header = inputRows[0];
+  const row = inputRows[inputRowNumber];
+  return generateRow(header, row);
+}
+function debugGenerateRowByNumber() {
+  const rowNumber = 2;
+  console.log(_generateRowByRowNumber(rowNumber));
 }
 
 app;
