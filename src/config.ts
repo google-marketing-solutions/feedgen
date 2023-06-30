@@ -41,13 +41,9 @@ export const CONFIG = {
         row: 5,
         col: 2,
       },
-      gcpProjectLocation: {
-        row: 5,
-        col: 3,
-      },
       languageModelId: {
         row: 5,
-        col: 4,
+        col: 3,
       },
     },
     description: {
@@ -155,6 +151,7 @@ export const CONFIG = {
   },
   vertexAi: {
     endpoint: 'aiplatform.googleapis.com',
+    location: 'us-central1',
     maxRetries: 3,
     quotaLimitDelay: 30 * 1000, // 30s
   },

@@ -41,13 +41,8 @@ const WORD_MATCH_REGEX = /[A-Za-zÀ-ÖØ-öø-ÿ0-9]+/g;
 const TITLE_MAX_LENGTH = 150;
 const DESCRIPTION_MAX_LENGTH = 5000;
 
-const [
-  vertexAiGcpProjectId,
-  vertexAiGcpProjectLocation,
-  vertexAiLanguageModelId,
-] = [
+const [vertexAiGcpProjectId, vertexAiLanguageModelId] = [
   getConfigSheetValue(CONFIG.userSettings.vertexAi.gcpProjectId),
-  getConfigSheetValue(CONFIG.userSettings.vertexAi.gcpProjectLocation),
   getConfigSheetValue(CONFIG.userSettings.vertexAi.languageModelId),
 ];
 
@@ -439,29 +434,24 @@ function fetchTitleGenerationData(data: Record<string, unknown>): string {
   const prompt =
     getConfigSheetValue(CONFIG.userSettings.title.fullPrompt) + dataContext;
   const res = Util.executeWithRetry(CONFIG.vertexAi.maxRetries, () =>
-    VertexHelper.getInstance(
-      vertexAiGcpProjectId,
-      vertexAiGcpProjectLocation,
-      vertexAiLanguageModelId,
-      {
-        temperature: Number(
-          getConfigSheetValue(
-            CONFIG.userSettings.title.modelParameters.temperature
-          )
-        ),
-        maxOutputTokens: Number(
-          getConfigSheetValue(
-            CONFIG.userSettings.title.modelParameters.maxOutputTokens
-          )
-        ),
-        topK: Number(
-          getConfigSheetValue(CONFIG.userSettings.title.modelParameters.topK)
-        ),
-        topP: Number(
-          getConfigSheetValue(CONFIG.userSettings.title.modelParameters.topP)
-        ),
-      }
-    ).predict(prompt)
+    VertexHelper.getInstance(vertexAiGcpProjectId, vertexAiLanguageModelId, {
+      temperature: Number(
+        getConfigSheetValue(
+          CONFIG.userSettings.title.modelParameters.temperature
+        )
+      ),
+      maxOutputTokens: Number(
+        getConfigSheetValue(
+          CONFIG.userSettings.title.modelParameters.maxOutputTokens
+        )
+      ),
+      topK: Number(
+        getConfigSheetValue(CONFIG.userSettings.title.modelParameters.topK)
+      ),
+      topP: Number(
+        getConfigSheetValue(CONFIG.userSettings.title.modelParameters.topP)
+      ),
+    }).predict(prompt)
   );
   return res;
 }
@@ -482,33 +472,28 @@ function fetchDescriptionGenerationData(
     getConfigSheetValue(CONFIG.userSettings.description.fullPrompt) +
     dataContext;
   const res = Util.executeWithRetry(CONFIG.vertexAi.maxRetries, () =>
-    VertexHelper.getInstance(
-      vertexAiGcpProjectId,
-      vertexAiGcpProjectLocation,
-      vertexAiLanguageModelId,
-      {
-        temperature: Number(
-          getConfigSheetValue(
-            CONFIG.userSettings.description.modelParameters.temperature
-          )
-        ),
-        maxOutputTokens: Number(
-          getConfigSheetValue(
-            CONFIG.userSettings.description.modelParameters.maxOutputTokens
-          )
-        ),
-        topK: Number(
-          getConfigSheetValue(
-            CONFIG.userSettings.description.modelParameters.topK
-          )
-        ),
-        topP: Number(
-          getConfigSheetValue(
-            CONFIG.userSettings.description.modelParameters.topP
-          )
-        ),
-      }
-    ).predict(prompt)
+    VertexHelper.getInstance(vertexAiGcpProjectId, vertexAiLanguageModelId, {
+      temperature: Number(
+        getConfigSheetValue(
+          CONFIG.userSettings.description.modelParameters.temperature
+        )
+      ),
+      maxOutputTokens: Number(
+        getConfigSheetValue(
+          CONFIG.userSettings.description.modelParameters.maxOutputTokens
+        )
+      ),
+      topK: Number(
+        getConfigSheetValue(
+          CONFIG.userSettings.description.modelParameters.topK
+        )
+      ),
+      topP: Number(
+        getConfigSheetValue(
+          CONFIG.userSettings.description.modelParameters.topP
+        )
+      ),
+    }).predict(prompt)
   );
   return res;
 }
