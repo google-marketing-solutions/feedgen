@@ -592,11 +592,11 @@ function optimizeRow(headers, data) {
     .map(x => x.trim());
   const [preferGeneratedValues, blockedAttributes, allowedWords] = [
     getConfigSheetValue(CONFIG.userSettings.title.preferGeneratedValues),
-    getConfigSheetValue(CONFIG.userSettings.title.blockedAttributes)
+    String(getConfigSheetValue(CONFIG.userSettings.title.blockedAttributes))
       .split(',')
       .filter(Boolean)
       .map(attribute => attribute.trim().toLowerCase()),
-    getConfigSheetValue(CONFIG.userSettings.title.allowedWords)
+    String(getConfigSheetValue(CONFIG.userSettings.title.allowedWords))
       .split(',')
       .filter(Boolean)
       .map(word => word.trim().toLowerCase()),

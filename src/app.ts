@@ -326,11 +326,11 @@ function optimizeRow(
   // Title advanced settings
   const [preferGeneratedValues, blockedAttributes, allowedWords] = [
     getConfigSheetValue(CONFIG.userSettings.title.preferGeneratedValues),
-    getConfigSheetValue(CONFIG.userSettings.title.blockedAttributes)
+    String(getConfigSheetValue(CONFIG.userSettings.title.blockedAttributes))
       .split(',')
       .filter(Boolean)
       .map((attribute: string) => attribute.trim().toLowerCase()),
-    getConfigSheetValue(CONFIG.userSettings.title.allowedWords)
+    String(getConfigSheetValue(CONFIG.userSettings.title.allowedWords))
       .split(',')
       .filter(Boolean)
       .map((word: string) => word.trim().toLowerCase()),
