@@ -107,6 +107,13 @@ prompt examples table, which define the expected output by the LLM. These
 examples are very important as they provide the basis upon which the LLM will
 learn how it should generate content for the rest of the input feed.
 
+The best examples to pick are products where:
+* You can identify product attributes in the existing title   
+* You can propose a title that is better than the existing one
+* Proposed title has a structure that uses product attributes in a fixed order
+
+"Context" is a full content of product entry in input feed - and all data in the "Title Fed-Shot Prompting Examples" will be present in the prompts sent to Generation AI for each row of input.
+
 <img src='./img/few-shot.png' alt='Few-Shot' />
 
 FeedGen defaults to using attributes from the input feed instead of generated
