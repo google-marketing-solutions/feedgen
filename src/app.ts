@@ -715,16 +715,13 @@ export function exportApproved() {
       ? JSON.parse(row[CONFIG.sheets.generated.cols.gapAttributes])
       : {};
     const gapAttributesKeys = Object.keys(gapAttributesAndValues);
-    const originalInput = row[CONFIG.sheets.generated.cols.originalInput]
-      ? JSON.parse(row[CONFIG.sheets.generated.cols.originalInput])
-      : {};
 
     gapAndInventedAttributes.forEach(
       (attribute, index) =>
         (resRow[CONFIG.sheets.output.cols.gapCols.start + index] =
           gapAttributesKeys.includes(attribute)
             ? gapAttributesAndValues[attribute]
-            : originalInput[attribute])
+            : '')
     );
 
     rowsToWrite.push(resRow);
