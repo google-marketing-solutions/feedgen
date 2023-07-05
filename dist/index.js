@@ -442,7 +442,10 @@ function getUnprocessedInputRows(filterProcessed = true) {
   const generatedRowIds = SheetsService.getInstance()
     .getNonEmptyRows(generatedSheet)
     .filter(
-      row => String(row[CONFIG.sheets.generated.cols.status]) === Status.SUCCESS
+      row =>
+        String(row[CONFIG.sheets.generated.cols.status]) === Status.SUCCESS ||
+        String(row[CONFIG.sheets.generated.cols.status]) ===
+          Status.NON_COMPLIANT
     )
     .map(row => String(row[CONFIG.sheets.generated.cols.id]));
   if (filterProcessed && generatedRowIds.length) {
