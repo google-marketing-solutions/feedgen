@@ -31,7 +31,7 @@ interface VertexAiModelParams {
 }
 
 interface VertexAiResponse {
-  predictions: VertexAiPrediction[];
+  predictions: VertexAiPrediction[] | null;
 }
 
 export class VertexHelper {
@@ -68,7 +68,9 @@ export class VertexHelper {
 
     if (response.getResponseCode() === 429) {
       MultiLogger.getInstance().log(
-        `Waiting ${CONFIG.vertexAi.quotaLimitDelay}s as API quota limit has been reached...`
+        `Waiting ${
+          Number(CONFIG.vertexAi.quotaLimitDelay) / 1000
+        }s as API quota limit has been reached...`
       );
       Utilities.sleep(CONFIG.vertexAi.quotaLimitDelay);
       return this.fetchJson(url, params);
@@ -91,15 +93,18 @@ export class VertexHelper {
 
     MultiLogger.getInstance().log(res);
 
-    if (res.predictions[0].safetyAttributes.blocked) {
-      throw new Error(
-        `Request was blocked as it triggered API safety filters. Prompt: ${prompt}`
-      );
-    } else if (!res.predictions[0].content) {
-      throw new Error(`Received empty response from API. Prompt: ${prompt}`);
+    if (res.predictions) {
+      if (res.predictions[0].safetyAttributes.blocked) {
+        throw new Error(
+          `Request was blocked as it triggered API safety filters. Prompt: ${prompt}`
+        );
+      } else if (!res.predictions[0].content) {
+        throw new Error(`Received empty response from API. Prompt: ${prompt}`);
+      } else {
+        return res.predictions[0].content;
+      }
     }
-
-    return res.predictions[0].content;
+    throw new Error(JSON.stringify(res));
   }
 
   /**
