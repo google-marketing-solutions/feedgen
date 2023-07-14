@@ -15,7 +15,7 @@ limitations under the License.
 -->
 <img align="left" width="150" src="https://services.google.com/fh/files/misc/feedgen_logo.png" alt="feedgen_logo" /><br>
 
-# FeedGen: Optimise Shopping Ads feeds with Generative AI
+# FeedGen: Optimise Shopping feeds with Generative AI
 
 [![GitHub last commit](https://img.shields.io/github/last-commit/google/feedgen)](https://github.com/google/feedgen/commits)
 [![Code Style: Google](https://img.shields.io/badge/code%20style-google-blueviolet.svg)](https://github.com/google/gts)
@@ -31,15 +31,15 @@ limitations under the License.
 ## Overview
 
 **FeedGen** is an open-source tool that uses Google Cloud's state-of-the-art
-Large Language Models (LLMs) to generate optimised Shopping Ads titles and
-descriptions, and fill missing attributes in product feeds. It helps merchants
-and advertisers surface and fix quality issues in their feeds using
-Generative AI in a simple and configurable way.
+Large Language Models (LLMs) to improve product titles, generate more
+comprehensive descriptions, and fill missing attributes in product feeds. It
+helps merchants and advertisers surface and fix quality issues in their feeds
+using Generative AI in a simple and configurable way.
 
 The tool relies on GCP's Vertex AI API to provide both zero-shot and few-shot
 inference capabilities on GCP's foundational LLMs. With
 [few-shot prompting](https://cloud.google.com/vertex-ai/docs/generative-ai/text/text-overview),
-you use the best 3-10 samples from your own Shopping Ads feeds to customise the
+you use the best 3-10 samples from your own Shopping feed to customise the
 model's responses towards your own data, thus achieving higher quality and more
 consistent output. This can be optimised further by fine-tuning the
 foundational models with your own proprietary data. Find out how to fine-tune
@@ -61,10 +61,10 @@ To get started with FeedGen:
 
 ## Challenges
 
-Optimising Shopping Ads feeds is a goal for every advertiser working with Google
-Merchant Center (MC) in order to improve query matching, click-through rates
-(CTR), and conversions. However, it is cumbersome to sift through product
-disapprovals in MC or manually fix quality issues.
+Optimising Shopping feeds is a goal for every advertiser working with Google
+Merchant Center (MC) in order to improve query matching, increase coverage,
+click-through rates (CTR), and conversions. However, it is cumbersome to sift
+through product disapprovals in MC or manually fix quality issues.
 
 FeedGen tackles this using Generative AI - allowing users to surface and fix
 quality issues, and fill attribute gaps in their feeds, in an automated fashion.
