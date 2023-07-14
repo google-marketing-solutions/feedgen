@@ -62,8 +62,8 @@ To get started with FeedGen:
 ## Challenges
 
 Optimising Shopping feeds is a goal for every advertiser working with Google
-Merchant Center (MC) in order to improve query matching, increase coverage,
-click-through rates (CTR), and conversions. However, it is cumbersome to sift
+Merchant Center (MC) in order to improve query matching, increase coverage, and
+ultimately click-through rates (CTR). However, it is cumbersome to sift
 through product disapprovals in MC or manually fix quality issues.
 
 FeedGen tackles this using Generative AI - allowing users to surface and fix
