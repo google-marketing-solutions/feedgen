@@ -20,6 +20,7 @@ var Status;
   Status['FAILED'] = 'Failed';
   Status['NON_COMPLIANT'] = 'Failed compliance checks';
 })(Status || (Status = {}));
+const EMPTY = 'EMPTY';
 const CONFIG = {
   userSettings: {
     feed: {
@@ -432,7 +433,7 @@ function FEEDGEN_CREATE_CONTEXT_JSON(itemId) {
   return JSON.stringify(contextObject);
 }
 function getUnprocessedInputRows(filterProcessed = true) {
-  SpreadsheetApp.flush();
+  refreshConfigSheet();
   const inputSheet = SpreadsheetApp.getActive().getSheetByName(
     CONFIG.sheets.input.name
   );
@@ -503,7 +504,7 @@ function getGenerationMetrics(
   const newWordsAdded = new Set();
   const genTitleWords = new Set();
   const genTitleWordsMatcher = String(genTitle)
-    .replace("'s", '')
+    .replaceAll("'s", '')
     .match(WORD_MATCH_REGEX);
   if (genTitleWordsMatcher) {
     genTitleWordsMatcher.forEach(word => genTitleWords.add(word.toLowerCase()));
@@ -513,14 +514,14 @@ function getGenerationMetrics(
   }
   const wordsRemoved = new Set();
   const origTitleWordsMatcher = String(origTitle)
-    .replace("'s", '')
+    .replaceAll("'s", '')
     .match(WORD_MATCH_REGEX);
   if (origTitleWordsMatcher) {
     origTitleWordsMatcher
       .filter(
         word =>
           !genTitleWords.has(word.toLowerCase()) &&
-          !genTitle.replace("'", '').includes(word)
+          !genTitle.replaceAll("'", '').includes(word)
       )
       .forEach(word => wordsRemoved.add(word));
   }
@@ -533,8 +534,7 @@ function getGenerationMetrics(
   const filledOrInventedFeedAttributes =
     gapAttributesPresent.length > 0 || gapAttributesInvented.length > 0;
   const addedTitleAttributes = addedAttributes.filter(Boolean).length > 0;
-  const removedTitleAttributes =
-    removedAttributes.filter(Boolean).length > 0 || wordsRemoved.size > 0;
+  const removedTitleAttributes = wordsRemoved.size > 0;
   const hallucinatedTitle = newWordsAdded.size > 0;
   let score = 0;
   if (hallucinatedTitle) {
@@ -621,17 +621,26 @@ function optimizeRow(headers, data) {
       (!origAttributes.includes(attribute) ||
         Object.keys(dataObj).includes(attribute))
     ) {
-      gapAttributesAndValues[attribute] = genAttributeValues[index];
+      const value = removeEmptyAttributeValues(
+        attribute,
+        genAttributeValues[index]
+      ).trim();
+      if (value) {
+        gapAttributesAndValues[attribute] = value;
+      }
     }
-    const value = preferGeneratedValues
+    let value = preferGeneratedValues
       ? genAttributeValues[index]
       : typeof dataObj[attribute] !== 'undefined' &&
         String(dataObj[attribute]).length
       ? dataObj[attribute]
       : genAttributeValues[index];
     if (typeof value !== 'undefined' && String(value).trim()) {
-      validGenAttributes.push(attribute);
-      titleFeatures.push(String(value).trim());
+      value = removeEmptyAttributeValues(attribute, value).trim();
+      if (value) {
+        validGenAttributes.push(attribute);
+        titleFeatures.push(value);
+      }
     }
   }
   const origTemplate = origAttributes
@@ -646,7 +655,7 @@ function optimizeRow(headers, data) {
   const genDescription = fetchDescriptionGenerationData(dataObj, genTitle);
   const inputWords = new Set();
   for (const [key, value] of Object.entries(dataObj)) {
-    const keyAndValue = [String(key), String(value).replace("'s", '')].join(
+    const keyAndValue = [String(key), String(value).replaceAll("'s", '')].join(
       ' '
     );
     const match = keyAndValue.match(WORD_MATCH_REGEX);
@@ -706,11 +715,40 @@ function optimizeRow(headers, data) {
     JSON.stringify(dataObj),
   ];
 }
+function removeEmptyAttributeValues(key, value) {
+  if (
+    String(key).toLowerCase() === String(value).toLowerCase() ||
+    String(value) === EMPTY
+  ) {
+    return '';
+  }
+  return String(value);
+}
+function isErroneousPrompt(prompt) {
+  return prompt.startsWith(CONFIG.sheets.formulaError);
+}
+function refreshConfigSheet() {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(
+    CONFIG.sheets.config.name
+  );
+  const prompt = getConfigSheetValue(CONFIG.userSettings.title.fullPrompt);
+  if (isErroneousPrompt(prompt)) {
+    MultiLogger.getInstance().log(
+      'Manually refreshing Config sheet by adding and deleting a row...'
+    );
+    sheet?.insertRowBefore(1);
+    SpreadsheetApp.flush();
+    Utilities.sleep(3000);
+    sheet?.deleteRow(1);
+    SpreadsheetApp.flush();
+    Utilities.sleep(3000);
+  }
+}
 function fetchTitleGenerationData(data) {
   const dataContext = `Context: ${JSON.stringify(data)}\n\n`;
   const prompt =
     getConfigSheetValue(CONFIG.userSettings.title.fullPrompt) + dataContext;
-  if (prompt.startsWith(CONFIG.sheets.formulaError)) {
+  if (isErroneousPrompt(prompt)) {
     throw new Error(
       'Could not read the title prompt from the "Config" sheet. ' +
         'Please refresh the sheet by adding a new row before the ' +
@@ -750,7 +788,7 @@ function fetchDescriptionGenerationData(data, generatedTitle) {
   const prompt =
     getConfigSheetValue(CONFIG.userSettings.description.fullPrompt) +
     dataContext;
-  if (prompt.startsWith(CONFIG.sheets.formulaError)) {
+  if (isErroneousPrompt(prompt)) {
     throw new Error(
       'Could not read the description prompt from the "Config" sheet. ' +
         'Please refresh the sheet by adding a new row before the ' +
