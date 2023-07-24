@@ -217,7 +217,7 @@ Let's look at another example for the same product:
 * **Original Title**: 2XU Men's Swim Compression Long Sleeve Top
 * **Generated Title**: 2XU Men's Swim Compression Top Size M
 * **Score**: -0.5
-* Reasoning: Key attributes were removed from the title, namely "Long Sleeve",
+* Reasoning: Key information was removed from the title, namely "Long Sleeve",
   which describes the type of the product. FeedGen identifies this information
   by first examining the structure of titles via what we refer to as
   **templates** in our uniquitous language, before diving deeper and comparing
@@ -230,10 +230,10 @@ Let's look at another example for the same product:
     negative score.
 
 > FeedGen is conservative in its scoring; it will assign a score of -0.5
-  whenever *any* attributes or words get removed, even if those words were
-  promotional phrases such as `get yours now` or `while stocks last`, which
-  should not be part of titles as per the [Best Practices](#best-practices)
-  outlined by Merchant Center (MC).
+  whenever *any* words get removed, even if those words were promotional phrases
+  such as `get yours now` or `while stocks last`, which should not be part of
+  titles as per the [Best Practices](#best-practices) outlined by Merchant
+  Center (MC).
 
 Alright, so what makes a good title? Let's look at another example:
 
@@ -258,7 +258,7 @@ Finally, what's the ideal case? Let's take a look at one last example:
 
 So in summary, the scoring systems works as follows:
 
-|Are there hallucinations?|Have we removed key attributes / words?|No change at all?|Have we optimised the title?|Did we fill in missing gaps or create [new attributes](#feed-gaps-and-new-attributes)?|
+|Are there hallucinations?|Have we removed any words?|No change at all?|Have we optimised the title?|Did we fill in missing gaps or extract [new attributes](#feed-gaps-and-new-attributes)?|
 |-|-|-|-|-|
 |-1|-0.5|0|Add 0.5|Add 0.5|
 
@@ -275,7 +275,7 @@ FeedGen does not just fill gaps in your feed, but might also create completely
 **new** attributes that were not provided in the *Input Feed*. This is
 controllable via the few-shot prompting examples in the *Config* sheet; by
 providing "new" attributes that do not exist in the input within those examples,
-FeedGen will attempt to *infer* values for those new attributes from other
+FeedGen will attempt to *extract* values for those new attributes from other
 values in the input feed. Let's take a look at an example:
 
 |Original Title|Product Attributes in Original Title|Product Attributes in Generated Title|Generated Attribute Values|
