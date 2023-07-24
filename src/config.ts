@@ -20,8 +20,6 @@ export enum Status {
   NON_COMPLIANT = 'Failed compliance checks',
 }
 
-export const EMPTY = 'EMPTY';
-
 export const CONFIG = {
   userSettings: {
     feed: {

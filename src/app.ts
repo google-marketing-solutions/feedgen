@@ -17,7 +17,7 @@
 //@OnlyCurrentDoc
 /* eslint-disable no-useless-escape */
 
-import { CONFIG, EMPTY, Status } from './config';
+import { CONFIG, Status } from './config';
 import { MultiLogger } from './helpers/logger';
 import { SheetsService } from './helpers/sheets';
 import { Util } from './helpers/util';
@@ -238,14 +238,12 @@ function getGenerationMetrics(
   const filledOrInventedFeedAttributes =
     gapAttributesPresent.length > 0 || gapAttributesInvented.length > 0;
   const addedTitleAttributes = addedAttributes.filter(Boolean).length > 0;
-  const removedTitleAttributes = wordsRemoved.size > 0;
-  const hallucinatedTitle = newWordsAdded.size > 0;
 
   let score = 0;
 
-  if (hallucinatedTitle) {
+  if (newWordsAdded.size > 0) {
     score = -1;
-  } else if (removedTitleAttributes) {
+  } else if (wordsRemoved.size > 0) {
     score = -0.5;
   } else {
     score =
@@ -454,10 +452,7 @@ function optimizeRow(
 }
 
 function removeEmptyAttributeValues(key: string, value: string): string {
-  if (
-    String(key).toLowerCase() === String(value).toLowerCase() ||
-    String(value) === EMPTY
-  ) {
+  if (String(key).toLowerCase() === String(value).toLowerCase()) {
     return '';
   }
   return String(value);
