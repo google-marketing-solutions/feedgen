@@ -474,10 +474,10 @@ function refreshConfigSheet() {
     );
     sheet?.insertRowBefore(1);
     SpreadsheetApp.flush();
-    Utilities.sleep(3000);
+    Utilities.sleep(5000);
     sheet?.deleteRow(1);
     SpreadsheetApp.flush();
-    Utilities.sleep(3000);
+    Utilities.sleep(5000);
   }
 }
 
