@@ -46,10 +46,10 @@ foundational models with your own proprietary data. Find out how to fine-tune
 models with Vertex AI, along with the benefits of doing so, at this
 [guide](https://cloud.google.com/vertex-ai/docs/generative-ai/models/tune-models).
 
-> Note: Vertex AI PaLM models
-[currently only support English](https://cloud.google.com/vertex-ai/docs/generative-ai/learn/models#language_support).
-For non-English language generation, please reach out to your Google Sales /
-gTech representative to have the FeedGen team generate the output for you.
+> Note: Please check if your target feed language is one of the
+[Vertex AI supported languages](https://cloud.google.com/vertex-ai/docs/generative-ai/learn/models#language_support)
+before using FeedGen, and reach out to your Google Cloud or Account
+representatives if not.
 
 ## Get Started
 
