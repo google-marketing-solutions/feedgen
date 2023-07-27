@@ -86,7 +86,7 @@ a [score](#scoring--evaluation) between -1 and 1 (along with detailed components
 that represents how "good" the generated content is, along with a Sheets-native
 way for bulk-approving generated content via data filters.
 
-First, make a copy of the [template spreadsheet](https://docs.google.com/spreadsheets/d/1L8cgQCppRwIOvNYR3kqelPuSfAYFhhLi8gvIcknnwNo/edit#gid=92939291)
+First, make a copy of the [template spreadsheet](https://docs.google.com/spreadsheets/d/19eKTJrbZaUfipAvL5ZQmq_hoxEbLQIlDqURKFJA2OBU/edit#gid=1661242997)
 and follow the instructions defined in the **Getting Started** section. The
 first step to authenticate to the Apps Script environment via the **Initialise**
 button as shown below.
