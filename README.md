@@ -86,15 +86,18 @@ a [score](#scoring--evaluation) between -1 and 1 (along with detailed components
 that represents how "good" the generated content is, along with a Sheets-native
 way for bulk-approving generated content via data filters.
 
-First, make a copy of the [template spreadsheet](https://docs.google.com/spreadsheets/d/1L8cgQCppRwIOvNYR3kqelPuSfAYFhhLi8gvIcknnwNo/edit#gid=92939291)
-and follow the instructions defined in the **Getting Started** section. The
-first step to authenticate to the Apps Script environment via the **Initialise**
+First, make a copy of the [template spreadsheet](#get-started) and follow the
+instructions defined in the **Getting Started** section. The first step is to
+authenticate yourself to the Apps Script environment via the **Initialise**
 button as shown below.
 
 <img src='./img/getting-started.png' alt='Getting Started' />
 
 Afterwards, navigate to the **Config** worksheet to configure feed settings,
-Vertex AI API settings, and settings to control the content generation.
+Vertex AI API settings (including an estimation of the
+[costs](#vertex-ai-pricing-and-quotas) that will be incurred), and settings to
+control the content generation (generating descriptions is configurable and is
+switched on by default).
 
 <img src='./img/config.png' alt='Config' />
 
@@ -136,14 +139,10 @@ the `Prefer Generated Values` checkbox in the **Advanced Settings** section of
 the *Title Prompt Settings*, and is useful whenever the input feed itself
 contains erroneous or poor quality data.
 
-Within this same section you can also specify a list of attribute keys that
-should not be used for composing the generated titles. Examples are attributes
-like `Price` or `Promotion`, which should not be part of titles at all as per the
-[Best Practices](#best-practices) outlined by MC. Additionally, you can specify
-a list of *safe* words that can be output in generated titles even if they did
-not exist beforehand in your feed. For example, you can add the word "Size" to
-this list if you would like to prefix all values of the `Size` attribute with it
-(i.e. "Size M" instead of "M").
+Within this same section you can also specify a list of *safe* words that can be
+output in generated titles even if they did not exist beforehand in your feed.
+For example, you can add the word "Size" to this list if you would like to
+prefix all values of the `Size` attribute with it (i.e. "Size M" instead of "M").
 
 Now you are done with the configuration and ready to optimise your feed. Use the
 top navigation menu to launch the FeedGen sidebar and start generating and
@@ -312,7 +311,7 @@ We also suggest the following:
 
 * Provide as many product attributes as possible for enriching **description** generation.
 * Use **size**, **color**, and **gender / age group** for title generation, if available.
-* Do **NOT** use model numbers or promotional text in titles.
+* Do **NOT** use model numbers, prices or promotional text in titles.
 
 ### Vertex AI Pricing and Quotas
 

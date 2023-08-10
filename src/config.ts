@@ -35,6 +35,10 @@ export const CONFIG = {
         row: 2,
         col: 4,
       },
+      generateDescriptions: {
+        row: 2,
+        col: 5,
+      },
     },
     vertexAi: {
       gcpProjectId: {
@@ -79,12 +83,8 @@ export const CONFIG = {
         row: 19,
         col: 2,
       },
-      blockedAttributes: {
-        row: 20,
-        col: 2,
-      },
       allowedWords: {
-        row: 21,
+        row: 20,
         col: 2,
       },
       modelParameters: {
@@ -125,8 +125,8 @@ export const CONFIG = {
         titleGenerated: 3,
         gapAttributes: 14,
         descriptionGenerated: 15,
-        fullApiResponse: 19,
-        originalInput: 20,
+        fullApiResponse: 20,
+        originalInput: 21,
       },
     },
     output: {
