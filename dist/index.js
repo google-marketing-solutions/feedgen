@@ -35,6 +35,10 @@ const CONFIG = {
         row: 2,
         col: 4,
       },
+      generateDescriptions: {
+        row: 2,
+        col: 5,
+      },
     },
     vertexAi: {
       gcpProjectId: {
@@ -79,12 +83,8 @@ const CONFIG = {
         row: 19,
         col: 2,
       },
-      blockedAttributes: {
-        row: 20,
-        col: 2,
-      },
       allowedWords: {
-        row: 21,
+        row: 20,
         col: 2,
       },
       modelParameters: {
@@ -125,8 +125,8 @@ const CONFIG = {
         titleGenerated: 3,
         gapAttributes: 14,
         descriptionGenerated: 15,
-        fullApiResponse: 19,
-        originalInput: 20,
+        fullApiResponse: 20,
+        originalInput: 21,
       },
     },
     output: {
@@ -596,12 +596,8 @@ function optimizeRow(headers, data) {
     .split(SEPARATOR)
     .filter(Boolean)
     .map(x => x.trim());
-  const [preferGeneratedValues, blockedAttributes, allowedWords] = [
+  const [preferGeneratedValues, allowedWords] = [
     getConfigSheetValue(CONFIG.userSettings.title.preferGeneratedValues),
-    String(getConfigSheetValue(CONFIG.userSettings.title.blockedAttributes))
-      .split(',')
-      .filter(Boolean)
-      .map(attribute => attribute.trim().toLowerCase()),
     String(getConfigSheetValue(CONFIG.userSettings.title.allowedWords))
       .split(',')
       .filter(Boolean)
@@ -611,7 +607,6 @@ function optimizeRow(headers, data) {
   const gapAttributesAndValues = {};
   const validGenAttributes = [];
   for (const [index, attribute] of genAttributes.entries()) {
-    if (blockedAttributes.includes(attribute)) continue;
     if (
       !dataObj[attribute] &&
       genAttributeValues[index] &&
@@ -620,7 +615,8 @@ function optimizeRow(headers, data) {
     ) {
       const value = removeEmptyAttributeValues(
         attribute,
-        genAttributeValues[index]
+        genAttributeValues[index],
+        true
       ).trim();
       if (value) {
         gapAttributesAndValues[attribute] = value;
@@ -648,8 +644,18 @@ function optimizeRow(headers, data) {
     .filter(Boolean)
     .map(x => `<${x}>`)
     .join(' ');
-  const genTitle = titleFeatures.join(' ');
-  const genDescription = fetchDescriptionGenerationData(dataObj, genTitle);
+  let genTitle = titleFeatures.join(' ');
+  if (genTitle.endsWith(',')) {
+    genTitle = genTitle.slice(0, -1);
+  }
+  let genDescription = origDescription;
+  if (getConfigSheetValue(CONFIG.userSettings.feed.generateDescriptions)) {
+    try {
+      genDescription = fetchDescriptionGenerationData(dataObj, genTitle);
+    } catch (e) {
+      MultiLogger.getInstance().log(String(e));
+    }
+  }
   const inputWords = new Set();
   for (const [key, value] of Object.entries(dataObj)) {
     const keyAndValue = [String(key), String(value).replaceAll("'s", '')].join(
@@ -706,17 +712,26 @@ function optimizeRow(headers, data) {
       : '',
     genDescription,
     origDescription,
+    genDescription !== origDescription,
     String(genDescription.length),
     genCategory,
     `${res}\nproduct description: ${genDescription}`,
     JSON.stringify(dataObj),
   ];
 }
-function removeEmptyAttributeValues(key, value) {
-  if (String(key).toLowerCase() === String(value).toLowerCase()) {
+function removeEmptyAttributeValues(key, value, removeTrailingComma = false) {
+  const val = String(value).trim();
+  if (
+    String(key).toLowerCase() === val.toLowerCase() ||
+    (val.endsWith(',') &&
+      String(key).toLowerCase() === val.slice(0, -1).trim().toLowerCase())
+  ) {
     return '';
   }
-  return String(value);
+  if (val === ',') {
+    return '';
+  }
+  return removeTrailingComma && val.endsWith(',') ? val.slice(0, -1) : val;
 }
 function isErroneousPrompt(prompt) {
   return prompt.startsWith(CONFIG.sheets.formulaError);
@@ -732,10 +747,10 @@ function refreshConfigSheet() {
     );
     sheet?.insertRowBefore(1);
     SpreadsheetApp.flush();
-    Utilities.sleep(3000);
+    Utilities.sleep(5000);
     sheet?.deleteRow(1);
     SpreadsheetApp.flush();
-    Utilities.sleep(3000);
+    Utilities.sleep(5000);
   }
 }
 function fetchTitleGenerationData(data) {

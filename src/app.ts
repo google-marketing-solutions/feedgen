@@ -324,12 +324,8 @@ function optimizeRow(
     .map((x: string) => x.trim());
 
   // Title advanced settings
-  const [preferGeneratedValues, blockedAttributes, allowedWords] = [
+  const [preferGeneratedValues, allowedWords] = [
     getConfigSheetValue(CONFIG.userSettings.title.preferGeneratedValues),
-    String(getConfigSheetValue(CONFIG.userSettings.title.blockedAttributes))
-      .split(',')
-      .filter(Boolean)
-      .map((attribute: string) => attribute.trim().toLowerCase()),
     String(getConfigSheetValue(CONFIG.userSettings.title.allowedWords))
       .split(',')
       .filter(Boolean)
@@ -340,7 +336,6 @@ function optimizeRow(
   const validGenAttributes: string[] = [];
 
   for (const [index, attribute] of genAttributes.entries()) {
-    if (blockedAttributes.includes(attribute)) continue;
     if (
       !dataObj[attribute] && // matches gaps ({color: ""}) AND invented
       genAttributeValues[index] && // non-empty generated value
@@ -350,7 +345,8 @@ function optimizeRow(
     ) {
       const value = removeEmptyAttributeValues(
         attribute,
-        genAttributeValues[index]
+        genAttributeValues[index],
+        true
       ).trim();
       if (value) {
         gapAttributesAndValues[attribute] = value;
@@ -382,9 +378,19 @@ function optimizeRow(
     .map((x: string) => `<${x}>`)
     .join(' ');
 
-  const genTitle = titleFeatures.join(' ');
-  const genDescription = fetchDescriptionGenerationData(dataObj, genTitle);
-
+  let genTitle = titleFeatures.join(' ');
+  if (genTitle.endsWith(',')) {
+    genTitle = genTitle.slice(0, -1);
+  }
+  let genDescription = origDescription;
+  if (getConfigSheetValue(CONFIG.userSettings.feed.generateDescriptions)) {
+    try {
+      genDescription = fetchDescriptionGenerationData(dataObj, genTitle);
+    } catch (e) {
+      // Ignore "blocked for safety reasons" error response
+      MultiLogger.getInstance().log(String(e));
+    }
+  }
   const inputWords = new Set<string>();
   for (const [key, value] of Object.entries(dataObj)) {
     const keyAndValue = [String(key), String(value).replaceAll("'s", '')].join(
@@ -444,6 +450,7 @@ function optimizeRow(
       : '',
     genDescription,
     origDescription,
+    genDescription !== origDescription,
     String(genDescription.length),
     genCategory,
     `${res}\nproduct description: ${genDescription}`, // API response
@@ -451,11 +458,23 @@ function optimizeRow(
   ];
 }
 
-function removeEmptyAttributeValues(key: string, value: string): string {
-  if (String(key).toLowerCase() === String(value).toLowerCase()) {
+function removeEmptyAttributeValues(
+  key: string,
+  value: string,
+  removeTrailingComma = false
+) {
+  const val = String(value).trim();
+  if (
+    String(key).toLowerCase() === val.toLowerCase() ||
+    (val.endsWith(',') &&
+      String(key).toLowerCase() === val.slice(0, -1).trim().toLowerCase())
+  ) {
     return '';
   }
-  return String(value);
+  if (val === ',') {
+    return '';
+  }
+  return removeTrailingComma && val.endsWith(',') ? val.slice(0, -1) : val;
 }
 
 function isErroneousPrompt(prompt: string): boolean {
