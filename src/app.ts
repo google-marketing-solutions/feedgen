@@ -298,90 +298,134 @@ function optimizeRow(
       getConfigSheetValue(CONFIG.userSettings.feed.descriptionColumnName)
     ];
 
-  const res = fetchTitleGenerationData(dataObj);
-
-  const [origTemplateRow, genCategoryRow, genTemplateRow, genAttributesRow] =
-    res.split('\n');
-
-  const genCategory = genCategoryRow.replace(CATEGORY_PROMPT_PART, '').trim();
-
-  const genAttributes = genTemplateRow
-    .replace(TEMPLATE_PROMPT_PART, '')
-    .split(SEPARATOR)
-    .filter(Boolean)
-    .map((x: string) => x.trim());
-
-  const origAttributes = origTemplateRow
-    .replace(ORIGINAL_TITLE_TEMPLATE_PROMPT_PART, '')
-    .split(SEPARATOR)
-    .filter(Boolean)
-    .map((x: string) => x.trim());
-
-  const genAttributeValues = genAttributesRow
-    .replace(ATTRIBUTES_PROMPT_PART, '')
-    .split(SEPARATOR)
-    .filter(Boolean)
-    .map((x: string) => x.trim());
-
-  // Title advanced settings
-  const [preferGeneratedValues, allowedWords] = [
-    getConfigSheetValue(CONFIG.userSettings.title.preferGeneratedValues),
-    String(getConfigSheetValue(CONFIG.userSettings.title.allowedWords))
-      .split(',')
-      .filter(Boolean)
-      .map((word: string) => word.trim().toLowerCase()),
-  ];
-  const titleFeatures: string[] = [];
+  let genTitle = origTitle;
   const gapAttributesAndValues: Record<string, string> = {};
-  const validGenAttributes: string[] = [];
+  let totalScore = '1';
+  let titleChanged = 'FALSE';
+  let addedAttributes = '[]';
+  let removedAttributes = '[]';
+  let newWordsAdded = '0';
+  let wordsRemoved = '0';
+  let origTemplate = '';
+  let genTemplate = '';
+  let genCategory = '';
+  let res = 'N/A';
+  if (getConfigSheetValue(CONFIG.userSettings.feed.generateTitles)) {
+    res = fetchTitleGenerationData(dataObj);
 
-  for (const [index, attribute] of genAttributes.entries()) {
-    if (
-      !dataObj[attribute] && // matches gaps ({color: ""}) AND invented
-      genAttributeValues[index] && // non-empty generated value
-      (!origAttributes.includes(attribute) ||
-        // force include gaps even if in generated template for original title
-        Object.keys(dataObj).includes(attribute))
-    ) {
-      const value = removeEmptyAttributeValues(
-        attribute,
-        genAttributeValues[index],
-        true
-      ).trim();
-      if (value) {
-        gapAttributesAndValues[attribute] = value;
+    const [origTemplateRow, genCategoryRow, genTemplateRow, genAttributesRow] =
+      res.split('\n');
+
+    genCategory = genCategoryRow.replace(CATEGORY_PROMPT_PART, '').trim();
+
+    const genAttributes = genTemplateRow
+      .replace(TEMPLATE_PROMPT_PART, '')
+      .split(SEPARATOR)
+      .filter(Boolean)
+      .map((x: string) => x.trim());
+
+    const origAttributes = origTemplateRow
+      .replace(ORIGINAL_TITLE_TEMPLATE_PROMPT_PART, '')
+      .split(SEPARATOR)
+      .filter(Boolean)
+      .map((x: string) => x.trim());
+
+    const genAttributeValues = genAttributesRow
+      .replace(ATTRIBUTES_PROMPT_PART, '')
+      .split(SEPARATOR)
+      .filter(Boolean)
+      .map((x: string) => x.trim());
+
+    // Title advanced settings
+    const [preferGeneratedValues, allowedWords] = [
+      getConfigSheetValue(CONFIG.userSettings.title.preferGeneratedValues),
+      String(getConfigSheetValue(CONFIG.userSettings.title.allowedWords))
+        .split(',')
+        .filter(Boolean)
+        .map((word: string) => word.trim().toLowerCase()),
+    ];
+    const titleFeatures: string[] = [];
+
+    const validGenAttributes: string[] = [];
+
+    for (const [index, attribute] of genAttributes.entries()) {
+      if (
+        !dataObj[attribute] && // matches gaps ({color: ""}) AND invented
+        genAttributeValues[index] && // non-empty generated value
+        (!origAttributes.includes(attribute) ||
+          // force include gaps even if in generated template for original title
+          Object.keys(dataObj).includes(attribute))
+      ) {
+        const value = removeEmptyAttributeValues(
+          attribute,
+          genAttributeValues[index],
+          true
+        ).trim();
+        if (value) {
+          gapAttributesAndValues[attribute] = value;
+        }
+      }
+      let value = preferGeneratedValues
+        ? genAttributeValues[index]
+        : typeof dataObj[attribute] !== 'undefined' &&
+          String(dataObj[attribute]).length
+        ? dataObj[attribute]
+        : genAttributeValues[index];
+
+      if (typeof value !== 'undefined' && String(value).trim()) {
+        value = removeEmptyAttributeValues(attribute, value).trim();
+
+        if (value) {
+          validGenAttributes.push(attribute);
+          titleFeatures.push(value);
+        }
       }
     }
-    let value = preferGeneratedValues
-      ? genAttributeValues[index]
-      : typeof dataObj[attribute] !== 'undefined' &&
-        String(dataObj[attribute]).length
-      ? dataObj[attribute]
-      : genAttributeValues[index];
 
-    if (typeof value !== 'undefined' && String(value).trim()) {
-      value = removeEmptyAttributeValues(attribute, value).trim();
+    origTemplate = origAttributes
+      .filter(Boolean)
+      .map((x: string) => `<${x}>`)
+      .join(' ');
+    genTemplate = validGenAttributes
+      .filter(Boolean)
+      .map((x: string) => `<${x}>`)
+      .join(' ');
 
-      if (value) {
-        validGenAttributes.push(attribute);
-        titleFeatures.push(value);
+    genTitle = titleFeatures.join(' ');
+    if (genTitle.endsWith(',')) {
+      genTitle = genTitle.slice(0, -1);
+    }
+
+    const inputWords = new Set<string>();
+    for (const [key, value] of Object.entries(dataObj)) {
+      const keyAndValue = [
+        String(key),
+        String(value).replaceAll("'s", ''),
+      ].join(' ');
+      const match = keyAndValue.match(WORD_MATCH_REGEX);
+      if (match) {
+        match.forEach((word: string) => inputWords.add(word.toLowerCase()));
       }
     }
+    allowedWords.forEach((word: string) => inputWords.add(word));
+
+    const metrics = getGenerationMetrics(
+      origTitle,
+      genTitle,
+      new Set(origAttributes),
+      new Set(validGenAttributes),
+      inputWords,
+      gapAttributesAndValues,
+      dataObj
+    );
+    totalScore = metrics.totalScore;
+    titleChanged = metrics.titleChanged;
+    addedAttributes = metrics.addedAttributes;
+    removedAttributes = metrics.removedAttributes;
+    newWordsAdded = metrics.newWordsAdded;
+    wordsRemoved = metrics.wordsRemoved;
   }
 
-  const origTemplate = origAttributes
-    .filter(Boolean)
-    .map((x: string) => `<${x}>`)
-    .join(' ');
-  const genTemplate = validGenAttributes
-    .filter(Boolean)
-    .map((x: string) => `<${x}>`)
-    .join(' ');
-
-  let genTitle = titleFeatures.join(' ');
-  if (genTitle.endsWith(',')) {
-    genTitle = genTitle.slice(0, -1);
-  }
   let genDescription = origDescription;
   if (getConfigSheetValue(CONFIG.userSettings.feed.generateDescriptions)) {
     try {
@@ -391,34 +435,6 @@ function optimizeRow(
       MultiLogger.getInstance().log(String(e));
     }
   }
-  const inputWords = new Set<string>();
-  for (const [key, value] of Object.entries(dataObj)) {
-    const keyAndValue = [String(key), String(value).replaceAll("'s", '')].join(
-      ' '
-    );
-    const match = keyAndValue.match(WORD_MATCH_REGEX);
-    if (match) {
-      match.forEach((word: string) => inputWords.add(word.toLowerCase()));
-    }
-  }
-  allowedWords.forEach((word: string) => inputWords.add(word));
-
-  const {
-    totalScore,
-    titleChanged,
-    addedAttributes,
-    removedAttributes,
-    newWordsAdded,
-    wordsRemoved,
-  } = getGenerationMetrics(
-    origTitle,
-    genTitle,
-    new Set(origAttributes),
-    new Set(validGenAttributes),
-    inputWords,
-    gapAttributesAndValues,
-    dataObj
-  );
 
   const status =
     genTitle.length <= TITLE_MAX_LENGTH &&

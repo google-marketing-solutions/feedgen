@@ -35,9 +35,13 @@ export const CONFIG = {
         row: 2,
         col: 4,
       },
-      generateDescriptions: {
+      generateTitles: {
         row: 2,
         col: 5,
+      },
+      generateDescriptions: {
+        row: 2,
+        col: 6,
       },
     },
     vertexAi: {
