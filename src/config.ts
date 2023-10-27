@@ -43,6 +43,10 @@ export const CONFIG = {
         row: 2,
         col: 6,
       },
+      evaluateDescriptions: {
+        row: 2,
+        col: 7,
+      },
     },
     vertexAi: {
       gcpProjectId: {
@@ -58,6 +62,10 @@ export const CONFIG = {
       fullPrompt: {
         row: 10,
         col: 2,
+      },
+      keyword: {
+        row: 30,
+        col: 8,
       },
       modelParameters: {
         temperature: {
@@ -78,18 +86,22 @@ export const CONFIG = {
         },
       },
     },
-    title: {
+    descriptionValidation: {
       fullPrompt: {
         row: 16,
         col: 2,
       },
-      preferGeneratedValues: {
-        row: 19,
-        col: 2,
+      maxRetries: {
+        row: 14,
+        col: 8,
       },
-      allowedWords: {
-        row: 20,
-        col: 2,
+      minScore: {
+        row: 14,
+        col: 7,
+      },
+      keyword: {
+        row: 14,
+        col: 6,
       },
       modelParameters: {
         temperature: {
@@ -106,6 +118,38 @@ export const CONFIG = {
         },
         topP: {
           row: 14,
+          col: 5,
+        },
+      },
+    },
+    title: {
+      fullPrompt: {
+        row: 22,
+        col: 2,
+      },
+      preferGeneratedValues: {
+        row: 25,
+        col: 2,
+      },
+      allowedWords: {
+        row: 26,
+        col: 2,
+      },
+      modelParameters: {
+        temperature: {
+          row: 20,
+          col: 2,
+        },
+        maxOutputTokens: {
+          row: 20,
+          col: 3,
+        },
+        topK: {
+          row: 20,
+          col: 4,
+        },
+        topP: {
+          row: 20,
           col: 5,
         },
       },

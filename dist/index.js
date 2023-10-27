@@ -43,6 +43,10 @@ const CONFIG = {
         row: 2,
         col: 6,
       },
+      evaluateDescriptions: {
+        row: 2,
+        col: 7,
+      },
     },
     vertexAi: {
       gcpProjectId: {
@@ -58,6 +62,10 @@ const CONFIG = {
       fullPrompt: {
         row: 10,
         col: 2,
+      },
+      keyword: {
+        row: 30,
+        col: 8,
       },
       modelParameters: {
         temperature: {
@@ -78,18 +86,22 @@ const CONFIG = {
         },
       },
     },
-    title: {
+    descriptionValidation: {
       fullPrompt: {
         row: 16,
         col: 2,
       },
-      preferGeneratedValues: {
-        row: 19,
-        col: 2,
+      maxRetries: {
+        row: 14,
+        col: 8,
       },
-      allowedWords: {
-        row: 20,
-        col: 2,
+      minScore: {
+        row: 14,
+        col: 7,
+      },
+      keyword: {
+        row: 14,
+        col: 6,
       },
       modelParameters: {
         temperature: {
@@ -106,6 +118,38 @@ const CONFIG = {
         },
         topP: {
           row: 14,
+          col: 5,
+        },
+      },
+    },
+    title: {
+      fullPrompt: {
+        row: 22,
+        col: 2,
+      },
+      preferGeneratedValues: {
+        row: 25,
+        col: 2,
+      },
+      allowedWords: {
+        row: 26,
+        col: 2,
+      },
+      modelParameters: {
+        temperature: {
+          row: 20,
+          col: 2,
+        },
+        maxOutputTokens: {
+          row: 20,
+          col: 3,
+        },
+        topK: {
+          row: 20,
+          col: 4,
+        },
+        topP: {
+          row: 20,
           col: 5,
         },
       },
@@ -401,6 +445,12 @@ const [vertexAiGcpProjectId, vertexAiLanguageModelId] = [
   getConfigSheetValue(CONFIG.userSettings.vertexAi.gcpProjectId),
   getConfigSheetValue(CONFIG.userSettings.vertexAi.languageModelId),
 ];
+function test() {
+  const inputRows = JSON.parse(getUnprocessedInputRows());
+  const headers = inputRows.shift();
+  const row = inputRows.shift();
+  generateRow(headers, row);
+}
 function onOpen() {
   SpreadsheetApp.getUi()
     .createMenu('FeedGen')
@@ -693,9 +743,51 @@ function optimizeRow(headers, data) {
     wordsRemoved = metrics.wordsRemoved;
   }
   let genDescription = origDescription;
+  let genDescriptionScore = -1;
+  let genDescriptionEvaluation = 'No Evaluation';
+  let genDescriptionApproval = true;
   if (getConfigSheetValue(CONFIG.userSettings.feed.generateDescriptions)) {
     try {
+      genDescriptionApproval = false;
       genDescription = fetchDescriptionGenerationData(dataObj, genTitle);
+      if (getConfigSheetValue(CONFIG.userSettings.feed.evaluateDescriptions)) {
+        let retries = 0;
+        try {
+          retries = parseInt(
+            getConfigSheetValue(
+              CONFIG.userSettings.descriptionValidation.maxRetries
+            )
+          );
+        } catch (e) {
+          MultiLogger.getInstance().log(
+            'Unable to read retries count, not retrying'
+          );
+        }
+        const minScore = parseFloat(
+          getConfigSheetValue(
+            CONFIG.userSettings.descriptionValidation.minScore
+          )
+        );
+        while (retries >= 0) {
+          const evaluationResponse = evaluateGeneratedDescription(
+            dataObj,
+            genTitle,
+            genDescription
+          );
+          genDescriptionScore = evaluationResponse.score;
+          genDescriptionEvaluation = evaluationResponse.response;
+          if (genDescriptionScore >= minScore) {
+            genDescriptionApproval = true;
+            break;
+          } else {
+            MultiLogger.getInstance().log(
+              `Retrying description generation due to low score (${genDescriptionScore} < ${minScore})`
+            );
+            retries--;
+            genDescription = fetchDescriptionGenerationData(dataObj, genTitle);
+          }
+        }
+      }
     } catch (e) {
       MultiLogger.getInstance().log(String(e));
     }
@@ -708,7 +800,7 @@ function optimizeRow(headers, data) {
       ? Status.SUCCESS
       : Status.NON_COMPLIANT;
   const score = status === Status.NON_COMPLIANT ? String(-1) : totalScore;
-  const approval = Number(score) >= 0;
+  const approval = Number(score) >= 0 && genDescriptionApproval;
   return [
     approval,
     status,
@@ -731,8 +823,9 @@ function optimizeRow(headers, data) {
     origDescription,
     genDescription !== origDescription,
     String(genDescription.length),
+    genDescriptionScore,
     genCategory,
-    `${res}\nproduct description: ${genDescription}`,
+    `${res}\nproduct description: ${genDescription}\ndescripion evaluation: ${genDescriptionEvaluation}`,
     JSON.stringify(dataObj),
   ];
 }
@@ -821,7 +914,7 @@ function fetchDescriptionGenerationData(data, generatedTitle) {
         '"Description Prompt Settings" section then immediately deleting it.'
     );
   }
-  const res = Util.executeWithRetry(CONFIG.vertexAi.maxRetries, () =>
+  let res = Util.executeWithRetry(CONFIG.vertexAi.maxRetries, () =>
     VertexHelper.getInstance(vertexAiGcpProjectId, vertexAiLanguageModelId, {
       temperature: Number(
         getConfigSheetValue(
@@ -845,7 +938,70 @@ function fetchDescriptionGenerationData(data, generatedTitle) {
       ),
     }).predict(prompt)
   );
+  const descriptionKeywordPrefix =
+    getConfigSheetValue(CONFIG.userSettings.description.keyword) + ':';
+  res = res.replace(descriptionKeywordPrefix, '').trim();
   return res;
+}
+function evaluateGeneratedDescription(
+  data,
+  generatedTitle,
+  generatedDescription
+) {
+  const modifiedData = Object.assign(
+    {
+      'Generated Title': generatedTitle,
+      'Generated Description': generatedDescription,
+    },
+    data
+  );
+  const dataContext = `Context: ${JSON.stringify(modifiedData)}\n\n`;
+  const prompt =
+    getConfigSheetValue(CONFIG.userSettings.descriptionValidation.fullPrompt) +
+    dataContext;
+  if (isErroneousPrompt(prompt)) {
+    throw new Error(
+      'Could not read the description prompt from the "Config" sheet. ' +
+        'Please refresh the sheet by adding a new row before the ' +
+        '"Description Prompt Settings" section then immediately deleting it.'
+    );
+  }
+  const res = Util.executeWithRetry(CONFIG.vertexAi.maxRetries, () =>
+    VertexHelper.getInstance(vertexAiGcpProjectId, vertexAiLanguageModelId, {
+      temperature: Number(
+        getConfigSheetValue(
+          CONFIG.userSettings.descriptionValidation.modelParameters.temperature
+        )
+      ),
+      maxOutputTokens: Number(
+        getConfigSheetValue(
+          CONFIG.userSettings.descriptionValidation.modelParameters
+            .maxOutputTokens
+        )
+      ),
+      topK: Number(
+        getConfigSheetValue(
+          CONFIG.userSettings.descriptionValidation.modelParameters.topK
+        )
+      ),
+      topP: Number(
+        getConfigSheetValue(
+          CONFIG.userSettings.descriptionValidation.modelParameters.topP
+        )
+      ),
+    }).predict(prompt)
+  );
+  let score = res.split('\n')[0];
+  const scorePrefix =
+    getConfigSheetValue(CONFIG.userSettings.descriptionValidation.keyword) +
+    ':';
+  score = score
+    .toLowerCase()
+    .replace(scorePrefix.toLowerCase(), '')
+    .trim()
+    .replace(':', '')
+    .trim();
+  return { score: parseFloat(score), response: res };
 }
 function getGeneratedRows() {
   return SheetsService.getInstance().getRangeData(

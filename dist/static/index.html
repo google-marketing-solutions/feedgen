@@ -179,7 +179,7 @@ limitations under the License.
           .getUnprocessedInputRows();
       });
       const inputHeaders = unprocessedInputRows.shift();
-      const maxBatchSize = 30;
+      const maxBatchSize = 10;
 
       for (let i = 0; i < unprocessedInputRows.length; i += maxBatchSize) {
         if (cancelled) {
