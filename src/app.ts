@@ -46,13 +46,6 @@ const [vertexAiGcpProjectId, vertexAiLanguageModelId] = [
   getConfigSheetValue(CONFIG.userSettings.vertexAi.languageModelId),
 ];
 
-export function test() {
-  const inputRows = JSON.parse(getUnprocessedInputRows());
-  const headers = inputRows.shift();
-  const row = inputRows.shift();
-  generateRow(headers, row);
-}
-
 /**
  * Handle 'onOpen' Sheets event to show menu.
  */
@@ -443,41 +436,20 @@ function optimizeRow(
       genDescriptionApproval = false;
       genDescription = fetchDescriptionGenerationData(dataObj, genTitle);
       if (getConfigSheetValue(CONFIG.userSettings.feed.evaluateDescriptions)) {
-        let retries = 0;
-        try {
-          retries = parseInt(
-            getConfigSheetValue(
-              CONFIG.userSettings.descriptionValidation.maxRetries
-            )
-          );
-        } catch (e) {
-          MultiLogger.getInstance().log(
-            'Unable to read retries count, not retrying'
-          );
-        }
         const minScore = parseFloat(
           getConfigSheetValue(
             CONFIG.userSettings.descriptionValidation.minScore
           )
         );
-        while (retries >= 0) {
-          const evaluationResponse = evaluateGeneratedDescription(
-            dataObj,
-            genTitle,
-            genDescription
-          );
-          genDescriptionScore = evaluationResponse.score;
-          genDescriptionEvaluation = evaluationResponse.response;
-          if (genDescriptionScore >= minScore) {
-            genDescriptionApproval = true;
-            break;
-          } else {
-            MultiLogger.getInstance().log(
-              `Retrying description generation due to low score (${genDescriptionScore} < ${minScore})`
-            );
-            retries--;
-            genDescription = fetchDescriptionGenerationData(dataObj, genTitle);
-          }
+        const evaluationResponse = evaluateGeneratedDescription(
+          dataObj,
+          genTitle,
+          genDescription
+        );
+        genDescriptionScore = evaluationResponse.score;
+        genDescriptionEvaluation = evaluationResponse.response;
+        if (genDescriptionScore >= minScore) {
+          genDescriptionApproval = true;
         }
       }
     } catch (e) {
@@ -520,7 +492,7 @@ function optimizeRow(
     String(genDescription.length),
     genDescriptionScore,
     genCategory,
-    `${res}\nproduct description: ${genDescription}\ndescripion evaluation: ${genDescriptionEvaluation}`, // API response
+    `${res}\nProduct description: ${genDescription}\nDescripion evaluation: ${genDescriptionEvaluation}`, // API response
     JSON.stringify(dataObj),
   ];
 }
@@ -676,9 +648,9 @@ function evaluateGeneratedDescription(
 
   if (isErroneousPrompt(prompt)) {
     throw new Error(
-      'Could not read the description prompt from the "Config" sheet. ' +
+      'Could not read the Description Evaluation prompt from the "Config" sheet. ' +
         'Please refresh the sheet by adding a new row before the ' +
-        '"Description Prompt Settings" section then immediately deleting it.'
+        '"Description Evaluation Settings" section then immediately deleting it.'
     );
   }
   const res = Util.executeWithRetry(CONFIG.vertexAi.maxRetries, () =>

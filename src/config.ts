@@ -91,10 +91,6 @@ export const CONFIG = {
         row: 16,
         col: 2,
       },
-      maxRetries: {
-        row: 14,
-        col: 8,
-      },
       minScore: {
         row: 14,
         col: 7,
