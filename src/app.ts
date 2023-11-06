@@ -316,21 +316,23 @@ function optimizeRow(
     const [origTemplateRow, genCategoryRow, genTemplateRow, genAttributesRow] =
       res.split('\n');
 
-    genCategory = genCategoryRow.replace(CATEGORY_PROMPT_PART, '').trim();
+    genCategory = String(genCategoryRow)
+      .replace(CATEGORY_PROMPT_PART, '')
+      .trim();
 
-    const genAttributes = genTemplateRow
+    const genAttributes = String(genTemplateRow)
       .replace(TEMPLATE_PROMPT_PART, '')
       .split(SEPARATOR)
       .filter(Boolean)
       .map((x: string) => x.trim());
 
-    const origAttributes = origTemplateRow
+    const origAttributes = String(origTemplateRow)
       .replace(ORIGINAL_TITLE_TEMPLATE_PROMPT_PART, '')
       .split(SEPARATOR)
       .filter(Boolean)
       .map((x: string) => x.trim());
 
-    const genAttributeValues = genAttributesRow
+    const genAttributeValues = String(genAttributesRow)
       .replace(ATTRIBUTES_PROMPT_PART, '')
       .split(SEPARATOR)
       .filter(Boolean)
