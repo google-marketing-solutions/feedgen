@@ -101,6 +101,20 @@ switched on by default).
 
 <img src='./img/config.png' alt='Config' />
 
+
+### Description Generation
+Description generation works by taking the prompt prefix given in the **Config** sheet, appending a row of data from **Input** and sending the result as a prompt to LLM. This gives you great flexibility in shaping the wording, style and other requirements you might have. All data from **Input Feed** will be provided as part of the prompt.
+
+*Optional*: You can also provide examples of descriptions to items in **Few-shot** examples section (see below). Those will be appended to the prompt prefix as well and show to the model what *good* descriptions should look like.
+
+The result from LLM is directly output as **Generated Description**
+
+### Description Validation
+Since LLMs have a tendency to hallucinate, there is an option to ask the model (in a follow-up prompt) if the generated description meets your criteria. As with description generation, all **Input** data is appended to the prompt prefix, and model responds with a numerical score as well as reasoning. Example validation prompt is provided to give some hints on how to write it - e.g. include criteria as well as example score values.
+
+*Note*: "Score keyword" is important to mark where the numeric value of the score is present in the model output. When generating descriptions in non-English language, the Score keyword should match the output language.
+
+### Title Generation 
 All available data is used to generate descriptions, while titles use few-shot
 prompting; a technique where one would select samples from their own input
 feed as shown below to customise the model's responses towards their data. To
