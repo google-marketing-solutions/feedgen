@@ -205,6 +205,8 @@ reporting and performance measurement purposes.
 
 ### Scoring / Evaluation
 
+#### Titles
+
 FeedGen provides a score for generated titles between -1 and 1 that acts as a
 quality indicator. Positive scores indicate varying degrees of good quality,
 while negative scores represent uncertainty over the generated content.
@@ -274,6 +276,9 @@ So in summary, the scoring systems works as follows:
 |Are there hallucinations?|Have we removed any words?|No change at all?|Have we optimised the title?|Did we fill in missing gaps or extract [new attributes](#feed-gaps-and-new-attributes)?|
 |-|-|-|-|-|
 |-1|-0.5|0|Add 0.5|Add 0.5|
+
+#### Descriptions
+If you've enabled **Description Validation** checkbox, then description with score below *Minimum Score* will not be auto-approved. You can re-generate those by filterin on **Description Score** and removing *Status* value in **Generation Validation** tab.
 
 FeedGen also applies some basic MC compliance checks, such as titles and
 descriptions must not be longer than 150 and 5000 characters, respectively. If
