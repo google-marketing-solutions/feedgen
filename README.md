@@ -101,8 +101,21 @@ switched on by default).
 
 <img src='./img/config.png' alt='Config' />
 
-All available data is used to generate descriptions, while titles use few-shot
-prompting; a technique where one would select samples from their own input
+
+### Description Generation
+Description generation works by taking the prompt prefix given in the **Config** sheet, appending a row of data from **Input** and sending the result as a prompt to the LLM. This gives you great flexibility in shaping the wording, style and other requirements you might have. All data from **Input Feed** will be provided as part of the prompt.
+
+*Optional*: You can also provide examples of descriptions to items in the **Few-shot** examples section (see below). Those will be appended to the prompt prefix as well and show to the model what *good* descriptions should look like.
+
+The result is directly output as **Generated Description**
+
+### Description Validation
+Since LLMs have a tendency to hallucinate, there is an option to ask the model (in a follow-up prompt) if the generated description meets your criteria. As with description generation, all **Input** data is appended to the prompt prefix, and model the responds with a numerical score as well as reasoning. An example *validation prompt* is provided to give some hints on how to write it - e.g. include criteria as well as example score values.
+
+*Note*: "Score keyword" is important to mark where the numeric value of the score is present in the model output. When generating descriptions in non-English language, the Score keyword should match the output language.
+
+### Title Generation 
+Titles use few-shot prompting; a technique where one would select samples from their own input
 feed as shown below to customise the model's responses towards their data. To
 help with this process, FeedGen provides a utility Google Sheets formula:
 
@@ -191,6 +204,8 @@ reporting and performance measurement purposes.
 
 ### Scoring / Evaluation
 
+#### Titles
+
 FeedGen provides a score for generated titles between -1 and 1 that acts as a
 quality indicator. Positive scores indicate varying degrees of good quality,
 while negative scores represent uncertainty over the generated content.
@@ -260,6 +275,9 @@ So in summary, the scoring systems works as follows:
 |Are there hallucinations?|Have we removed any words?|No change at all?|Have we optimised the title?|Did we fill in missing gaps or extract [new attributes](#feed-gaps-and-new-attributes)?|
 |-|-|-|-|-|
 |-1|-0.5|0|Add 0.5|Add 0.5|
+
+#### Descriptions
+If you've enabled the **Description Validation** checkbox, description with score below *Minimum Score* will not be auto-approved. You can re-generate those by filtering on **Description Score** and removing the *Status* value in the **Generation Validation** tab.
 
 FeedGen also applies some basic MC compliance checks, such as titles and
 descriptions must not be longer than 150 and 5000 characters, respectively. If

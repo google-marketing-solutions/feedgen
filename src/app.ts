@@ -429,9 +429,31 @@ function optimizeRow(
   }
 
   let genDescription = origDescription;
+  let genDescriptionScore = -1;
+  let genDescriptionEvaluation = 'No Evaluation';
+  let genDescriptionApproval = true;
+
   if (getConfigSheetValue(CONFIG.userSettings.feed.generateDescriptions)) {
     try {
+      genDescriptionApproval = false;
       genDescription = fetchDescriptionGenerationData(dataObj, genTitle);
+      if (getConfigSheetValue(CONFIG.userSettings.feed.evaluateDescriptions)) {
+        const minScore = parseFloat(
+          getConfigSheetValue(
+            CONFIG.userSettings.descriptionValidation.minScore
+          )
+        );
+        const evaluationResponse = evaluateGeneratedDescription(
+          dataObj,
+          genTitle,
+          genDescription
+        );
+        genDescriptionScore = evaluationResponse.score;
+        genDescriptionEvaluation = evaluationResponse.response;
+        if (genDescriptionScore >= minScore) {
+          genDescriptionApproval = true;
+        }
+      }
     } catch (e) {
       // Ignore "blocked for safety reasons" error response
       MultiLogger.getInstance().log(String(e));
@@ -446,7 +468,7 @@ function optimizeRow(
       ? Status.SUCCESS
       : Status.NON_COMPLIANT;
   const score = status === Status.NON_COMPLIANT ? String(-1) : totalScore;
-  const approval = Number(score) >= 0;
+  const approval = Number(score) >= 0 && genDescriptionApproval;
 
   return [
     approval,
@@ -470,8 +492,9 @@ function optimizeRow(
     origDescription,
     genDescription !== origDescription,
     String(genDescription.length),
+    genDescriptionScore,
     genCategory,
-    `${res}\nproduct description: ${genDescription}`, // API response
+    `${res}\nProduct description: ${genDescription}\nDescripion evaluation: ${genDescriptionEvaluation}`, // API response
     JSON.stringify(dataObj),
   ];
 }
@@ -577,7 +600,7 @@ function fetchDescriptionGenerationData(
         '"Description Prompt Settings" section then immediately deleting it.'
     );
   }
-  const res = Util.executeWithRetry(CONFIG.vertexAi.maxRetries, () =>
+  let res = Util.executeWithRetry(CONFIG.vertexAi.maxRetries, () =>
     VertexHelper.getInstance(vertexAiGcpProjectId, vertexAiLanguageModelId, {
       temperature: Number(
         getConfigSheetValue(
@@ -601,7 +624,73 @@ function fetchDescriptionGenerationData(
       ),
     }).predict(prompt)
   );
+  const descriptionKeywordPrefix =
+    getConfigSheetValue(CONFIG.userSettings.description.keyword) + ':';
+  res = res.replace(descriptionKeywordPrefix, '').trim();
   return res;
+}
+
+function evaluateGeneratedDescription(
+  data: Record<string, unknown>,
+  generatedTitle: string,
+  generatedDescription: string
+): { score: number; response: string } {
+  // Extra lines (\n) instruct LLM to complete what is missing. Don't remove.
+  const modifiedData = Object.assign(
+    {
+      'Generated Title': generatedTitle,
+      'Generated Description': generatedDescription,
+    },
+    data
+  );
+  const dataContext = `Context: ${JSON.stringify(modifiedData)}\n\n`;
+  const prompt =
+    getConfigSheetValue(CONFIG.userSettings.descriptionValidation.fullPrompt) +
+    dataContext;
+
+  if (isErroneousPrompt(prompt)) {
+    throw new Error(
+      'Could not read the Description Evaluation prompt from the "Config" sheet. ' +
+        'Please refresh the sheet by adding a new row before the ' +
+        '"Description Evaluation Settings" section then immediately deleting it.'
+    );
+  }
+  const res = Util.executeWithRetry(CONFIG.vertexAi.maxRetries, () =>
+    VertexHelper.getInstance(vertexAiGcpProjectId, vertexAiLanguageModelId, {
+      temperature: Number(
+        getConfigSheetValue(
+          CONFIG.userSettings.descriptionValidation.modelParameters.temperature
+        )
+      ),
+      maxOutputTokens: Number(
+        getConfigSheetValue(
+          CONFIG.userSettings.descriptionValidation.modelParameters
+            .maxOutputTokens
+        )
+      ),
+      topK: Number(
+        getConfigSheetValue(
+          CONFIG.userSettings.descriptionValidation.modelParameters.topK
+        )
+      ),
+      topP: Number(
+        getConfigSheetValue(
+          CONFIG.userSettings.descriptionValidation.modelParameters.topP
+        )
+      ),
+    }).predict(prompt)
+  );
+  let score = res.split('\n')[0];
+  const scorePrefix =
+    getConfigSheetValue(CONFIG.userSettings.descriptionValidation.keyword) +
+    ':';
+  score = score
+    .toLowerCase()
+    .replace(scorePrefix.toLowerCase(), '')
+    .trim()
+    .replace(':', '')
+    .trim();
+  return { score: parseFloat(score), response: res };
 }
 
 /**
