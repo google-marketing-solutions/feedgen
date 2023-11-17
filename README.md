@@ -362,3 +362,4 @@ you would need to follow these additional steps to build FeedGen locally:
 
 * [Unlocking the Power of AI for Google Shopping Feed Optimization](https://blog.datatovalue.nl/google-shopping-feed-optimization-with-generative-ai-16d0ed996f1f) by Krisztián Korpa.
 * (Dutch) [De Revolutie van Google Shopping: Optimalisatie met FeedGen](https://www.adchieve.com/nl/events/academy-live/apol-digital/) by Alex van de Pol.
+* (German) [Generative KI: Home24 verbessert mit FeedGen Reichweite und Performance von Shopping Ads](https://www.thinkwithgoogle.com/intl/de-de/marketing-strategien/automatisierung/home24-feedgen-shopping-ads) - Think with Google.
