@@ -26,7 +26,8 @@ limitations under the License.
 [Get started](#get-started) •
 [What it solves](#challenges) •
 [How it works](#solution-overview) •
-[How to Contribute](#how-to-contribute)
+[How to Contribute](#how-to-contribute) •
+[Community Spotlight](#community-spotlight)
 
 ## Overview
 
@@ -114,7 +115,7 @@ Since LLMs have a tendency to hallucinate, there is an option to ask the model (
 
 *Note*: "Score keyword" is important to mark where the numeric value of the score is present in the model output. When generating descriptions in non-English language, the Score keyword should match the output language.
 
-### Title Generation 
+### Title Generation
 Titles use few-shot prompting; a technique where one would select samples from their own input
 feed as shown below to customise the model's responses towards their data. To
 help with this process, FeedGen provides a utility Google Sheets formula:
@@ -356,3 +357,8 @@ you would need to follow these additional steps to build FeedGen locally:
 1. Run `npm run deploy` to build, test and deploy (via
    [clasp](https://github.com/google/clasp)) all code to the target spreadsheet
    / Apps Script project.
+
+## Community Spotlight
+
+* [Unlocking the Power of AI for Google Shopping Feed Optimization](https://blog.datatovalue.nl/google-shopping-feed-optimization-with-generative-ai-16d0ed996f1f) by Krisztián Korpa.
+* (Dutch) [De Revolutie van Google Shopping: Optimalisatie met FeedGen](https://www.adchieve.com/nl/events/academy-live/apol-digital/) by Alex van de Pol.
