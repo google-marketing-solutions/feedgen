@@ -169,8 +169,8 @@ const CONFIG = {
         titleGenerated: 3,
         gapAttributes: 14,
         descriptionGenerated: 15,
-        fullApiResponse: 20,
-        originalInput: 21,
+        fullApiResponse: 21,
+        originalInput: 22,
       },
     },
     output: {
@@ -637,18 +637,20 @@ function optimizeRow(headers, data) {
     res = fetchTitleGenerationData(dataObj);
     const [origTemplateRow, genCategoryRow, genTemplateRow, genAttributesRow] =
       res.split('\n');
-    genCategory = genCategoryRow.replace(CATEGORY_PROMPT_PART, '').trim();
-    const genAttributes = genTemplateRow
+    genCategory = String(genCategoryRow)
+      .replace(CATEGORY_PROMPT_PART, '')
+      .trim();
+    const genAttributes = String(genTemplateRow)
       .replace(TEMPLATE_PROMPT_PART, '')
       .split(SEPARATOR)
       .filter(Boolean)
       .map(x => x.trim());
-    const origAttributes = origTemplateRow
+    const origAttributes = String(origTemplateRow)
       .replace(ORIGINAL_TITLE_TEMPLATE_PROMPT_PART, '')
       .split(SEPARATOR)
       .filter(Boolean)
       .map(x => x.trim());
-    const genAttributeValues = genAttributesRow
+    const genAttributeValues = String(genAttributesRow)
       .replace(ATTRIBUTES_PROMPT_PART, '')
       .split(SEPARATOR)
       .filter(Boolean)
