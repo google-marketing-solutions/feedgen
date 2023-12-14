@@ -35,17 +35,22 @@ export const CONFIG = {
         row: 2,
         col: 4,
       },
-      generateTitles: {
+      imageColumnName: {
         row: 2,
         col: 5,
       },
-      generateDescriptions: {
+      generateTitles: {
         row: 2,
         col: 6,
       },
-      evaluateDescriptions: {
+      generateDescriptions: {
         row: 2,
         col: 7,
+      },
+      imageUnderstanding: {
+        row: 2,
+        col: 8,
+        notation: 'H2',
       },
     },
     vertexAi: {
@@ -53,9 +58,15 @@ export const CONFIG = {
         row: 5,
         col: 2,
       },
-      languageModelId: {
+      languageModelFamily: {
         row: 5,
         col: 3,
+        notation: 'C5',
+      },
+      languageModelId: {
+        row: 5,
+        col: 4,
+        notation: 'D5',
       },
     },
     description: {
@@ -63,89 +74,61 @@ export const CONFIG = {
         row: 10,
         col: 2,
       },
-      keyword: {
-        row: 30,
-        col: 8,
-      },
-      modelParameters: {
-        temperature: {
-          row: 8,
-          col: 2,
-        },
-        maxOutputTokens: {
-          row: 8,
-          col: 3,
-        },
-        topK: {
-          row: 8,
-          col: 4,
-        },
-        topP: {
-          row: 8,
-          col: 5,
-        },
-      },
-    },
-    descriptionValidation: {
-      fullPrompt: {
-        row: 16,
-        col: 2,
-      },
       minScore: {
-        row: 14,
-        col: 7,
-      },
-      keyword: {
-        row: 14,
+        row: 8,
         col: 6,
       },
       modelParameters: {
         temperature: {
-          row: 14,
+          row: 8,
           col: 2,
         },
         maxOutputTokens: {
-          row: 14,
+          row: 8,
           col: 3,
         },
         topK: {
-          row: 14,
+          row: 8,
           col: 4,
         },
         topP: {
-          row: 14,
+          row: 8,
           col: 5,
         },
       },
     },
     title: {
       fullPrompt: {
-        row: 22,
+        row: 16,
         col: 2,
       },
       preferGeneratedValues: {
-        row: 25,
+        row: 19,
+        col: 2,
+      },
+      useLlmTitles: {
+        row: 20,
         col: 2,
       },
       allowedWords: {
-        row: 26,
+        row: 21,
         col: 2,
       },
       modelParameters: {
         temperature: {
-          row: 20,
+          row: 14,
           col: 2,
         },
         maxOutputTokens: {
-          row: 20,
+          row: 14,
           col: 3,
         },
         topK: {
-          row: 20,
+          row: 14,
           col: 4,
         },
         topP: {
-          row: 20,
+          row: 14,
           col: 5,
         },
       },

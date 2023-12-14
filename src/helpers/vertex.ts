@@ -16,13 +16,6 @@
 import { CONFIG } from '../config';
 import { MultiLogger } from './logger';
 
-interface VertexAiPrediction {
-  content: string;
-  safetyAttributes: {
-    blocked: boolean;
-  };
-}
-
 interface VertexAiModelParams {
   temperature: number;
   maxOutputTokens: number;
@@ -30,8 +23,38 @@ interface VertexAiModelParams {
   topP: number;
 }
 
-interface VertexAiResponse {
-  predictions: VertexAiPrediction[] | null;
+interface VertexAiPalmPrediction {
+  content: string;
+  safetyAttributes: {
+    blocked: boolean;
+  };
+}
+
+interface VertexAiPalmResponse {
+  predictions: VertexAiPalmPrediction[] | null;
+}
+
+interface VertexAiGeminiRequest {
+  contents: {
+    role: 'user';
+    parts: [
+      { text: string },
+      { inlineData: { mimeType: string; data: string } }?,
+      { fileData: { mimeType: string; fileUri: string } }?
+    ];
+  };
+  generationConfig: VertexAiModelParams;
+}
+
+interface VertexAiGeminiResponseCandidate {
+  candidates: [
+    {
+      content: {
+        parts: [{ text: string }];
+      };
+      finishReason?: string;
+    }
+  ];
 }
 
 export class VertexHelper {
@@ -50,7 +73,7 @@ export class VertexHelper {
     this.modelParams = modelParams;
   }
 
-  addAuth(params: Record<string, unknown>) {
+  addAuth(params: unknown) {
     const baseParams = {
       method: 'POST',
       muteHttpExceptions: true,
@@ -63,7 +86,10 @@ export class VertexHelper {
     return Object.assign({ payload: JSON.stringify(params) }, baseParams);
   }
 
-  fetchJson(url: string, params: Record<string, unknown>): VertexAiResponse {
+  fetchJson(
+    url: string,
+    params: Record<string, unknown>
+  ): VertexAiPalmResponse | VertexAiGeminiResponseCandidate[] {
     const response = UrlFetchApp.fetch(url, params);
 
     if (response.getResponseCode() === 429) {
@@ -78,6 +104,13 @@ export class VertexHelper {
     return JSON.parse(response.getContentText());
   }
 
+  generate(model: string, prompt: string, imageUrl: string | null) {
+    if (model.startsWith('gemini')) {
+      return this.multimodalGenerate(prompt, imageUrl);
+    }
+    return this.predict(prompt);
+  }
+
   predict(prompt: string) {
     MultiLogger.getInstance().log(`Prompt: ${prompt}`);
 
@@ -86,10 +119,10 @@ export class VertexHelper {
     const res = this.fetchJson(
       predictEndpoint,
       this.addAuth({
-        instances: [{ content: prompt }],
+        instances: [{ prompt: prompt }],
         parameters: this.modelParams,
       })
-    );
+    ) as VertexAiPalmResponse;
 
     MultiLogger.getInstance().log(res);
 
@@ -105,6 +138,74 @@ export class VertexHelper {
       }
     }
     throw new Error(JSON.stringify(res));
+  }
+
+  multimodalGenerate(prompt: string, imageUrl: string | null) {
+    const message =
+      `Prompt: ${prompt}` + (imageUrl ? `\nImage URL: ${imageUrl}` : '');
+    MultiLogger.getInstance().log(message);
+
+    const endpoint = `https://${CONFIG.vertexAi.location}-${CONFIG.vertexAi.endpoint}/v1/projects/${this.projectId}/locations/${CONFIG.vertexAi.location}/publishers/google/models/${this.modelId}:streamGenerateContent`;
+
+    const request: VertexAiGeminiRequest = {
+      contents: {
+        role: 'user',
+        parts: [{ text: prompt }],
+      },
+      generationConfig: this.modelParams,
+    };
+    if (imageUrl) {
+      if (imageUrl.startsWith('gs://')) {
+        request.contents.parts.push({
+          fileData: { mimeType: 'image/png', fileUri: imageUrl },
+        });
+      } else {
+        const [imageData, mime] = this.downloadImage(imageUrl);
+
+        if (imageData !== null && mime !== null) {
+          request.contents.parts.push({
+            inlineData: { mimeType: mime, data: imageData },
+          });
+        }
+      }
+    }
+
+    MultiLogger.getInstance().log(request);
+
+    const res = this.fetchJson(
+      endpoint,
+      this.addAuth(request)
+    ) as VertexAiGeminiResponseCandidate[];
+    MultiLogger.getInstance().log(res);
+    const content: string[] = [];
+
+    res.forEach(candidate => {
+      if ('SAFETY' === candidate.candidates[0].finishReason) {
+        throw new Error(
+          `Request was blocked as it triggered API safety filters. ${message}`
+        );
+      }
+      content.push(candidate.candidates[0].content.parts[0].text);
+    });
+
+    const contentText = content.join('');
+    if (!contentText) {
+      throw new Error(JSON.stringify(res));
+    }
+
+    return contentText;
+  }
+
+  downloadImage(imageUrl: string): Array<string | null> {
+    let [imageData, mime]: Array<string | null> = [null, null];
+    const response = UrlFetchApp.fetch(imageUrl, { muteHttpExceptions: true });
+
+    if (response.getResponseCode() === 200) {
+      const blob = response.getBlob();
+      mime = blob.getContentType();
+      imageData = Utilities.base64Encode(blob.getBytes());
+    }
+    return [imageData, mime];
   }
 
   /**
