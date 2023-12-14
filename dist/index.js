@@ -710,7 +710,12 @@ function optimizeRow(headers, data) {
   let genCategory = '';
   let res = 'N/A';
   if (getConfigSheetValue(CONFIG.userSettings.feed.generateTitles)) {
-    res = fetchTitleGenerationData(dataObj, imageUrl);
+    res = fetchTitleGenerationData(
+      dataObj,
+      getConfigSheetValue(CONFIG.userSettings.feed.imageUnderstanding)
+        ? imageUrl
+        : null
+    );
     const regex =
       /^.*product attribute keys in original title:(?<origTemplateRow>.*)^product category:(?<genCategoryRow>.*)^product attribute keys:(?<genTemplateRow>.*)^product attribute values:(?<genAttributesRow>.*)^generated title:(?<genTitleRow>.*)$/ms;
     const matches = res.match(regex);
@@ -837,7 +842,9 @@ function optimizeRow(headers, data) {
       const response = fetchDescriptionGenerationData(
         dataObj,
         genTitle,
-        imageUrl
+        getConfigSheetValue(CONFIG.userSettings.feed.imageUnderstanding)
+          ? imageUrl
+          : null
       );
       genDescription = response.description;
       genDescriptionScore = response.score;
