@@ -355,6 +355,17 @@ class Util {
   }
 }
 
+var SafetyThreshold;
+(function (SafetyThreshold) {
+  SafetyThreshold[(SafetyThreshold['HARM_BLOCK_THRESHOLD_UNSPECIFIED'] = 0)] =
+    'HARM_BLOCK_THRESHOLD_UNSPECIFIED';
+  SafetyThreshold[(SafetyThreshold['BLOCK_LOW_AND_ABOVE'] = 1)] =
+    'BLOCK_LOW_AND_ABOVE';
+  SafetyThreshold[(SafetyThreshold['BLOCK_MEDIUM_AND_ABOVE'] = 2)] =
+    'BLOCK_MEDIUM_AND_ABOVE';
+  SafetyThreshold[(SafetyThreshold['BLOCK_ONLY_HIGH'] = 3)] = 'BLOCK_ONLY_HIGH';
+  SafetyThreshold[(SafetyThreshold['BLOCK_NONE'] = 4)] = 'BLOCK_NONE';
+})(SafetyThreshold || (SafetyThreshold = {}));
 class VertexHelper {
   constructor(projectId, modelId, modelParams) {
     this.projectId = projectId;
@@ -429,19 +440,19 @@ class VertexHelper {
       safetySettings: [
         {
           category: 'HARM_CATEGORY_DANGEROUS_CONTENT',
-          threshold: 'BLOCK_HIGH_AND_ABOVE',
+          threshold: SafetyThreshold.BLOCK_ONLY_HIGH,
         },
         {
           category: 'HARM_CATEGORY_HARASSMENT',
-          threshold: 'BLOCK_HIGH_AND_ABOVE',
+          threshold: SafetyThreshold.BLOCK_ONLY_HIGH,
         },
         {
           category: 'HARM_CATEGORY_HATE_SPEECH',
-          threshold: 'BLOCK_HIGH_AND_ABOVE',
+          threshold: SafetyThreshold.BLOCK_ONLY_HIGH,
         },
         {
           category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
-          threshold: 'BLOCK_HIGH_AND_ABOVE',
+          threshold: SafetyThreshold.BLOCK_ONLY_HIGH,
         },
       ],
     };
