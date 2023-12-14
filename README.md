@@ -228,9 +228,9 @@ reporting and performance measurement purposes.
 ### Image Understanding
 
 Since Gemini (`gemini-pro-vision`) is a multimodal model, we are able to
-additionally examine product images and use them to generate better titles and
-descriptions. It is important to note the following (this information is valid
-during the *Public Preview* of Gemini):
+additionally examine product images and use them to generate higher quality
+titles and descriptions. It is important to note the following (this information
+is valid during the *Public Preview* of Gemini):
 
 * You can specify either web images and/or Google Cloud Storage (GCS) file URIs
   in the `Image Link` column of the *Input Feed* worksheet.

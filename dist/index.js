@@ -786,6 +786,7 @@ function optimizeRow(headers, data) {
     ];
     const titleFeatures = [];
     const validGenAttributes = [];
+    const imageFeatures = new Set();
     for (const [index, attribute] of genAttributes.entries()) {
       if (
         !dataObj[attribute] &&
@@ -813,6 +814,14 @@ function optimizeRow(headers, data) {
         if (value) {
           validGenAttributes.push(attribute);
           titleFeatures.push(value);
+          if (attribute === 'Image Features') {
+            const imageFeaturesMatches = value.match(WORD_MATCH_REGEX);
+            if (imageFeaturesMatches) {
+              imageFeaturesMatches.forEach(word =>
+                imageFeatures.add(word.toLowerCase())
+              );
+            }
+          }
         }
       }
     }
@@ -843,6 +852,7 @@ function optimizeRow(headers, data) {
       }
     }
     allowedWords.forEach(word => inputWords.add(word));
+    imageFeatures.forEach(word => inputWords.add(word));
     const metrics = getGenerationMetrics(
       origTitle,
       genTitle,

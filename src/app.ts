@@ -230,8 +230,8 @@ function getGenerationMetrics(
     origAttributes,
     genAttributes
   );
-  const newWordsAdded = new Set<String>();
-  const genTitleWords = new Set<String>();
+  const newWordsAdded = new Set<string>();
+  const genTitleWords = new Set<string>();
   const genTitleWordsMatcher = String(genTitle)
     .replaceAll("'s", '')
     .match(WORD_MATCH_REGEX);
@@ -243,7 +243,7 @@ function getGenerationMetrics(
       .filter((word: string) => !inputWords.has(word.toLowerCase()))
       .forEach((word: string) => newWordsAdded.add(word));
   }
-  const wordsRemoved = new Set<String>();
+  const wordsRemoved = new Set<string>();
   const origTitleWordsMatcher = String(origTitle)
     .replaceAll("'s", '')
     .match(WORD_MATCH_REGEX);
@@ -401,8 +401,8 @@ function optimizeRow(
         .map((word: string) => word.trim().toLowerCase()),
     ];
     const titleFeatures: string[] = [];
-
     const validGenAttributes: string[] = [];
+    const imageFeatures = new Set<string>();
 
     for (const [index, attribute] of genAttributes.entries()) {
       if (
@@ -434,6 +434,15 @@ function optimizeRow(
         if (value) {
           validGenAttributes.push(attribute);
           titleFeatures.push(value);
+
+          if (attribute === 'Image Features') {
+            const imageFeaturesMatches = value.match(WORD_MATCH_REGEX);
+            if (imageFeaturesMatches) {
+              imageFeaturesMatches.forEach((word: string) =>
+                imageFeatures.add(word.toLowerCase())
+              );
+            }
+          }
         }
       }
     }
@@ -468,6 +477,7 @@ function optimizeRow(
       }
     }
     allowedWords.forEach((word: string) => inputWords.add(word));
+    imageFeatures.forEach((word: string) => inputWords.add(word));
 
     const metrics = getGenerationMetrics(
       origTitle,
