@@ -203,6 +203,23 @@ export class SheetsService {
   }
 
   /**
+   * Clears a cell's content.
+   *
+   * @param {string} notation The A1 notation of the cell, e.g. A1
+   * @param {?string=} sheetName The name of the sheet to use. Uses the
+   *     sheet the user currently has open (active sheet) if not given
+   */
+  clearCellContents(notation: string, sheetName?: string) {
+    const sheet = sheetName
+      ? this.getSpreadsheet().getSheetByName(sheetName)
+      : this.getSpreadsheet().getActiveSheet();
+
+    if (!sheet) return;
+
+    sheet.getRange(notation).clearContent();
+  }
+
+  /**
    * Returns the initialized {@link SpreadsheetApp.Spreadsheet} reference.
    *
    * @return {?SpreadsheetApp.Spreadsheet} The spreadsheet

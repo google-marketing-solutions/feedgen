@@ -29,12 +29,6 @@ import { VertexHelper } from './helpers/vertex';
  * is being kept.
  */
 export const app = null;
-
-const ORIGINAL_TITLE_TEMPLATE_PROMPT_PART =
-  'product attribute keys in original title:';
-const CATEGORY_PROMPT_PART = 'product category:';
-const TEMPLATE_PROMPT_PART = 'product attribute keys:';
-const ATTRIBUTES_PROMPT_PART = 'product attribute values:';
 const SEPARATOR = '|';
 const WORD_MATCH_REGEX = /[A-Za-zÀ-ÖØ-öø-ÿ0-9]+/g;
 
@@ -54,6 +48,41 @@ export function onOpen() {
     .createMenu('FeedGen')
     .addItem('Launch', 'showSidebar')
     .addToUi();
+}
+
+/**
+ * Handle 'onEdit' of Config worksheet.
+ */
+export function onEdit(event: GoogleAppsScript.Events.SheetsOnEdit) {
+  const sheet = event.source.getActiveSheet();
+  const range = event.range;
+
+  const isModelFamilyCell =
+    sheet.getName() === CONFIG.sheets.config.name &&
+    range.getA1Notation() ===
+      CONFIG.userSettings.vertexAi.languageModelFamily.notation;
+  const isModelIdCell =
+    sheet.getName() === CONFIG.sheets.config.name &&
+    range.getA1Notation() ===
+      CONFIG.userSettings.vertexAi.languageModelId.notation;
+  const useImageUnderstanding = getConfigSheetValue(
+    CONFIG.userSettings.feed.imageUnderstanding
+  );
+
+  if (isModelFamilyCell) {
+    SheetsService.getInstance().clearCellContents(
+      CONFIG.userSettings.vertexAi.languageModelId.notation
+    );
+  }
+  if (
+    isModelIdCell &&
+    range.getValue() !== 'gemini-pro-vision' &&
+    useImageUnderstanding
+  ) {
+    SheetsService.getInstance().clearCellContents(
+      CONFIG.userSettings.feed.imageUnderstanding.notation
+    );
+  }
 }
 
 /**
@@ -201,8 +230,8 @@ function getGenerationMetrics(
     origAttributes,
     genAttributes
   );
-  const newWordsAdded = new Set<String>();
-  const genTitleWords = new Set<String>();
+  const newWordsAdded = new Set<string>();
+  const genTitleWords = new Set<string>();
   const genTitleWordsMatcher = String(genTitle)
     .replaceAll("'s", '')
     .match(WORD_MATCH_REGEX);
@@ -214,7 +243,7 @@ function getGenerationMetrics(
       .filter((word: string) => !inputWords.has(word.toLowerCase()))
       .forEach((word: string) => newWordsAdded.add(word));
   }
-  const wordsRemoved = new Set<String>();
+  const wordsRemoved = new Set<string>();
   const origTitleWordsMatcher = String(origTitle)
     .replaceAll("'s", '')
     .match(WORD_MATCH_REGEX);
@@ -297,6 +326,8 @@ function optimizeRow(
     dataObj[
       getConfigSheetValue(CONFIG.userSettings.feed.descriptionColumnName)
     ];
+  const imageUrl =
+    dataObj[getConfigSheetValue(CONFIG.userSettings.feed.imageColumnName)];
 
   let genTitle = origTitle;
   const gapAttributesAndValues: Record<string, string> = {};
@@ -311,44 +342,67 @@ function optimizeRow(
   let genCategory = '';
   let res = 'N/A';
   if (getConfigSheetValue(CONFIG.userSettings.feed.generateTitles)) {
-    res = fetchTitleGenerationData(dataObj);
+    res = fetchTitleGenerationData(
+      dataObj,
+      getConfigSheetValue(CONFIG.userSettings.feed.imageUnderstanding)
+        ? imageUrl
+        : null
+    );
+    const regex =
+      /^.*product attribute keys in original title:(?<origTemplateRow>.*)^product category:(?<genCategoryRow>.*)^product attribute keys:(?<genTemplateRow>.*)^product attribute values:(?<genAttributesRow>.*)^generated title:(?<genTitleRow>.*)$/ms;
 
-    const [origTemplateRow, genCategoryRow, genTemplateRow, genAttributesRow] =
-      res.split('\n');
+    const matches = res.match(regex);
+    if (!matches) {
+      throw new Error(
+        `Received an incomplete title response from The API.\nResponse: ${res}`
+      );
+    }
+    const {
+      origTemplateRow,
+      genCategoryRow,
+      genTemplateRow,
+      genAttributesRow,
+      genTitleRow,
+    } = matches.groups as {
+      origTemplateRow: string;
+      genCategoryRow: string;
+      genTemplateRow: string;
+      genAttributesRow: string;
+      genTitleRow: string;
+    };
 
-    genCategory = String(genCategoryRow)
-      .replace(CATEGORY_PROMPT_PART, '')
-      .trim();
+    genCategory = String(genCategoryRow).trim();
 
     const genAttributes = String(genTemplateRow)
-      .replace(TEMPLATE_PROMPT_PART, '')
+      .trim()
       .split(SEPARATOR)
       .filter(Boolean)
       .map((x: string) => x.trim());
 
     const origAttributes = String(origTemplateRow)
-      .replace(ORIGINAL_TITLE_TEMPLATE_PROMPT_PART, '')
+      .trim()
       .split(SEPARATOR)
       .filter(Boolean)
       .map((x: string) => x.trim());
 
     const genAttributeValues = String(genAttributesRow)
-      .replace(ATTRIBUTES_PROMPT_PART, '')
+      .trim()
       .split(SEPARATOR)
       .filter(Boolean)
       .map((x: string) => x.trim());
 
     // Title advanced settings
-    const [preferGeneratedValues, allowedWords] = [
+    const [preferGeneratedValues, useLlmTitles, allowedWords] = [
       getConfigSheetValue(CONFIG.userSettings.title.preferGeneratedValues),
+      getConfigSheetValue(CONFIG.userSettings.title.useLlmTitles),
       String(getConfigSheetValue(CONFIG.userSettings.title.allowedWords))
         .split(',')
         .filter(Boolean)
         .map((word: string) => word.trim().toLowerCase()),
     ];
     const titleFeatures: string[] = [];
-
     const validGenAttributes: string[] = [];
+    const imageFeatures = new Set<string>();
 
     for (const [index, attribute] of genAttributes.entries()) {
       if (
@@ -380,6 +434,15 @@ function optimizeRow(
         if (value) {
           validGenAttributes.push(attribute);
           titleFeatures.push(value);
+
+          if (attribute === 'Image Features') {
+            const imageFeaturesMatches = value.match(WORD_MATCH_REGEX);
+            if (imageFeaturesMatches) {
+              imageFeaturesMatches.forEach((word: string) =>
+                imageFeatures.add(word.toLowerCase())
+              );
+            }
+          }
         }
       }
     }
@@ -398,6 +461,10 @@ function optimizeRow(
       genTitle = genTitle.slice(0, -1);
     }
 
+    if (useLlmTitles) {
+      genTitle = String(genTitleRow).trim();
+    }
+
     const inputWords = new Set<string>();
     for (const [key, value] of Object.entries(dataObj)) {
       const keyAndValue = [
@@ -410,6 +477,7 @@ function optimizeRow(
       }
     }
     allowedWords.forEach((word: string) => inputWords.add(word));
+    imageFeatures.forEach((word: string) => inputWords.add(word));
 
     const metrics = getGenerationMetrics(
       origTitle,
@@ -435,25 +503,20 @@ function optimizeRow(
 
   if (getConfigSheetValue(CONFIG.userSettings.feed.generateDescriptions)) {
     try {
-      genDescriptionApproval = false;
-      genDescription = fetchDescriptionGenerationData(dataObj, genTitle);
-      if (getConfigSheetValue(CONFIG.userSettings.feed.evaluateDescriptions)) {
-        const minScore = parseFloat(
-          getConfigSheetValue(
-            CONFIG.userSettings.descriptionValidation.minScore
-          )
-        );
-        const evaluationResponse = evaluateGeneratedDescription(
-          dataObj,
-          genTitle,
-          genDescription
-        );
-        genDescriptionScore = evaluationResponse.score;
-        genDescriptionEvaluation = evaluationResponse.response;
-        if (genDescriptionScore >= minScore) {
-          genDescriptionApproval = true;
-        }
-      }
+      const minScore = parseFloat(
+        getConfigSheetValue(CONFIG.userSettings.description.minScore)
+      );
+      const response = fetchDescriptionGenerationData(
+        dataObj,
+        genTitle,
+        getConfigSheetValue(CONFIG.userSettings.feed.imageUnderstanding)
+          ? imageUrl
+          : null
+      );
+      genDescription = response.description;
+      genDescriptionScore = response.score;
+      genDescriptionEvaluation = response.evaluation;
+      genDescriptionApproval = genDescriptionScore >= minScore;
     } catch (e) {
       // Ignore "blocked for safety reasons" error response
       MultiLogger.getInstance().log(String(e));
@@ -494,7 +557,7 @@ function optimizeRow(
     String(genDescription.length),
     genDescriptionScore,
     genCategory,
-    `${res}\nProduct description: ${genDescription}\nDescripion evaluation: ${genDescriptionEvaluation}`, // API response
+    `${res.trim()}\nProduct description: ${genDescription}\nDescription evaluation: Score: ${genDescriptionScore}\n${genDescriptionEvaluation}`, // API response
     JSON.stringify(dataObj),
   ];
 }
@@ -541,7 +604,10 @@ function refreshConfigSheet() {
   }
 }
 
-function fetchTitleGenerationData(data: Record<string, unknown>): string {
+function fetchTitleGenerationData(
+  data: Record<string, unknown>,
+  imageUrl: string | null
+): string {
   // Extra lines (\n) instruct LLM to comlpete what is missing. Don't remove.
   const dataContext = `Context: ${JSON.stringify(data)}\n\n`;
   const prompt =
@@ -572,15 +638,20 @@ function fetchTitleGenerationData(data: Record<string, unknown>): string {
       topP: Number(
         getConfigSheetValue(CONFIG.userSettings.title.modelParameters.topP)
       ),
-    }).predict(prompt)
+    }).generate(
+      getConfigSheetValue(CONFIG.userSettings.vertexAi.languageModelId),
+      prompt,
+      imageUrl
+    )
   );
   return res;
 }
 
 function fetchDescriptionGenerationData(
   data: Record<string, unknown>,
-  generatedTitle: string
-): string {
+  generatedTitle: string,
+  imageUrl: string | null
+): { description: string; score: number; evaluation: string } {
   // Extra lines (\n) instruct LLM to complete what is missing. Don't remove.
   const modifiedData = Object.assign(
     {
@@ -600,7 +671,7 @@ function fetchDescriptionGenerationData(
         '"Description Prompt Settings" section then immediately deleting it.'
     );
   }
-  let res = Util.executeWithRetry(CONFIG.vertexAi.maxRetries, () =>
+  const res = Util.executeWithRetry(CONFIG.vertexAi.maxRetries, () =>
     VertexHelper.getInstance(vertexAiGcpProjectId, vertexAiLanguageModelId, {
       temperature: Number(
         getConfigSheetValue(
@@ -622,75 +693,33 @@ function fetchDescriptionGenerationData(
           CONFIG.userSettings.description.modelParameters.topP
         )
       ),
-    }).predict(prompt)
+    }).generate(
+      getConfigSheetValue(CONFIG.userSettings.vertexAi.languageModelId),
+      prompt,
+      imageUrl
+    )
   );
-  const descriptionKeywordPrefix =
-    getConfigSheetValue(CONFIG.userSettings.description.keyword) + ':';
-  res = res.replace(descriptionKeywordPrefix, '').trim();
-  return res;
-}
-
-function evaluateGeneratedDescription(
-  data: Record<string, unknown>,
-  generatedTitle: string,
-  generatedDescription: string
-): { score: number; response: string } {
-  // Extra lines (\n) instruct LLM to complete what is missing. Don't remove.
-  const modifiedData = Object.assign(
-    {
-      'Generated Title': generatedTitle,
-      'Generated Description': generatedDescription,
-    },
-    data
-  );
-  const dataContext = `Context: ${JSON.stringify(modifiedData)}\n\n`;
-  const prompt =
-    getConfigSheetValue(CONFIG.userSettings.descriptionValidation.fullPrompt) +
-    dataContext;
-
-  if (isErroneousPrompt(prompt)) {
+  const regex =
+    /^.*description:(?<description>.*)^score:(?<score>.*)^reasoning:(?<evaluation>.*)$/ms;
+  const matches = res.match(regex);
+  if (!matches) {
     throw new Error(
-      'Could not read the Description Evaluation prompt from the "Config" sheet. ' +
-        'Please refresh the sheet by adding a new row before the ' +
-        '"Description Evaluation Settings" section then immediately deleting it.'
+      `Received an incomplete description response from the API. Response: ${res}`
     );
   }
-  const res = Util.executeWithRetry(CONFIG.vertexAi.maxRetries, () =>
-    VertexHelper.getInstance(vertexAiGcpProjectId, vertexAiLanguageModelId, {
-      temperature: Number(
-        getConfigSheetValue(
-          CONFIG.userSettings.descriptionValidation.modelParameters.temperature
-        )
-      ),
-      maxOutputTokens: Number(
-        getConfigSheetValue(
-          CONFIG.userSettings.descriptionValidation.modelParameters
-            .maxOutputTokens
-        )
-      ),
-      topK: Number(
-        getConfigSheetValue(
-          CONFIG.userSettings.descriptionValidation.modelParameters.topK
-        )
-      ),
-      topP: Number(
-        getConfigSheetValue(
-          CONFIG.userSettings.descriptionValidation.modelParameters.topP
-        )
-      ),
-    }).predict(prompt)
-  );
-  let score = res.split('\n')[0];
-  const scorePrefix =
-    getConfigSheetValue(CONFIG.userSettings.descriptionValidation.keyword) +
-    ':';
-  score = score
-    .toLowerCase()
-    .replace(scorePrefix.toLowerCase(), '')
-    .trim()
-    .replace(':', '')
-    .trim();
-  return { score: parseFloat(score), response: res };
+  let { description, score, evaluation } = matches.groups as {
+    description: string;
+    score: string;
+    evaluation: string;
+  };
+  description = String(description).trim();
+  score = String(score).trim();
+  evaluation = String(evaluation).trim();
+  return {
+    description: description,
+    score: parseFloat(score),
+    evaluation: evaluation,
+  };
 }
 
 /**

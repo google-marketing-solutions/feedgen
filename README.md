@@ -29,6 +29,18 @@ limitations under the License.
 [How to Contribute](#how-to-contribute) •
 [Community Spotlight](#community-spotlight)
 
+## Updates
+
+* [December 2023]
+  * Added support for Gemini models (`gemini-pro` and `gemini-pro-vision`)
+  * Unified description generation and validation - now handled by a single prompt
+  * Added support for [image understanding](#image-understanding) for better title and description generation (only available with gemini-pro-vision)
+  * Added LLM-generated titles which should avoid duplicate values at the possible loss of some attribute information
+* [November 2023]: Added description validation as a separate component
+* [October 2023]: Made title and description generation optional
+* [August 2023]: Added support for [text-bison-32k](https://cloud.google.com/vertex-ai/docs/generative-ai/learn/models#32k_models)
+* [June 2023]: Moved Colab variant to `v1` and switched to JS/TS on `main`
+
 ## Overview
 
 **FeedGen** is an open-source tool that uses Google Cloud's state-of-the-art
@@ -80,7 +92,7 @@ along with specific configuration values that control how content is generated.
 The spreadsheet is also used for both (optional) human validation and setting up
 a **supplemental feed** in Google Merchant Center (MC).
 
-> Generative Language in Vertex AI, and in general, is an experimental feature /
+> Generative Language in Vertex AI, and in general, is a nascent feature /
 technology. We highly recommend manually reviewing and verifying the generated
 titles and descriptions. FeedGen helps users expedite this process by providing
 a [score](#scoring--evaluation) between -1 and 1 (along with detailed components)
@@ -97,25 +109,24 @@ button as shown below.
 Afterwards, navigate to the **Config** worksheet to configure feed settings,
 Vertex AI API settings (including an estimation of the
 [costs](#vertex-ai-pricing-and-quotas) that will be incurred), and settings to
-control the content generation (generating descriptions is configurable and is
-switched on by default).
+control the content generation.
 
 <img src='./img/config.png' alt='Config' />
 
-
 ### Description Generation
+
 Description generation works by taking the prompt prefix given in the **Config** sheet, appending a row of data from **Input** and sending the result as a prompt to the LLM. This gives you great flexibility in shaping the wording, style and other requirements you might have. All data from **Input Feed** will be provided as part of the prompt.
 
-*Optional*: You can also provide examples of descriptions to items in the **Few-shot** examples section (see below). Those will be appended to the prompt prefix as well and show to the model what *good* descriptions should look like.
+*Optional*: You can also provide examples of descriptions in the **Few-shot** examples section (see below). Those will be appended to the prompt prefix as well and inform the model of how *good* descriptions look like.
 
 The result is directly output as **Generated Description**
 
 ### Description Validation
-Since LLMs have a tendency to hallucinate, there is an option to ask the model (in a follow-up prompt) if the generated description meets your criteria. As with description generation, all **Input** data is appended to the prompt prefix, and model the responds with a numerical score as well as reasoning. An example *validation prompt* is provided to give some hints on how to write it - e.g. include criteria as well as example score values.
 
-*Note*: "Score keyword" is important to mark where the numeric value of the score is present in the model output. When generating descriptions in non-English language, the Score keyword should match the output language.
+Since LLMs have a tendency to hallucinate, there is an option to ask the model (in follow-up instructions within the same prompt) if the generated description meets your criteria. The model evaluates the description it just generated and responds with a numerical score as well as reasoning. Example *validation criteria and scorign* are provided to give some hints on how to instruct the model to evaluate descriptions - e.g. it includes criteria as well as example score values.
 
 ### Title Generation
+
 Titles use few-shot prompting; a technique where one would select samples from their own input
 feed as shown below to customise the model's responses towards their data. To
 help with this process, FeedGen provides a utility Google Sheets formula:
@@ -157,6 +168,17 @@ Within this same section you can also specify a list of *safe* words that can be
 output in generated titles even if they did not exist beforehand in your feed.
 For example, you can add the word "Size" to this list if you would like to
 prefix all values of the `Size` attribute with it (i.e. "Size M" instead of "M").
+
+Finally, you can also specify whether you would like the LLM to generate titles
+for you using the `Use LLM-generated Titles` checkbox. This allows the LLM
+to inspect the generated attribute values and select which ones to concatenate
+together - avoiding duplicates - instead of the default logic where *all*
+attribute values will be stitched together. This feature should work better with
+Gemini models than PaLM 2, as Gemini models have better reasoning capabilities
+that allow them to better strick to prompt instructions over PaLM 2 models.
+Furthermore, LLM-generated titles allow you to specify the desired length for
+titles in the prompt (max 150 characters for Merchant Center), which was not
+possible previously.
 
 Now you are done with the configuration and ready to optimise your feed. Use the
 top navigation menu to launch the FeedGen sidebar and start generating and
@@ -203,7 +225,30 @@ This column name is completely flexible and can be changed directly in the
 output worksheet. It adds a custom attribute to the supplemental feed for
 reporting and performance measurement purposes.
 
+### Image Understanding
+
+Since Gemini (`gemini-pro-vision`) is a multimodal model, we are able to
+additionally examine product images and use them to generate higher quality
+titles and descriptions. It is important to note the following (this information
+is valid during the *Public Preview* of Gemini):
+
+* You can specify either web images and/or Google Cloud Storage (GCS) file URIs
+  in the `Image Link` column of the *Input Feed* worksheet.
+* Regardless of the source, only `image/png` and `image/jpeg` mime types are
+  supported.
+* GCS URIs must also point to a bucket that is within the same Google Cloud
+  project that's sending the request.
+* [Pricing](#vertex-ai-pricing-and-quotas) is affected as well - an additional
+  charge will be incurred per image. This has already been taken into account in
+  FeedGen's price estimator.
+
 ### Scoring / Evaluation
+
+#### Descriptions
+
+Descriptions with a score below `Min. Evaluation Approval Score` will not be
+auto-approved. You can re-generate those by filtering on **Description Score**
+and removing the *Status* value in the **Generation Validation** tab.
 
 #### Titles
 
@@ -276,9 +321,6 @@ So in summary, the scoring systems works as follows:
 |Are there hallucinations?|Have we removed any words?|No change at all?|Have we optimised the title?|Did we fill in missing gaps or extract [new attributes](#feed-gaps-and-new-attributes)?|
 |-|-|-|-|-|
 |-1|-0.5|0|Add 0.5|Add 0.5|
-
-#### Descriptions
-If you've enabled the **Description Validation** checkbox, description with score below *Minimum Score* will not be auto-approved. You can re-generate those by filtering on **Description Score** and removing the *Status* value in the **Generation Validation** tab.
 
 FeedGen also applies some basic MC compliance checks, such as titles and
 descriptions must not be longer than 150 and 5000 characters, respectively. If
