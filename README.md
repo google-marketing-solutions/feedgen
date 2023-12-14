@@ -34,7 +34,7 @@ limitations under the License.
 * [December 2023]
   * Added support for Gemini models (`gemini-pro` and `gemini-pro-vision`)
   * Unified description generation and validation - now handled by a single prompt
-  * Added support for [image understanding](#image-understanding) for better titles and descriptions (only available with gemini-pro-vision)
+  * Added support for [image understanding](#image-understanding) for better title and description generation (only available with gemini-pro-vision)
   * Added LLM-generated titles which should guarantee no duplicate values at the possible loss of some attribute information
 * [November 2023]: Added description validation as a separate component
 * [October 2023]: Made title and description generation optional
@@ -176,6 +176,9 @@ together - avoiding duplicates - instead of the default logic where *all*
 attribute values will be stitched together. This feature should work better with
 Gemini models than PaLM 2, as Gemini models have better reasoning capabilities
 that allow them to better strick to prompt instructions over PaLM 2 models.
+Furthermore, LLM-generated titles allow you to specify the desired length for
+titles in the prompt (max 150 characters for Merchant Center), which was not
+possible previously.
 
 Now you are done with the configuration and ready to optimise your feed. Use the
 top navigation menu to launch the FeedGen sidebar and start generating and
