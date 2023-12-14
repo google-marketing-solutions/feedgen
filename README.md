@@ -35,7 +35,7 @@ limitations under the License.
   * Added support for Gemini models (`gemini-pro` and `gemini-pro-vision`)
   * Unified description generation and validation - now handled by a single prompt
   * Added support for [image understanding](#image-understanding) for better title and description generation (only available with gemini-pro-vision)
-  * Added LLM-generated titles which should guarantee no duplicate values at the possible loss of some attribute information
+  * Added LLM-generated titles which should avoid duplicate values at the possible loss of some attribute information
 * [November 2023]: Added description validation as a separate component
 * [October 2023]: Made title and description generation optional
 * [August 2023]: Added support for [text-bison-32k](https://cloud.google.com/vertex-ai/docs/generative-ai/learn/models#32k_models)
