@@ -33,9 +33,13 @@ limitations under the License.
 
 * [December 2023]
   * Added support for Gemini models (`gemini-pro` and `gemini-pro-vision`)
-  * Unified description generation and validation - now handled by a single prompt
-  * Added support for [image understanding](#image-understanding) for better title and description generation (only available with gemini-pro-vision)
-  * Added LLM-generated titles which should avoid duplicate values at the possible loss of some attribute information
+  * Unified description generation and validation - now handled by a single
+    prompt
+  * Added support for [image understanding](#image-understanding) for higher
+    quality title and description generation (only available with
+    `gemini-pro-vision`)
+  * Added LLM-generated titles which should avoid duplicate values at the
+    possible loss of some attribute information
 * [November 2023]: Added description validation as a separate component
 * [October 2023]: Made title and description generation optional
 * [August 2023]: Added support for [text-bison-32k](https://cloud.google.com/vertex-ai/docs/generative-ai/learn/models#32k_models)
@@ -227,17 +231,42 @@ reporting and performance measurement purposes.
 
 ### Image Understanding
 
-Since Gemini (`gemini-pro-vision`) is a multimodal model, we are able to
+As Gemini (`gemini-pro-vision`) is a multimodal model, we are able to
 additionally examine product images and use them to generate higher quality
-titles and descriptions. It is important to note the following (this information
+titles and descriptions. This is done by adding additional instructions to the
+existing title and description generation prompts for *extracting* visible
+product features from the provided image.
+
+For titles, extracted features are used in 2 ways:
+
+1. As a quality check for existing feed attributes. For example, if the given
+product feed references a *white* color, yet the provided image shows a *black*
+product, the title and feed attribute are going to be adjusted accordingly.
+2. To enhance the generated title via a
+[new attribute](#feed-gaps-and-new-attributes) called **Image Features**. This
+attribute lists all visible features the model was able to extract from the
+provided image. All new words that were not covered by existing attributes will
+then be added to the generated title.
+
+For descriptions, extracted features are used by the model to generate a more
+comprehensive description that highlights the visual aspects of the product.
+This is particularly relevant for domains where visual appeal is paramount;
+where the product's key details are *visually* conveyed rather than in a
+structured text format within the feed. This includes fashion, home decor and
+furniture, and perfumery and jewelry to name a few.
+
+Finally, it is important to note the following restrictions (this information
 is valid during the *Public Preview* of Gemini):
 
 * You can specify either web images and/or Google Cloud Storage (GCS) file URIs
-  in the `Image Link` column of the *Input Feed* worksheet.
-* Regardless of the source, only `image/png` and `image/jpeg` mime types are
+  in the `Image Link` column of the *Input Feed* worksheet. GCS URIs are passed
+  as-is to Gemini (as they are supported by the model itself), while web images
+  are first downloaded and provided inline as part of the input to the model.
+* Regardless of the source, only `image/png` and `image/jpeg` MIME types are
   supported.
 * GCS URIs must also point to a bucket that is within the same Google Cloud
-  project that's sending the request.
+  project that is sending the request (otherwise, it will be discarded by
+  Gemini).
 * [Pricing](#vertex-ai-pricing-and-quotas) is affected as well - an additional
   charge will be incurred per image. This has already been taken into account in
   FeedGen's price estimator.
