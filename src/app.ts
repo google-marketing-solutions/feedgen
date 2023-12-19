@@ -348,28 +348,51 @@ function optimizeRow(
         ? imageUrl
         : null
     );
-    const regex =
-      /^.*product attribute keys in original title:(?<origTemplateRow>.*)^product category:(?<genCategoryRow>.*)^product attribute keys:(?<genTemplateRow>.*)^product attribute values:(?<genAttributesRow>.*)^generated title:(?<genTitleRow>.*)$/ms;
+    const regexStr =
+      '^.*product attribute keys in original title:(?<origTemplateRow>.*)' +
+      '^product category:(?<genCategoryRow>.*)' +
+      '^product attribute keys:(?<genTemplateRow>.*)' +
+      '^product attribute values:(?<genAttributesRow>.*)';
+    const replacedKeysRegexStr = '^replaced keys:(?<replacedKeysRow>.*)';
+    const generatedTitleRegexStr = '^generated title:(?<genTitleRow>.*)';
+    const completeRegex = new RegExp(
+      regexStr + replacedKeysRegexStr + generatedTitleRegexStr + '$',
+      'ms'
+    );
+    const noReplacedKeysRegex = new RegExp(
+      regexStr + generatedTitleRegexStr + '$',
+      'ms'
+    );
 
-    const matches = res.match(regex);
-    if (!matches) {
+    const matches = res.match(completeRegex) ?? res.match(noReplacedKeysRegex);
+
+    if (!matches || !matches.groups) {
       throw new Error(
         `Received an incomplete title response from The API.\nResponse: ${res}`
       );
     }
-    const {
+    const [
       origTemplateRow,
       genCategoryRow,
       genTemplateRow,
       genAttributesRow,
+      replacedKeysRow,
       genTitleRow,
-    } = matches.groups as {
-      origTemplateRow: string;
-      genCategoryRow: string;
-      genTemplateRow: string;
-      genAttributesRow: string;
-      genTitleRow: string;
-    };
+    ] = [
+      matches.groups['origTemplateRow'],
+      matches.groups['genCategoryRow'],
+      matches.groups['genTemplateRow'],
+      matches.groups['genAttributesRow'],
+      matches.groups['replacedKeysRow'],
+      matches.groups['genTitleRow'],
+    ];
+    const replacedKeys = replacedKeysRow
+      ? String(replacedKeysRow)
+          .trim()
+          .split(',')
+          .filter(Boolean)
+          .map((x: string) => x.toLowerCase().trim())
+      : [];
 
     genCategory = String(genCategoryRow).trim();
 
@@ -406,11 +429,12 @@ function optimizeRow(
 
     for (const [index, attribute] of genAttributes.entries()) {
       if (
-        !dataObj[attribute] && // matches gaps ({color: ""}) AND invented
-        genAttributeValues[index] && // non-empty generated value
-        (!origAttributes.includes(attribute) ||
-          // force include gaps even if in generated template for original title
-          Object.keys(dataObj).includes(attribute))
+        (!dataObj[attribute] && // matches gaps ({color: ""}) AND invented
+          genAttributeValues[index] && // non-empty generated value
+          (!origAttributes.includes(attribute) ||
+            // force include gaps even if in generated template for original title
+            Object.keys(dataObj).includes(attribute))) ||
+        replacedKeys.includes(attribute.toLowerCase())
       ) {
         const value = removeEmptyAttributeValues(
           attribute,
