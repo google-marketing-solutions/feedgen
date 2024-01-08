@@ -35,22 +35,26 @@ export const CONFIG = {
         row: 2,
         col: 4,
       },
-      imageColumnName: {
+      pageLinkColumnName: {
         row: 2,
         col: 5,
       },
-      generateTitles: {
+      imageColumnName: {
         row: 2,
         col: 6,
       },
-      generateDescriptions: {
+      generateTitles: {
         row: 2,
         col: 7,
       },
-      imageUnderstanding: {
+      generateDescriptions: {
         row: 2,
         col: 8,
-        notation: 'H2',
+      },
+      imageUnderstanding: {
+        row: 2,
+        col: 9,
+        notation: 'I2',
       },
     },
     vertexAi: {
@@ -74,9 +78,13 @@ export const CONFIG = {
         row: 10,
         col: 2,
       },
-      minScore: {
+      minApprovalScore: {
         row: 8,
         col: 6,
+      },
+      usePageLinkData: {
+        row: 8,
+        col: 8,
       },
       modelParameters: {
         temperature: {
@@ -101,6 +109,14 @@ export const CONFIG = {
       fullPrompt: {
         row: 16,
         col: 2,
+      },
+      minApprovalScore: {
+        row: 14,
+        col: 6,
+      },
+      usePageLinkData: {
+        row: 14,
+        col: 8,
       },
       preferGeneratedValues: {
         row: 19,
@@ -190,5 +206,9 @@ export const CONFIG = {
     location: 'us-central1',
     maxRetries: 3,
     quotaLimitDelay: 30 * 1000, // 30s
+  },
+  caching: {
+    keyPrefix: 'PAGEINFO_',
+    defaultExpiration: 60, // in seconds
   },
 };

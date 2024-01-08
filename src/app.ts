@@ -526,25 +526,21 @@ function optimizeRow(
   let genDescriptionApproval = true;
 
   if (getConfigSheetValue(CONFIG.userSettings.feed.generateDescriptions)) {
-    try {
-      const minScore = parseFloat(
-        getConfigSheetValue(CONFIG.userSettings.description.minScore)
+    const response = fetchDescriptionGenerationData(
+      dataObj,
+      genTitle,
+      getConfigSheetValue(CONFIG.userSettings.feed.imageUnderstanding)
+        ? imageUrl
+        : null
+    );
+    genDescription = response.description;
+    genDescriptionScore = response.score;
+    genDescriptionEvaluation = response.evaluation;
+    genDescriptionApproval =
+      genDescriptionScore >=
+      parseFloat(
+        getConfigSheetValue(CONFIG.userSettings.description.minApprovalScore)
       );
-      const response = fetchDescriptionGenerationData(
-        dataObj,
-        genTitle,
-        getConfigSheetValue(CONFIG.userSettings.feed.imageUnderstanding)
-          ? imageUrl
-          : null
-      );
-      genDescription = response.description;
-      genDescriptionScore = response.score;
-      genDescriptionEvaluation = response.evaluation;
-      genDescriptionApproval = genDescriptionScore >= minScore;
-    } catch (e) {
-      // Ignore "blocked for safety reasons" error response
-      MultiLogger.getInstance().log(String(e));
-    }
   }
 
   const status =
@@ -555,7 +551,11 @@ function optimizeRow(
       ? Status.SUCCESS
       : Status.NON_COMPLIANT;
   const score = status === Status.NON_COMPLIANT ? String(-1) : totalScore;
-  const approval = Number(score) >= 0 && genDescriptionApproval;
+  const approval =
+    Number(score) >=
+      parseFloat(
+        getConfigSheetValue(CONFIG.userSettings.title.minApprovalScore)
+      ) && genDescriptionApproval;
 
   return [
     approval,
@@ -628,14 +628,56 @@ function refreshConfigSheet() {
   }
 }
 
+function fetchLandingPageInfo(
+  data: Record<string, unknown>,
+  useLandingPageInfo: boolean
+) {
+  if (!useLandingPageInfo) {
+    return '';
+  }
+  const itemId =
+    data[getConfigSheetValue(CONFIG.userSettings.feed.itemIdColumnName)];
+  const cachedHtml = CacheService.getScriptCache().get(
+    `${CONFIG.caching.keyPrefix}${itemId}`
+  );
+  if (cachedHtml) {
+    console.log(`Fetching cached landing page for ${itemId}`);
+    return cachedHtml;
+  }
+  let landingPageInfo = '';
+  const pageLink =
+    data[getConfigSheetValue(CONFIG.userSettings.feed.pageLinkColumnName)];
+
+  if (pageLink) {
+    landingPageInfo = Util.fetchHtmlContent(String(pageLink));
+  }
+  if (landingPageInfo) {
+    landingPageInfo = `Website: ${landingPageInfo}\n\n`;
+    console.log(`Adding landing page to cache for ${itemId}`);
+    CacheService.getScriptCache().put(
+      `${CONFIG.caching.keyPrefix}${itemId}`,
+      landingPageInfo,
+      CONFIG.caching.defaultExpiration
+    );
+  }
+  return landingPageInfo;
+}
+
 function fetchTitleGenerationData(
   data: Record<string, unknown>,
   imageUrl: string | null
 ): string {
   // Extra lines (\n) instruct LLM to comlpete what is missing. Don't remove.
   const dataContext = `Context: ${JSON.stringify(data)}\n\n`;
-  const prompt =
+  const landingPageInfo = fetchLandingPageInfo(
+    data,
+    getConfigSheetValue(CONFIG.userSettings.title.usePageLinkData)
+  );
+  let prompt =
     getConfigSheetValue(CONFIG.userSettings.title.fullPrompt) + dataContext;
+  if (landingPageInfo) {
+    prompt += landingPageInfo;
+  }
 
   if (isErroneousPrompt(prompt)) {
     throw new Error(
@@ -684,9 +726,16 @@ function fetchDescriptionGenerationData(
     data
   );
   const dataContext = `Context: ${JSON.stringify(modifiedData)}\n\n`;
-  const prompt =
+  let prompt =
     getConfigSheetValue(CONFIG.userSettings.description.fullPrompt) +
     dataContext;
+  const landingPageInfo = fetchLandingPageInfo(
+    data,
+    getConfigSheetValue(CONFIG.userSettings.description.usePageLinkData)
+  );
+  if (landingPageInfo) {
+    prompt += landingPageInfo;
+  }
 
   if (isErroneousPrompt(prompt)) {
     throw new Error(

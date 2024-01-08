@@ -35,22 +35,26 @@ const CONFIG = {
         row: 2,
         col: 4,
       },
-      imageColumnName: {
+      pageLinkColumnName: {
         row: 2,
         col: 5,
       },
-      generateTitles: {
+      imageColumnName: {
         row: 2,
         col: 6,
       },
-      generateDescriptions: {
+      generateTitles: {
         row: 2,
         col: 7,
       },
-      imageUnderstanding: {
+      generateDescriptions: {
         row: 2,
         col: 8,
-        notation: 'H2',
+      },
+      imageUnderstanding: {
+        row: 2,
+        col: 9,
+        notation: 'I2',
       },
     },
     vertexAi: {
@@ -74,9 +78,13 @@ const CONFIG = {
         row: 10,
         col: 2,
       },
-      minScore: {
+      minApprovalScore: {
         row: 8,
         col: 6,
+      },
+      usePageLinkData: {
+        row: 8,
+        col: 8,
       },
       modelParameters: {
         temperature: {
@@ -101,6 +109,14 @@ const CONFIG = {
       fullPrompt: {
         row: 16,
         col: 2,
+      },
+      minApprovalScore: {
+        row: 14,
+        col: 6,
+      },
+      usePageLinkData: {
+        row: 14,
+        col: 8,
       },
       preferGeneratedValues: {
         row: 19,
@@ -190,6 +206,10 @@ const CONFIG = {
     location: 'us-central1',
     maxRetries: 3,
     quotaLimitDelay: 30 * 1000,
+  },
+  caching: {
+    keyPrefix: 'PAGEINFO_',
+    defaultExpiration: 60,
   },
 };
 
@@ -352,6 +372,47 @@ class Util {
   }
   static getSetDifference(set1, set2) {
     return [...[...set1].filter(element => !set2.has(element))];
+  }
+  static fetchHtmlContent(url) {
+    try {
+      const response = UrlFetchApp.fetch(url);
+      if (response.getResponseCode() === 200) {
+        return Util.extractTextFromHtml(response.getContentText());
+      }
+    } catch (e) {
+      MultiLogger.getInstance().log(String(e));
+    }
+    return '';
+  }
+  static extractTextFromHtml(html) {
+    const regex_replace_head = /<head.*<\/head>/gs;
+    const regex_replace_script = /<script[^<\/script].*/g;
+    const regex_replace_svg = /<svg[^<\/svg].*/g;
+    const regex_replace_path = /<path[^<\/path].*/g;
+    const regex_replace_iframe = /<iframe[^<\/iframe].*/g;
+    const regex_replace_anchor = /<a [^<\/a].*/g;
+    const regex_extract_span = /<span[^<\/span](.*)/g;
+    const regex_extract_p = /<p[^<\/p](.*)/g;
+    const regex_extract_text = />(?<content>.*)</s;
+    const sanitizedHtml = html
+      .replace(regex_replace_head, '')
+      .replaceAll(regex_replace_script, '')
+      .replaceAll(regex_replace_svg, '')
+      .replaceAll(regex_replace_path, '')
+      .replaceAll(regex_replace_iframe, '')
+      .replaceAll(regex_replace_anchor, '');
+    const extractedHtml = [
+      ...(sanitizedHtml.match(regex_extract_span) ?? []),
+      ...(sanitizedHtml.match(regex_extract_p) ?? []),
+    ];
+    const lines = [];
+    for (const line of extractedHtml) {
+      const matches = line.match(regex_extract_text);
+      if (matches && matches.groups && matches.groups.content) {
+        lines.push(matches.groups.content);
+      }
+    }
+    return lines.join(' ');
   }
 }
 
@@ -903,24 +964,21 @@ function optimizeRow(headers, data) {
   let genDescriptionEvaluation = 'No Evaluation';
   let genDescriptionApproval = true;
   if (getConfigSheetValue(CONFIG.userSettings.feed.generateDescriptions)) {
-    try {
-      const minScore = parseFloat(
-        getConfigSheetValue(CONFIG.userSettings.description.minScore)
+    const response = fetchDescriptionGenerationData(
+      dataObj,
+      genTitle,
+      getConfigSheetValue(CONFIG.userSettings.feed.imageUnderstanding)
+        ? imageUrl
+        : null
+    );
+    genDescription = response.description;
+    genDescriptionScore = response.score;
+    genDescriptionEvaluation = response.evaluation;
+    genDescriptionApproval =
+      genDescriptionScore >=
+      parseFloat(
+        getConfigSheetValue(CONFIG.userSettings.description.minApprovalScore)
       );
-      const response = fetchDescriptionGenerationData(
-        dataObj,
-        genTitle,
-        getConfigSheetValue(CONFIG.userSettings.feed.imageUnderstanding)
-          ? imageUrl
-          : null
-      );
-      genDescription = response.description;
-      genDescriptionScore = response.score;
-      genDescriptionEvaluation = response.evaluation;
-      genDescriptionApproval = genDescriptionScore >= minScore;
-    } catch (e) {
-      MultiLogger.getInstance().log(String(e));
-    }
   }
   const status =
     genTitle.length <= TITLE_MAX_LENGTH &&
@@ -930,7 +988,11 @@ function optimizeRow(headers, data) {
       ? Status.SUCCESS
       : Status.NON_COMPLIANT;
   const score = status === Status.NON_COMPLIANT ? String(-1) : totalScore;
-  const approval = Number(score) >= 0 && genDescriptionApproval;
+  const approval =
+    Number(score) >=
+      parseFloat(
+        getConfigSheetValue(CONFIG.userSettings.title.minApprovalScore)
+      ) && genDescriptionApproval;
   return [
     approval,
     status,
@@ -993,10 +1055,47 @@ function refreshConfigSheet() {
     Utilities.sleep(5000);
   }
 }
+function fetchLandingPageInfo(data, useLandingPageInfo) {
+  if (!useLandingPageInfo) {
+    return '';
+  }
+  const itemId =
+    data[getConfigSheetValue(CONFIG.userSettings.feed.itemIdColumnName)];
+  const cachedHtml = CacheService.getScriptCache().get(
+    `${CONFIG.caching.keyPrefix}${itemId}`
+  );
+  if (cachedHtml) {
+    console.log(`Fetching cached landing page for ${itemId}`);
+    return cachedHtml;
+  }
+  let landingPageInfo = '';
+  const pageLink =
+    data[getConfigSheetValue(CONFIG.userSettings.feed.pageLinkColumnName)];
+  if (pageLink) {
+    landingPageInfo = Util.fetchHtmlContent(String(pageLink));
+  }
+  if (landingPageInfo) {
+    landingPageInfo = `Website: ${landingPageInfo}\n\n`;
+    console.log(`Adding landing page to cache for ${itemId}`);
+    CacheService.getScriptCache().put(
+      `${CONFIG.caching.keyPrefix}${itemId}`,
+      landingPageInfo,
+      CONFIG.caching.defaultExpiration
+    );
+  }
+  return landingPageInfo;
+}
 function fetchTitleGenerationData(data, imageUrl) {
   const dataContext = `Context: ${JSON.stringify(data)}\n\n`;
-  const prompt =
+  const landingPageInfo = fetchLandingPageInfo(
+    data,
+    getConfigSheetValue(CONFIG.userSettings.title.usePageLinkData)
+  );
+  let prompt =
     getConfigSheetValue(CONFIG.userSettings.title.fullPrompt) + dataContext;
+  if (landingPageInfo) {
+    prompt += landingPageInfo;
+  }
   if (isErroneousPrompt(prompt)) {
     throw new Error(
       'Could not read the title prompt from the "Config" sheet. ' +
@@ -1038,9 +1137,16 @@ function fetchDescriptionGenerationData(data, generatedTitle, imageUrl) {
     data
   );
   const dataContext = `Context: ${JSON.stringify(modifiedData)}\n\n`;
-  const prompt =
+  let prompt =
     getConfigSheetValue(CONFIG.userSettings.description.fullPrompt) +
     dataContext;
+  const landingPageInfo = fetchLandingPageInfo(
+    data,
+    getConfigSheetValue(CONFIG.userSettings.description.usePageLinkData)
+  );
+  if (landingPageInfo) {
+    prompt += landingPageInfo;
+  }
   if (isErroneousPrompt(prompt)) {
     throw new Error(
       'Could not read the description prompt from the "Config" sheet. ' +
