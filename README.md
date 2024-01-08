@@ -31,6 +31,8 @@ limitations under the License.
 
 ## Updates
 
+* [January 2024]: Added support for fetching product web page information and
+  using it for higher quality title and description generation
 * [December 2023]
   * Added support for Gemini models (`gemini-pro` and `gemini-pro-vision`)
   * Unified description generation and validation - now handled by a single
@@ -99,9 +101,9 @@ a **supplemental feed** in Google Merchant Center (MC).
 > Generative Language in Vertex AI, and in general, is a nascent feature /
 technology. We highly recommend manually reviewing and verifying the generated
 titles and descriptions. FeedGen helps users expedite this process by providing
-a [score](#scoring--evaluation) between -1 and 1 (along with detailed components)
-that represents how "good" the generated content is, along with a Sheets-native
-way for bulk-approving generated content via data filters.
+a [score](#scoring--evaluation) for both titles and descriptions (along with
+detailed components) that represents how "good" the generated content is, along
+with a Sheets-native way for bulk-approving generated content via data filters.
 
 First, make a copy of the [template spreadsheet](#get-started) and follow the
 instructions defined in the **Getting Started** section. The first step is to
@@ -119,21 +121,39 @@ control the content generation.
 
 ### Description Generation
 
-Description generation works by taking the prompt prefix given in the **Config** sheet, appending a row of data from **Input** and sending the result as a prompt to the LLM. This gives you great flexibility in shaping the wording, style and other requirements you might have. All data from **Input Feed** will be provided as part of the prompt.
+Description generation works by taking the prompt prefix given in the **Config**
+sheet, appending a row of data from **Input** and sending the result as a prompt
+to the LLM. This gives you great flexibility in shaping the wording, style and
+other requirements you might have. All data from **Input Feed** will be provided
+as part of the prompt.
 
-*Optional*: You can also provide examples of descriptions in the **Few-shot** examples section (see below). Those will be appended to the prompt prefix as well and inform the model of how *good* descriptions look like.
+If a web page link is provided in the input feed, you may also mark the
+`Use Landing Page Information` checkbox to load and pass the content of the
+product's page into the prompt. This should result in the generation of a more
+detailed descriptions beyond the information provided in the input feed.
+
+*Optional*: You can also provide examples of descriptions in the **Few-shot**
+examples section (see below). Those will be appended to the prompt prefix as
+well and inform the model of how *good* descriptions look like.
 
 The result is directly output as **Generated Description**
 
 ### Description Validation
 
-Since LLMs have a tendency to hallucinate, there is an option to ask the model (in follow-up instructions within the same prompt) if the generated description meets your criteria. The model evaluates the description it just generated and responds with a numerical score as well as reasoning. Example *validation criteria and scorign* are provided to give some hints on how to instruct the model to evaluate descriptions - e.g. it includes criteria as well as example score values.
+Since LLMs have a tendency to hallucinate, there is an option to ask the model
+(in follow-up instructions within the same prompt) if the generated description
+meets your criteria. The model evaluates the description it just generated and
+responds with a numerical score as well as reasoning. Example
+*validation criteria and scoring* are provided to give some hints on how to
+instruct the model to evaluate descriptions - e.g. it includes criteria as well
+as example score values.
 
 ### Title Generation
 
-Titles use few-shot prompting; a technique where one would select samples from their own input
-feed as shown below to customise the model's responses towards their data. To
-help with this process, FeedGen provides a utility Google Sheets formula:
+Titles use few-shot prompting; a technique where one would select samples from
+their own input feed as shown below to customise the model's responses towards
+their data. To help with this process, FeedGen provides a utility Google Sheets
+formula:
 
 ```sql
 =FEEDGEN_CREATE_CONTEXT_JSON('Input Feed'!A2)
@@ -183,6 +203,13 @@ that allow them to better strick to prompt instructions over PaLM 2 models.
 Furthermore, LLM-generated titles allow you to specify the desired length for
 titles in the prompt (max 150 characters for Merchant Center), which was not
 possible previously.
+
+Like descriptions, you may also choose to use the provided web page information
+for the generation of higher quality titles. All features extracted from the
+web page data will be listed under a
+[new attribute](#feed-gaps-and-new-attributes) called **Website Features**, and
+all new words that were not covered by existing attributes will then be added to
+the generated title.
 
 Now you are done with the configuration and ready to optimise your feed. Use the
 top navigation menu to launch the FeedGen sidebar and start generating and
@@ -276,16 +303,19 @@ is valid during the *Public Preview* of Gemini):
 #### Descriptions
 
 Descriptions with a score below `Min. Evaluation Approval Score` will not be
-auto-approved. You can re-generate those by filtering on **Description Score**
+pre-approved. You can re-generate those by filtering on **Description Score**
 and removing the *Status* value in the **Generation Validation** tab.
 
 #### Titles
 
 FeedGen provides a score for generated titles between -1 and 1 that acts as a
 quality indicator. Positive scores indicate varying degrees of good quality,
-while negative scores represent uncertainty over the generated content.
+while negative scores represent uncertainty over the generated content. Like
+descriptions, you may specify a minimum score (defaults to 0) that you would
+like FeedGen to pre-approve.
 
-Let's take a closer look with some fictitous examples:
+Let's take a closer look with some fictitous examples to better understand the
+scoring for titles:
 
 * **Original Title**: 2XU Men's Swim Compression Long Sleeve Top
 * **Original Description**: 2XU Men's Swim Compression Long Sleeve Top,

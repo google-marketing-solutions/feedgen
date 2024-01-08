@@ -425,7 +425,7 @@ function optimizeRow(
     ];
     const titleFeatures: string[] = [];
     const validGenAttributes: string[] = [];
-    const imageFeatures = new Set<string>();
+    const extraFeatures = new Set<string>();
 
     for (const [index, attribute] of genAttributes.entries()) {
       if (
@@ -459,11 +459,14 @@ function optimizeRow(
           validGenAttributes.push(attribute);
           titleFeatures.push(value);
 
-          if (attribute === 'Image Features') {
-            const imageFeaturesMatches = value.match(WORD_MATCH_REGEX);
-            if (imageFeaturesMatches) {
-              imageFeaturesMatches.forEach((word: string) =>
-                imageFeatures.add(word.toLowerCase())
+          if (
+            attribute === 'Image Features' ||
+            attribute === 'Website Features'
+          ) {
+            const extraFeaturesMatches = value.match(WORD_MATCH_REGEX);
+            if (extraFeaturesMatches) {
+              extraFeaturesMatches.forEach((word: string) =>
+                extraFeatures.add(word.toLowerCase())
               );
             }
           }
@@ -501,7 +504,7 @@ function optimizeRow(
       }
     }
     allowedWords.forEach((word: string) => inputWords.add(word));
-    imageFeatures.forEach((word: string) => inputWords.add(word));
+    extraFeatures.forEach((word: string) => inputWords.add(word));
 
     const metrics = getGenerationMetrics(
       origTitle,
