@@ -127,10 +127,16 @@ to the LLM. This gives you great flexibility in shaping the wording, style and
 other requirements you might have. All data from **Input Feed** will be provided
 as part of the prompt.
 
-If a web page link is provided in the input feed, you may also mark the
-`Use Landing Page Information` checkbox to load and pass the content of the
-product's page into the prompt. This should result in the generation of a more
-detailed descriptions beyond the information provided in the input feed.
+If a web page link is provided in the input feed, you may also check the
+`Use Landing Page Information` checkbox to load and pass sanitised content of
+the product's web page into the prompt. All `span` and `p` tags are extracted
+from the fetched HTML content and concatenated together to form an additional
+paragraph of information that is passed to the LLM in the prompt, along with
+dedicated instructions on how to use this additional information. Furthermore,
+fetched web page information is cached using Apps Script's
+[CacheService](https://developers.google.com/apps-script/reference/cache) for a
+period of 60 seconds in order to avoid refetching and reparsing the content for
+the generation of titles (which is a separate call to the Vertex AI API).
 
 *Optional*: You can also provide examples of descriptions in the **Few-shot**
 examples section (see below). Those will be appended to the prompt prefix as
@@ -204,12 +210,13 @@ Furthermore, LLM-generated titles allow you to specify the desired length for
 titles in the prompt (max 150 characters for Merchant Center), which was not
 possible previously.
 
-Like descriptions, you may also choose to use the provided web page information
-for the generation of higher quality titles. All features extracted from the
-web page data will be listed under a
-[new attribute](#feed-gaps-and-new-attributes) called **Website Features**, and
-all new words that were not covered by existing attributes will then be added to
-the generated title.
+Like descriptions, you may also choose to load information from the provided web
+page link and pass it to the LLM for the generation of higher quality titles.
+This can be done via the `Use Landing Page Information` checkbox, and when
+checked, all features extracted from the web page data will be listed under a
+[new attribute](#feed-gaps-and-new-attributes) called **Website Features**. New
+words that were not covered by existing attributes will then be added to the
+generated title.
 
 Now you are done with the configuration and ready to optimise your feed. Use the
 top navigation menu to launch the FeedGen sidebar and start generating and
