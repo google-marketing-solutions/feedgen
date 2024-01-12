@@ -17,6 +17,10 @@ resource "google_project_service" "bigquery_service" {
   service = "bigquery.googleapis.com"
 }
 
+resource "google_project_service" "bigquery_connection_service" {
+  service = "bigqueryconnection.googleapis.com"
+}
+
 resource "google_bigquery_connection" "vertex-connection" {
    connection_id = "vertex-connection"
    location      = var.region
