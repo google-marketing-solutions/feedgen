@@ -13,12 +13,27 @@ provider "google" {
   zone   = var.zone
 }
 
+import {
+  to = google_project_service.bigquery_service
+  id = "bigquery.googleapis.com"
+}
+
 resource "google_project_service" "bigquery_service" {
   service = "bigquery.googleapis.com"
 }
 
+import {
+  to = google_project_service.bigquery_connection_service
+  id = "bigqueryconnection.googleapis.com"
+}
+
 resource "google_project_service" "bigquery_connection_service" {
   service = "bigqueryconnection.googleapis.com"
+}
+
+import {
+  to = google_bigquery_connection.vertex-connection
+  id = "projects/${var.project_id}/locations/${var.region}/connections/vertex-connection"
 }
 
 resource "google_bigquery_connection" "vertex-connection" {
@@ -29,12 +44,22 @@ resource "google_bigquery_connection" "vertex-connection" {
    cloud_resource {}
 }
 
+import {
+  to = google_bigquery_dataset.feedgen
+  id = "${var.project_id}.feedgen"
+}
+
 resource "google_bigquery_dataset" "feedgen" {
   dataset_id                  = "feedgen"
   friendly_name               = "FeedGen Dataset"
   description                 = "Dataset to be used as backend to FeedGen"
   location                    = var.region
 }
+
+# import {
+#   to = google_bigquery_table.prompts
+#   id = "${var.project_id}/datasets/feedgen/tables/prompts"
+# }
 
 resource "google_bigquery_table" "prompts" {
     dataset_id = google_bigquery_dataset.feedgen.dataset_id
@@ -65,18 +90,14 @@ EOF
 
 }
 
-resource "google_bigquery_job" "create_bison_model" {
-  job_id     = "create_model"
-  project    = google_bigquery_dataset.feedgen.project
-  location   = google_bigquery_dataset.feedgen.location  
-
-  query {
-    query = <<EOF
-CREATE OR REPLACE MODEL
-`${google_bigquery_dataset.feedgen}.text-bison`
-REMOTE WITH CONNECTION `projects/${var.project_id}/locations/${var.region}/connections/${google_bigquery_connection.vertex-connection.id}`
-OPTIONS (ENDPOINT = 'text-bison');
+resource "null_resource" "bison_model" {
+  provisioner "local-exec" {
+    command = <<EOF
+bq query --nouse_legacy_sql \
+'CREATE OR REPLACE MODEL `${var.project_id}.feedgen.text-bison` 
+REMOTE WITH CONNECTION `${google_bigquery_connection.vertex-connection.id}`
+OPTIONS (ENDPOINT = "text-bison")'
 EOF
-
   }
 }
+

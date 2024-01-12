@@ -1,0 +1,12 @@
+create or replace table `%%OUTPUT_TABLE%%` as
+select ml_generate_text_result['predictions'][0]['content'] AS generated_text,
+  ml_generate_text_result['predictions'][0]['safetyAttributes'] AS safety_attributes,
+  * EXCEPT (ml_generate_text_result)
+FROM
+  ML.GENERATE_TEXT(MODEL `%%MODEL%%`,
+  (select id, %%PROMPT_COLUMN%% as prompt from `%%PROMPTS_TABLE%%`),
+  struct (@temperature AS temperature,
+      @max_output_token AS max_output_tokens,
+      @top_k as top_k,
+      @top_p as top_p)
+  )
