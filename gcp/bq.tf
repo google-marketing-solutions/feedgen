@@ -13,6 +13,10 @@ provider "google" {
   zone   = var.zone
 }
 
+resource "google_project_service" "bigquery_service" {
+  service = "bigquery.googleapis.com"
+}
+
 resource "google_bigquery_connection" "vertex-connection" {
    connection_id = "vertex-connection"
    location      = var.region
@@ -55,4 +59,20 @@ resource "google_bigquery_table" "prompts" {
 ]
 EOF
 
+}
+
+resource "google_bigquery_job" "create_bison_model" {
+  job_id     = "create_model"
+  project    = google_bigquery_dataset.feedgen.project
+  location   = google_bigquery_dataset.feedgen.location  
+
+  query {
+    query = <<EOF
+CREATE OR REPLACE MODEL
+`${google_bigquery_dataset.feedgen}.text-bison`
+REMOTE WITH CONNECTION `projects/${var.project_id}/locations/${var.region}/connections/${google_bigquery_connection.vertex-connection.id}`
+OPTIONS (ENDPOINT = 'text-bison');
+EOF
+
+  }
 }
