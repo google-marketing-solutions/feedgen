@@ -142,6 +142,14 @@ const CONFIG = {
       name: 'Input Feed',
       startRow: 1,
     },
+    titlePrompts: {
+      name: 'Title Prompts',
+      startRow: 1,
+    },
+    descriptionPrompts: {
+      name: 'Description Prompts',
+      startRow: 2,
+    },
     generated: {
       name: 'Generated Content Validation',
       startRow: 3,
@@ -1093,6 +1101,63 @@ function fetchDescriptionGenerationData(data, generatedTitle, imageUrl) {
     score: parseFloat(score),
     evaluation: evaluation,
   };
+}
+function buildTitlePrompt(data) {
+  const dataContext = `Context: ${JSON.stringify(data)}\n\n`;
+  const prompt =
+    getConfigSheetValue(CONFIG.userSettings.title.fullPrompt) + dataContext;
+  return prompt;
+}
+function buildDescriptionPrompt(data) {
+  const dataContext = `\n Context: ${JSON.stringify(data)}\n\n`;
+  const prompt =
+    getConfigSheetValue(CONFIG.userSettings.description.fullPrompt) +
+    dataContext;
+  return prompt;
+}
+function createPrompts(rows, promptGenerator) {
+  return rows.map(row => {
+    const id = row['id'];
+    return [
+      typeof id === 'string' ? id.toString() : 'n/a',
+      promptGenerator(row),
+    ];
+  });
+}
+function getUprocessedRowsAsObjects() {
+  const unprocessedRows = getUnprocessedInputRows(true);
+  const rawData = JSON.parse(unprocessedRows);
+  const headers = rawData.shift();
+  const data = rawData;
+  const rows = data.map(row =>
+    Object.fromEntries(row.map((item, index) => [headers[index], item]))
+  );
+  return rows;
+}
+function writeTitlePrompts() {
+  const prompts = createPrompts(getUprocessedRowsAsObjects(), buildTitlePrompt);
+  SheetsService.getInstance().setValuesInDefinedRange(
+    CONFIG.sheets.titlePrompts.name,
+    CONFIG.sheets.titlePrompts.startRow,
+    1,
+    prompts
+  );
+}
+function writeDesctiptionPrompts() {
+  const prompts = createPrompts(
+    getUprocessedRowsAsObjects(),
+    buildDescriptionPrompt
+  );
+  SheetsService.getInstance().setValuesInDefinedRange(
+    CONFIG.sheets.descriptionPrompts.name,
+    CONFIG.sheets.descriptionPrompts.startRow,
+    1,
+    prompts
+  );
+}
+function generateAllPrompts() {
+  writeTitlePrompts();
+  writeDesctiptionPrompts();
 }
 function getGeneratedRows() {
   return SheetsService.getInstance().getRangeData(

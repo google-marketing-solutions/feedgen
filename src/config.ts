@@ -142,6 +142,14 @@ export const CONFIG = {
       name: 'Input Feed',
       startRow: 1,
     },
+    titlePrompts: {
+      name: 'Title Prompts',
+      startRow: 1,
+    },
+    descriptionPrompts: {
+      name: 'Description Prompts',
+      startRow: 2,
+    },
     generated: {
       name: 'Generated Content Validation',
       startRow: 3,

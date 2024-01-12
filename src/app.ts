@@ -746,6 +746,84 @@ function fetchDescriptionGenerationData(
   };
 }
 
+function buildTitlePrompt(data: Record<string, unknown>): string {
+  const dataContext = `Context: ${JSON.stringify(data)}\n\n`;
+  const prompt =
+    getConfigSheetValue(CONFIG.userSettings.title.fullPrompt) + dataContext;
+  return prompt;
+}
+
+function buildDescriptionPrompt(data: Record<string, unknown>): string {
+  const dataContext = `\n Context: ${JSON.stringify(data)}\n\n`;
+  const prompt =
+    getConfigSheetValue(CONFIG.userSettings.description.fullPrompt) +
+    dataContext;
+  return prompt;
+}
+
+/**
+ * Create ready-to-send prompt for each input line
+ */
+function createPrompts(
+  rows: Record<string, unknown>[],
+  promptGenerator: (row: Record<string, unknown>) => string
+): string[][] {
+  return rows.map(row => {
+    const id = row['id'];
+    return [
+      typeof id === 'string' ? id.toString() : 'n/a',
+      promptGenerator(row),
+    ];
+  });
+}
+
+function getUprocessedRowsAsObjects() {
+  const unprocessedRows = getUnprocessedInputRows(true);
+  const rawData: string[][] = JSON.parse(unprocessedRows);
+  const headers: string[] = rawData.shift()!;
+  const data = rawData;
+  const rows: Record<string, unknown>[] = data.map((row: string[]) =>
+    Object.fromEntries(
+      row.map((item: string, index: number) => [headers[index], item])
+    )
+  );
+  return rows;
+}
+
+function writeTitlePrompts() {
+  const prompts = createPrompts(getUprocessedRowsAsObjects(), buildTitlePrompt);
+  SheetsService.getInstance().setValuesInDefinedRange(
+    CONFIG.sheets.titlePrompts.name,
+    CONFIG.sheets.titlePrompts.startRow,
+    1,
+    prompts
+  );
+}
+
+function writeDesctiptionPrompts() {
+  const prompts = createPrompts(
+    getUprocessedRowsAsObjects(),
+    buildDescriptionPrompt
+  );
+  // SheetsService.getInstance().clearDefinedRange(
+  //   CONFIG.sheets.descriptionPrompts.name,
+  //   CONFIG.sheets.descriptionPrompts.startRow,
+  //   1,
+    
+  // )
+  SheetsService.getInstance().setValuesInDefinedRange(
+    CONFIG.sheets.descriptionPrompts.name,
+    CONFIG.sheets.descriptionPrompts.startRow,
+    1,
+    prompts
+  );
+}
+
+export function generateAllPrompts() {
+  writeTitlePrompts();
+  writeDesctiptionPrompts();
+}
+
 /**
  * Get rows from Generated Content sheet.
  *

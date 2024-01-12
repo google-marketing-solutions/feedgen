@@ -245,6 +245,17 @@ limitations under the License.
 
       setStatus(STATUS.idle);
     }
+
+    function generatePrompts(){
+      setStatus(STATUS.running);
+
+      google.script.run
+        .withSuccessHandler(res => {
+          setStatus(STATUS.idle);
+        })
+        .withFailureHandler(err => log(err))
+        .generateAllPrompts();
+    }
   </script>
 </head>
 <body>
@@ -269,6 +280,9 @@ limitations under the License.
       </button>
       <button id="clear-generated" class="sidebar-button" onclick="clearGenerated()">
         Clear Generated Data
+      </button>
+      <button id="generate-prompts" class="sidebar-button" onClick="generatePrompts()">
+        Generate Prompts Only
       </button>
     </section>
 
