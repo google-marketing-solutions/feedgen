@@ -3,4 +3,5 @@ build/
 .DS_Store
 .clasp*.json
 *.tgz
+**/.venv
 .vscode
