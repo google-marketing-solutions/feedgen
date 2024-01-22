@@ -65,7 +65,7 @@ interface VertexAiGeminiRequestSafetyThreshold {
 }
 
 interface VertexAiGeminiResponseCandidate {
-  candidates: [
+  candidates?: [
     {
       content: {
         parts: [{ text: string }];
@@ -73,6 +73,7 @@ interface VertexAiGeminiResponseCandidate {
       finishReason?: string;
     }
   ];
+  error?: Record<string, unknown>;
 }
 
 export class VertexHelper {
@@ -216,12 +217,15 @@ export class VertexHelper {
     const content: string[] = [];
 
     res.forEach(candidate => {
-      if ('SAFETY' === candidate.candidates[0].finishReason) {
+      if (candidate.error) {
+        throw new Error(JSON.stringify(res));
+      }
+      if ('SAFETY' === candidate.candidates![0].finishReason) {
         throw new Error(
           `Request was blocked as it triggered API safety filters. ${message}`
         );
       }
-      content.push(candidate.candidates[0].content.parts[0].text);
+      content.push(candidate.candidates![0].content.parts[0].text);
     });
 
     const contentText = content.join('');

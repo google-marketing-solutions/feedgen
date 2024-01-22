@@ -536,6 +536,9 @@ class VertexHelper {
     MultiLogger.getInstance().log(res);
     const content = [];
     res.forEach(candidate => {
+      if (candidate.error) {
+        throw new Error(JSON.stringify(res));
+      }
       if ('SAFETY' === candidate.candidates[0].finishReason) {
         throw new Error(
           `Request was blocked as it triggered API safety filters. ${message}`
