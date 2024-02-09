@@ -5,6 +5,11 @@
       "userSymbol": "Sheets",
       "serviceId": "sheets",
       "version": "v4"
+    },
+    {
+      "userSymbol": "BigQuery",
+      "version": "v2",
+      "serviceId": "bigquery"
     }]
   },
   "exceptionLogging": "STACKDRIVER",

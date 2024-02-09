@@ -73,78 +73,145 @@ const CONFIG = {
         notation: 'D5',
       },
     },
+    bigQuery: {
+      useBigQuery: {
+        row: 7,
+        col: 2,
+        notation: 'B7',
+      },
+      datsetName: {
+        row: 7,
+        col: 3,
+        notation: 'C7',
+      },
+      modelPath: {
+        row: 7,
+        col: 4,
+        notation: 'D7',
+      },
+      inputTableName: {
+        row: 7,
+        col: 5,
+        notation: 'E7',
+      },
+      titlesPromptsTable: {
+        row: 7,
+        col: 6,
+        notation: 'F7',
+      },
+      descriptionsPromptsTable: {
+        row: 7,
+        col: 7,
+        notation: 'G7',
+      },
+      titlesResponsesTable: {
+        row: 7,
+        col: 8,
+        notation: 'H7',
+      },
+      descriptionsResponsesTable: {
+        row: 7,
+        col: 9,
+        notation: 'I7',
+      },
+      batchSize: {
+        row: 9,
+        col: 2,
+        notation: 'B9',
+      },
+      batchPointer: {
+        row: 9,
+        col: 3,
+        notation: 'C9',
+      },
+      outputTable: {
+        row: 9,
+        col: 4,
+        notation: 'D9',
+      },
+      titlesOutputTable: {
+        row: 9,
+        col: 6,
+        notation: 'F9',
+      },
+      descriptionsOutputTable: {
+        row: 9,
+        col: 7,
+        notation: 'G9',
+      },
+    },
     description: {
       fullPrompt: {
-        row: 10,
+        row: 14,
         col: 2,
       },
       minApprovalScore: {
-        row: 8,
+        row: 12,
         col: 6,
       },
       usePageLinkData: {
-        row: 8,
+        row: 12,
         col: 8,
       },
       modelParameters: {
         temperature: {
-          row: 8,
+          row: 12,
           col: 2,
         },
         maxOutputTokens: {
-          row: 8,
+          row: 12,
           col: 3,
         },
         topK: {
-          row: 8,
+          row: 12,
           col: 4,
         },
         topP: {
-          row: 8,
+          row: 12,
           col: 5,
         },
       },
     },
     title: {
       fullPrompt: {
-        row: 16,
-        col: 2,
-      },
-      minApprovalScore: {
-        row: 14,
-        col: 6,
-      },
-      usePageLinkData: {
-        row: 14,
-        col: 8,
-      },
-      preferGeneratedValues: {
-        row: 19,
-        col: 2,
-      },
-      useLlmTitles: {
         row: 20,
         col: 2,
       },
+      minApprovalScore: {
+        row: 18,
+        col: 6,
+      },
+      usePageLinkData: {
+        row: 18,
+        col: 8,
+      },
+      preferGeneratedValues: {
+        row: 23,
+        col: 2,
+      },
+      useLlmTitles: {
+        row: 24,
+        col: 2,
+      },
       allowedWords: {
-        row: 21,
+        row: 25,
         col: 2,
       },
       modelParameters: {
         temperature: {
-          row: 14,
+          row: 18,
           col: 2,
         },
         maxOutputTokens: {
-          row: 14,
+          row: 18,
           col: 3,
         },
         topK: {
-          row: 14,
+          row: 18,
           col: 4,
         },
         topP: {
-          row: 14,
+          row: 18,
           col: 5,
         },
       },
@@ -576,8 +643,8 @@ const WORD_MATCH_REGEX = /[A-Za-zÀ-ÖØ-öø-ÿ0-9]+/g;
 const TITLE_MAX_LENGTH = 150;
 const DESCRIPTION_MAX_LENGTH = 5000;
 const [vertexAiGcpProjectId, vertexAiLanguageModelId] = [
-  getConfigSheetValue(CONFIG.userSettings.vertexAi.gcpProjectId),
-  getConfigSheetValue(CONFIG.userSettings.vertexAi.languageModelId),
+  getConfigSheetValue$1(CONFIG.userSettings.vertexAi.gcpProjectId),
+  getConfigSheetValue$1(CONFIG.userSettings.vertexAi.languageModelId),
 ];
 function onOpen() {
   SpreadsheetApp.getUi()
@@ -596,7 +663,7 @@ function onEdit(event) {
     sheet.getName() === CONFIG.sheets.config.name &&
     range.getA1Notation() ===
       CONFIG.userSettings.vertexAi.languageModelId.notation;
-  const useImageUnderstanding = getConfigSheetValue(
+  const useImageUnderstanding = getConfigSheetValue$1(
     CONFIG.userSettings.feed.imageUnderstanding
   );
   if (isModelFamilyCell) {
@@ -628,7 +695,7 @@ function FEEDGEN_CREATE_CONTEXT_JSON(itemId) {
   const inputSheet = SpreadsheetApp.getActive().getSheetByName(
     CONFIG.sheets.input.name
   );
-  const itemIdColumnName = getConfigSheetValue(
+  const itemIdColumnName = getConfigSheetValue$1(
     CONFIG.userSettings.feed.itemIdColumnName
   );
   if (!inputSheet) return;
@@ -667,7 +734,7 @@ function getUnprocessedInputRows(filterProcessed = true) {
     .map(row => String(row[CONFIG.sheets.generated.cols.id]));
   if (filterProcessed && generatedRowIds.length) {
     const itemIdIndex = inputRows[0].indexOf(
-      String(getConfigSheetValue(CONFIG.userSettings.feed.itemIdColumnName))
+      String(getConfigSheetValue$1(CONFIG.userSettings.feed.itemIdColumnName))
     );
     inputRows = inputRows.filter(
       row => !generatedRowIds.includes(String(row[itemIdIndex]))
@@ -682,7 +749,7 @@ function generateRow(headers, row) {
     outputRow = optimizeRow(headers, row);
   } catch (e) {
     const itemIdIndex = headers.indexOf(
-      String(getConfigSheetValue(CONFIG.userSettings.feed.itemIdColumnName))
+      String(getConfigSheetValue$1(CONFIG.userSettings.feed.itemIdColumnName))
     );
     outputRow[
       CONFIG.sheets.generated.cols.status
@@ -769,7 +836,7 @@ function getGenerationMetrics(
     wordsRemoved: [...wordsRemoved].join(` ${SEPARATOR} `),
   };
 }
-function getConfigSheetValue(field) {
+function getConfigSheetValue$1(field) {
   return SheetsService.getInstance().getCellValue(
     CONFIG.sheets.config.name,
     field.row,
@@ -781,18 +848,18 @@ function optimizeRow(headers, data) {
     data.map((item, index) => [headers[index], item])
   );
   const itemId =
-    dataObj[getConfigSheetValue(CONFIG.userSettings.feed.itemIdColumnName)];
+    dataObj[getConfigSheetValue$1(CONFIG.userSettings.feed.itemIdColumnName)];
   const origTitle =
-    dataObj[getConfigSheetValue(CONFIG.userSettings.feed.titleColumnName)];
+    dataObj[getConfigSheetValue$1(CONFIG.userSettings.feed.titleColumnName)];
   const origDescription =
     dataObj[
-      getConfigSheetValue(CONFIG.userSettings.feed.descriptionColumnName)
+      getConfigSheetValue$1(CONFIG.userSettings.feed.descriptionColumnName)
     ];
   const imageUrl =
-    dataObj[getConfigSheetValue(CONFIG.userSettings.feed.imageColumnName)];
+    dataObj[getConfigSheetValue$1(CONFIG.userSettings.feed.imageColumnName)];
   let genTitle = origTitle;
-  const gapAttributesAndValues = {};
-  let totalScore = '1';
+  let gapAttributesAndValues = {};
+  let res = 'N/A';
   let titleChanged = 'FALSE';
   let addedAttributes = '[]';
   let removedAttributes = '[]';
@@ -801,179 +868,37 @@ function optimizeRow(headers, data) {
   let origTemplate = '';
   let genTemplate = '';
   let genCategory = '';
-  let res = 'N/A';
-  if (getConfigSheetValue(CONFIG.userSettings.feed.generateTitles)) {
+  let totalScore = '1';
+  if (getConfigSheetValue$1(CONFIG.userSettings.feed.generateTitles)) {
     res = fetchTitleGenerationData(
       dataObj,
-      getConfigSheetValue(CONFIG.userSettings.feed.imageUnderstanding)
+      getConfigSheetValue$1(CONFIG.userSettings.feed.imageUnderstanding)
         ? imageUrl
         : null
     );
-    const regexStr =
-      '^.*product attribute keys in original title:(?<origTemplateRow>.*)' +
-      '^product category:(?<genCategoryRow>.*)' +
-      '^product attribute keys:(?<genTemplateRow>.*)' +
-      '^product attribute values:(?<genAttributesRow>.*)';
-    const replacedKeysRegexStr = '^replaced keys:(?<replacedKeysRow>.*)';
-    const generatedTitleRegexStr = '^generated title:(?<genTitleRow>.*)';
-    const completeRegex = new RegExp(
-      regexStr + replacedKeysRegexStr + generatedTitleRegexStr + '$',
-      'ms'
-    );
-    const noReplacedKeysRegex = new RegExp(
-      regexStr + generatedTitleRegexStr + '$',
-      'ms'
-    );
-    const matches = res.match(completeRegex) ?? res.match(noReplacedKeysRegex);
-    if (!matches || !matches.groups) {
-      throw new Error(
-        `Received an incomplete title response from The API.\nResponse: ${res}`
-      );
-    }
-    const [
-      origTemplateRow,
-      genCategoryRow,
-      genTemplateRow,
-      genAttributesRow,
-      replacedKeysRow,
-      genTitleRow,
-    ] = [
-      matches.groups['origTemplateRow'],
-      matches.groups['genCategoryRow'],
-      matches.groups['genTemplateRow'],
-      matches.groups['genAttributesRow'],
-      matches.groups['replacedKeysRow'],
-      matches.groups['genTitleRow'],
-    ];
-    const replacedKeys = replacedKeysRow
-      ? String(replacedKeysRow)
-          .trim()
-          .split(',')
-          .filter(Boolean)
-          .map(x => x.toLowerCase().trim())
-      : [];
-    genCategory = String(genCategoryRow).trim();
-    const genAttributes = String(genTemplateRow)
-      .trim()
-      .split(SEPARATOR)
-      .filter(Boolean)
-      .map(x => x.trim());
-    const origAttributes = String(origTemplateRow)
-      .trim()
-      .split(SEPARATOR)
-      .filter(Boolean)
-      .map(x => x.trim());
-    const genAttributeValues = String(genAttributesRow)
-      .trim()
-      .split(SEPARATOR)
-      .filter(Boolean)
-      .map(x => x.trim());
-    const [preferGeneratedValues, useLlmTitles, allowedWords] = [
-      getConfigSheetValue(CONFIG.userSettings.title.preferGeneratedValues),
-      getConfigSheetValue(CONFIG.userSettings.title.useLlmTitles),
-      String(getConfigSheetValue(CONFIG.userSettings.title.allowedWords))
-        .split(',')
-        .filter(Boolean)
-        .map(word => word.trim().toLowerCase()),
-    ];
-    const titleFeatures = [];
-    const validGenAttributes = [];
-    const extraFeatures = new Set();
-    for (const [index, attribute] of genAttributes.entries()) {
-      if (
-        (!dataObj[attribute] &&
-          genAttributeValues[index] &&
-          (!origAttributes.includes(attribute) ||
-            Object.keys(dataObj).includes(attribute))) ||
-        replacedKeys.includes(attribute.toLowerCase())
-      ) {
-        const value = removeEmptyAttributeValues(
-          attribute,
-          genAttributeValues[index],
-          true
-        ).trim();
-        if (value) {
-          gapAttributesAndValues[attribute] = value;
-        }
-      }
-      let value = preferGeneratedValues
-        ? genAttributeValues[index]
-        : typeof dataObj[attribute] !== 'undefined' &&
-          String(dataObj[attribute]).length
-        ? dataObj[attribute]
-        : genAttributeValues[index];
-      if (typeof value !== 'undefined' && String(value).trim()) {
-        value = removeEmptyAttributeValues(attribute, value).trim();
-        if (value) {
-          validGenAttributes.push(attribute);
-          titleFeatures.push(value);
-          if (
-            attribute === 'Image Features' ||
-            attribute === 'Website Features'
-          ) {
-            const extraFeaturesMatches = value.match(WORD_MATCH_REGEX);
-            if (extraFeaturesMatches) {
-              extraFeaturesMatches.forEach(word =>
-                extraFeatures.add(word.toLowerCase())
-              );
-            }
-          }
-        }
-      }
-    }
-    origTemplate = origAttributes
-      .filter(Boolean)
-      .map(x => `<${x}>`)
-      .join(' ');
-    genTemplate = validGenAttributes
-      .filter(Boolean)
-      .map(x => `<${x}>`)
-      .join(' ');
-    genTitle = titleFeatures.join(' ');
-    if (genTitle.endsWith(',')) {
-      genTitle = genTitle.slice(0, -1);
-    }
-    if (useLlmTitles) {
-      genTitle = String(genTitleRow).trim();
-    }
-    const inputWords = new Set();
-    for (const [key, value] of Object.entries(dataObj)) {
-      const keyAndValue = [
-        String(key),
-        String(value).replaceAll("'s", ''),
-      ].join(' ');
-      const match = keyAndValue.match(WORD_MATCH_REGEX);
-      if (match) {
-        match.forEach(word => inputWords.add(word.toLowerCase()));
-      }
-    }
-    allowedWords.forEach(word => inputWords.add(word));
-    extraFeatures.forEach(word => inputWords.add(word));
-    const metrics = getGenerationMetrics(
-      origTitle,
+    ({
+      genCategory,
+      origTemplate,
+      genTemplate,
       genTitle,
-      new Set(origAttributes),
-      new Set(validGenAttributes),
-      inputWords,
+      totalScore,
+      titleChanged,
+      addedAttributes,
+      removedAttributes,
+      newWordsAdded,
+      wordsRemoved,
       gapAttributesAndValues,
-      dataObj
-    );
-    totalScore = metrics.totalScore;
-    titleChanged = metrics.titleChanged;
-    addedAttributes = metrics.addedAttributes;
-    removedAttributes = metrics.removedAttributes;
-    newWordsAdded = metrics.newWordsAdded;
-    wordsRemoved = metrics.wordsRemoved;
+    } = parseTitleGenerationData(res, dataObj, origTitle));
   }
   let genDescription = origDescription;
   let genDescriptionScore = -1;
   let genDescriptionEvaluation = 'No Evaluation';
   let genDescriptionApproval = true;
-  if (getConfigSheetValue(CONFIG.userSettings.feed.generateDescriptions)) {
+  if (getConfigSheetValue$1(CONFIG.userSettings.feed.generateDescriptions)) {
     const response = fetchDescriptionGenerationData(
       dataObj,
       genTitle,
-      getConfigSheetValue(CONFIG.userSettings.feed.imageUnderstanding)
+      getConfigSheetValue$1(CONFIG.userSettings.feed.imageUnderstanding)
         ? imageUrl
         : null
     );
@@ -983,7 +908,7 @@ function optimizeRow(headers, data) {
     genDescriptionApproval =
       genDescriptionScore >=
       parseFloat(
-        getConfigSheetValue(CONFIG.userSettings.description.minApprovalScore)
+        getConfigSheetValue$1(CONFIG.userSettings.description.minApprovalScore)
       );
   }
   const status =
@@ -997,7 +922,7 @@ function optimizeRow(headers, data) {
   const approval =
     Number(score) >=
       parseFloat(
-        getConfigSheetValue(CONFIG.userSettings.title.minApprovalScore)
+        getConfigSheetValue$1(CONFIG.userSettings.title.minApprovalScore)
       ) && genDescriptionApproval;
   return [
     approval,
@@ -1027,6 +952,186 @@ function optimizeRow(headers, data) {
     JSON.stringify(dataObj),
   ];
 }
+function parseTitleGenerationData(res, dataObj, origTitle) {
+  let totalScore = '1';
+  let titleChanged = 'FALSE';
+  let addedAttributes = '[]';
+  let removedAttributes = '[]';
+  let newWordsAdded = '0';
+  let wordsRemoved = '0';
+  let origTemplate = '';
+  let genTemplate = '';
+  let genCategory = '';
+  let genTitle = origTitle;
+  const gapAttributesAndValues = {};
+  const regexStr =
+    '^.*product attribute keys in original title:(?<origTemplateRow>.*)' +
+    '^product category:(?<genCategoryRow>.*)' +
+    '^product attribute keys:(?<genTemplateRow>.*)' +
+    '^product attribute values:(?<genAttributesRow>.*)';
+  const replacedKeysRegexStr = '^replaced keys:(?<replacedKeysRow>.*)';
+  const generatedTitleRegexStr = '^generated title:(?<genTitleRow>.*)';
+  const completeRegex = new RegExp(
+    regexStr + replacedKeysRegexStr + generatedTitleRegexStr + '$',
+    'ms'
+  );
+  const noReplacedKeysRegex = new RegExp(
+    regexStr + generatedTitleRegexStr + '$',
+    'ms'
+  );
+  const matches = res.match(completeRegex) ?? res.match(noReplacedKeysRegex);
+  if (!matches || !matches.groups) {
+    throw new Error(
+      `Received an incomplete title response from The API.\nResponse: ${res}`
+    );
+  }
+  const [
+    origTemplateRow,
+    genCategoryRow,
+    genTemplateRow,
+    genAttributesRow,
+    replacedKeysRow,
+    genTitleRow,
+  ] = [
+    matches.groups['origTemplateRow'],
+    matches.groups['genCategoryRow'],
+    matches.groups['genTemplateRow'],
+    matches.groups['genAttributesRow'],
+    matches.groups['replacedKeysRow'],
+    matches.groups['genTitleRow'],
+  ];
+  const replacedKeys = replacedKeysRow
+    ? String(replacedKeysRow)
+        .trim()
+        .split(',')
+        .filter(Boolean)
+        .map(x => x.toLowerCase().trim())
+    : [];
+  genCategory = String(genCategoryRow).trim();
+  const genAttributes = String(genTemplateRow)
+    .trim()
+    .split(SEPARATOR)
+    .filter(Boolean)
+    .map(x => x.trim());
+  const origAttributes = String(origTemplateRow)
+    .trim()
+    .split(SEPARATOR)
+    .filter(Boolean)
+    .map(x => x.trim());
+  const genAttributeValues = String(genAttributesRow)
+    .trim()
+    .split(SEPARATOR)
+    .filter(Boolean)
+    .map(x => x.trim());
+  const [preferGeneratedValues, useLlmTitles, allowedWords] = [
+    getConfigSheetValue$1(CONFIG.userSettings.title.preferGeneratedValues),
+    getConfigSheetValue$1(CONFIG.userSettings.title.useLlmTitles),
+    String(getConfigSheetValue$1(CONFIG.userSettings.title.allowedWords))
+      .split(',')
+      .filter(Boolean)
+      .map(word => word.trim().toLowerCase()),
+  ];
+  const titleFeatures = [];
+  const validGenAttributes = [];
+  const extraFeatures = new Set();
+  for (const [index, attribute] of genAttributes.entries()) {
+    if (
+      (!dataObj[attribute] &&
+        genAttributeValues[index] &&
+        (!origAttributes.includes(attribute) ||
+          Object.keys(dataObj).includes(attribute))) ||
+      replacedKeys.includes(attribute.toLowerCase())
+    ) {
+      const value = removeEmptyAttributeValues(
+        attribute,
+        genAttributeValues[index],
+        true
+      ).trim();
+      if (value) {
+        gapAttributesAndValues[attribute] = value;
+      }
+    }
+    let value = preferGeneratedValues
+      ? genAttributeValues[index]
+      : typeof dataObj[attribute] !== 'undefined' &&
+        String(dataObj[attribute]).length
+      ? dataObj[attribute]
+      : genAttributeValues[index];
+    if (typeof value !== 'undefined' && String(value).trim()) {
+      value = removeEmptyAttributeValues(attribute, value).trim();
+      if (value) {
+        validGenAttributes.push(attribute);
+        titleFeatures.push(value);
+        if (
+          attribute === 'Image Features' ||
+          attribute === 'Website Features'
+        ) {
+          const extraFeaturesMatches = value.match(WORD_MATCH_REGEX);
+          if (extraFeaturesMatches) {
+            extraFeaturesMatches.forEach(word =>
+              extraFeatures.add(word.toLowerCase())
+            );
+          }
+        }
+      }
+    }
+  }
+  origTemplate = origAttributes
+    .filter(Boolean)
+    .map(x => `<${x}>`)
+    .join(' ');
+  genTemplate = validGenAttributes
+    .filter(Boolean)
+    .map(x => `<${x}>`)
+    .join(' ');
+  genTitle = titleFeatures.join(' ');
+  if (genTitle.endsWith(',')) {
+    genTitle = genTitle.slice(0, -1);
+  }
+  if (useLlmTitles) {
+    genTitle = String(genTitleRow).trim();
+  }
+  const inputWords = new Set();
+  for (const [key, value] of Object.entries(dataObj)) {
+    const keyAndValue = [String(key), String(value).replaceAll("'s", '')].join(
+      ' '
+    );
+    const match = keyAndValue.match(WORD_MATCH_REGEX);
+    if (match) {
+      match.forEach(word => inputWords.add(word.toLowerCase()));
+    }
+  }
+  allowedWords.forEach(word => inputWords.add(word));
+  extraFeatures.forEach(word => inputWords.add(word));
+  const metrics = getGenerationMetrics(
+    origTitle,
+    genTitle,
+    new Set(origAttributes),
+    new Set(validGenAttributes),
+    inputWords,
+    gapAttributesAndValues,
+    dataObj
+  );
+  totalScore = metrics.totalScore;
+  titleChanged = metrics.titleChanged;
+  addedAttributes = metrics.addedAttributes;
+  removedAttributes = metrics.removedAttributes;
+  newWordsAdded = metrics.newWordsAdded;
+  wordsRemoved = metrics.wordsRemoved;
+  return {
+    genCategory,
+    origTemplate,
+    genTemplate,
+    genTitle,
+    totalScore,
+    titleChanged,
+    addedAttributes,
+    removedAttributes,
+    newWordsAdded,
+    wordsRemoved,
+    gapAttributesAndValues,
+  };
+}
 function removeEmptyAttributeValues(key, value, removeTrailingComma = false) {
   const val = String(value).trim();
   if (
@@ -1048,7 +1153,7 @@ function refreshConfigSheet() {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(
     CONFIG.sheets.config.name
   );
-  const prompt = getConfigSheetValue(CONFIG.userSettings.title.fullPrompt);
+  const prompt = getConfigSheetValue$1(CONFIG.userSettings.title.fullPrompt);
   if (isErroneousPrompt(prompt)) {
     MultiLogger.getInstance().log(
       'Manually refreshing Config sheet by adding and deleting a row...'
@@ -1066,7 +1171,7 @@ function fetchLandingPageInfo(data, useLandingPageInfo) {
     return '';
   }
   const itemId =
-    data[getConfigSheetValue(CONFIG.userSettings.feed.itemIdColumnName)];
+    data[getConfigSheetValue$1(CONFIG.userSettings.feed.itemIdColumnName)];
   const cachedHtml = CacheService.getScriptCache().get(
     `${CONFIG.caching.keyPrefix}${itemId}`
   );
@@ -1076,7 +1181,7 @@ function fetchLandingPageInfo(data, useLandingPageInfo) {
   }
   let landingPageInfo = '';
   const pageLink =
-    data[getConfigSheetValue(CONFIG.userSettings.feed.pageLinkColumnName)];
+    data[getConfigSheetValue$1(CONFIG.userSettings.feed.pageLinkColumnName)];
   if (pageLink) {
     landingPageInfo = Util.fetchHtmlContent(String(pageLink));
   }
@@ -1095,10 +1200,10 @@ function fetchTitleGenerationData(data, imageUrl) {
   const dataContext = `Context: ${JSON.stringify(data)}\n\n`;
   const landingPageInfo = fetchLandingPageInfo(
     data,
-    getConfigSheetValue(CONFIG.userSettings.title.usePageLinkData)
+    getConfigSheetValue$1(CONFIG.userSettings.title.usePageLinkData)
   );
   let prompt =
-    getConfigSheetValue(CONFIG.userSettings.title.fullPrompt) + dataContext;
+    getConfigSheetValue$1(CONFIG.userSettings.title.fullPrompt) + dataContext;
   if (landingPageInfo) {
     prompt += landingPageInfo;
   }
@@ -1112,23 +1217,23 @@ function fetchTitleGenerationData(data, imageUrl) {
   const res = Util.executeWithRetry(CONFIG.vertexAi.maxRetries, () =>
     VertexHelper.getInstance(vertexAiGcpProjectId, vertexAiLanguageModelId, {
       temperature: Number(
-        getConfigSheetValue(
+        getConfigSheetValue$1(
           CONFIG.userSettings.title.modelParameters.temperature
         )
       ),
       maxOutputTokens: Number(
-        getConfigSheetValue(
+        getConfigSheetValue$1(
           CONFIG.userSettings.title.modelParameters.maxOutputTokens
         )
       ),
       topK: Number(
-        getConfigSheetValue(CONFIG.userSettings.title.modelParameters.topK)
+        getConfigSheetValue$1(CONFIG.userSettings.title.modelParameters.topK)
       ),
       topP: Number(
-        getConfigSheetValue(CONFIG.userSettings.title.modelParameters.topP)
+        getConfigSheetValue$1(CONFIG.userSettings.title.modelParameters.topP)
       ),
     }).generate(
-      getConfigSheetValue(CONFIG.userSettings.vertexAi.languageModelId),
+      getConfigSheetValue$1(CONFIG.userSettings.vertexAi.languageModelId),
       prompt,
       imageUrl
     )
@@ -1144,11 +1249,11 @@ function fetchDescriptionGenerationData(data, generatedTitle, imageUrl) {
   );
   const dataContext = `Context: ${JSON.stringify(modifiedData)}\n\n`;
   let prompt =
-    getConfigSheetValue(CONFIG.userSettings.description.fullPrompt) +
+    getConfigSheetValue$1(CONFIG.userSettings.description.fullPrompt) +
     dataContext;
   const landingPageInfo = fetchLandingPageInfo(
     data,
-    getConfigSheetValue(CONFIG.userSettings.description.usePageLinkData)
+    getConfigSheetValue$1(CONFIG.userSettings.description.usePageLinkData)
   );
   if (landingPageInfo) {
     prompt += landingPageInfo;
@@ -1163,31 +1268,34 @@ function fetchDescriptionGenerationData(data, generatedTitle, imageUrl) {
   const res = Util.executeWithRetry(CONFIG.vertexAi.maxRetries, () =>
     VertexHelper.getInstance(vertexAiGcpProjectId, vertexAiLanguageModelId, {
       temperature: Number(
-        getConfigSheetValue(
+        getConfigSheetValue$1(
           CONFIG.userSettings.description.modelParameters.temperature
         )
       ),
       maxOutputTokens: Number(
-        getConfigSheetValue(
+        getConfigSheetValue$1(
           CONFIG.userSettings.description.modelParameters.maxOutputTokens
         )
       ),
       topK: Number(
-        getConfigSheetValue(
+        getConfigSheetValue$1(
           CONFIG.userSettings.description.modelParameters.topK
         )
       ),
       topP: Number(
-        getConfigSheetValue(
+        getConfigSheetValue$1(
           CONFIG.userSettings.description.modelParameters.topP
         )
       ),
     }).generate(
-      getConfigSheetValue(CONFIG.userSettings.vertexAi.languageModelId),
+      getConfigSheetValue$1(CONFIG.userSettings.vertexAi.languageModelId),
       prompt,
       imageUrl
     )
   );
+  return parseDescriptionResponse(res);
+}
+function parseDescriptionResponse(res) {
   const regex =
     /^.*description:(?<description>.*)^score:(?<score>.*)^reasoning:(?<evaluation>.*)$/ms;
   const matches = res.match(regex);
@@ -1358,4 +1466,498 @@ function exportApproved() {
   writeApprovedData(outputHeader, rowsToWrite);
 }
 
+const bq = null;
+function shouldRunInBigQuery() {
+  const useBq = getConfigSheetValue(CONFIG.userSettings.bigQuery.useBigQuery);
+  Logger.log(`shouldRunInBigQuery:${useBq}`);
+  return useBq;
+}
+function runBigqueryProcess() {
+  const project = getConfigSheetValue(
+    CONFIG.userSettings.vertexAi.gcpProjectId
+  );
+  const dataset = getConfigSheetValue(CONFIG.userSettings.bigQuery.datsetName);
+  const inputTable = getConfigSheetValue(
+    CONFIG.userSettings.bigQuery.inputTableName
+  );
+  const modelPath = getConfigSheetValue(CONFIG.userSettings.bigQuery.modelPath);
+  const modelName = getConfigSheetValue(
+    CONFIG.userSettings.vertexAi.languageModelId
+  );
+  const titlePromptPrefix = getConfigSheetValue(
+    CONFIG.userSettings.title.fullPrompt
+  );
+  const descriptionPromptPrefix = getConfigSheetValue(
+    CONFIG.userSettings.description.fullPrompt
+  );
+  const titlePromptTable = getConfigSheetValue(
+    CONFIG.userSettings.bigQuery.titlesPromptsTable
+  );
+  const title_temperature = getConfigSheetValue(
+    CONFIG.userSettings.title.modelParameters.temperature
+  );
+  const title_topK = getConfigSheetValue(
+    CONFIG.userSettings.title.modelParameters.topK
+  );
+  const title_topP = getConfigSheetValue(
+    CONFIG.userSettings.title.modelParameters.topP
+  );
+  const title_maxOutputTokens = getConfigSheetValue(
+    CONFIG.userSettings.title.modelParameters.maxOutputTokens
+  );
+  const titleResponsesTable = getConfigSheetValue(
+    CONFIG.userSettings.bigQuery.titlesOutputTable
+  );
+  const titlesOutputTable = getConfigSheetValue(
+    CONFIG.userSettings.bigQuery.titlesOutputTable
+  );
+  const descriptionsPromptsTable = getConfigSheetValue(
+    CONFIG.userSettings.bigQuery.descriptionsPromptsTable
+  );
+  const description_temperature = getConfigSheetValue(
+    CONFIG.userSettings.description.modelParameters.temperature
+  );
+  const description_topK = getConfigSheetValue(
+    CONFIG.userSettings.description.modelParameters.topK
+  );
+  const description_topP = getConfigSheetValue(
+    CONFIG.userSettings.description.modelParameters.topP
+  );
+  const description_maxOutputTokens = getConfigSheetValue(
+    CONFIG.userSettings.description.modelParameters.maxOutputTokens
+  );
+  const descriptionResponsesTable = getConfigSheetValue(
+    CONFIG.userSettings.bigQuery.descriptionsOutputTable
+  );
+  const descriptionsOutputTable = getConfigSheetValue(
+    CONFIG.userSettings.bigQuery.descriptionsOutputTable
+  );
+  const outputTable = getConfigSheetValue(
+    CONFIG.userSettings.bigQuery.outputTable
+  );
+  const batchPointer = getConfigSheetValue(
+    CONFIG.userSettings.bigQuery.batchPointer
+  );
+  const batchSize = getConfigSheetValue(CONFIG.userSettings.bigQuery.batchSize);
+  MultiLogger.getInstance().log(
+    `Running BQ process against ${modelName} model`
+  );
+  if (modelName in ['text-bison', 'text-bison-32k']) {
+    throw new Error(
+      `Model ${modelName} cannot be used in BigQuery. Choose text-bison or text-bison-32k instead.`
+    );
+  }
+  createModelInBq(project, dataset, modelPath, modelName);
+  const itemCount = readInputSize(project, dataset);
+  generateTitlePrompts(
+    project,
+    dataset,
+    inputTable,
+    titlePromptPrefix,
+    batchPointer,
+    batchSize
+  );
+  runTitleGeneration(
+    project,
+    dataset,
+    modelName,
+    titlePromptTable,
+    titleResponsesTable,
+    title_temperature,
+    title_maxOutputTokens,
+    title_topK,
+    title_topP
+  );
+  processTitleResponses(
+    project,
+    dataset,
+    titleResponsesTable,
+    titlesOutputTable
+  );
+  generateDescriptionPrompts(
+    project,
+    dataset,
+    inputTable,
+    descriptionsPromptsTable,
+    descriptionPromptPrefix,
+    batchPointer,
+    batchSize
+  );
+  runDescriptionGeneration(
+    project,
+    dataset,
+    modelName,
+    descriptionsPromptsTable,
+    descriptionResponsesTable,
+    title_temperature,
+    title_maxOutputTokens,
+    title_topK,
+    title_topP
+  );
+  processDescriptionResponses(
+    project,
+    dataset,
+    descriptionResponsesTable,
+    descriptionsOutputTable
+  );
+  mergeTitlesAndDescriptions(
+    project,
+    dataset,
+    titlesOutputTable,
+    descriptionsOutputTable,
+    outputTable
+  );
+}
+function createModelInBq(projectId, dataset, connectionPath, modelName) {
+  MultiLogger.getInstance().log(`(re-)Creating model ${modelName}...`);
+  const query = `CREATE OR REPLACE MODEL \`${dataset}.${modelName}\`
+   REMOTE WITH CONNECTION \`${connectionPath}\`
+  OPTIONS (ENDPOINT = '${modelName}')`;
+  runQuery(projectId, query);
+  Logger.log(`Model ${modelName} Created`);
+}
+function readInputSize(projectId, dataset) {
+  MultiLogger.getInstance().log(`Reading input size...`);
+  const inputTable = getConfigSheetValue(
+    CONFIG.userSettings.bigQuery.inputTableName
+  );
+  const query = `select count(*) as totalRows from \`${dataset}.${inputTable}\``;
+  const [values, fields] = runQuery(projectId, query);
+  const itemCount = parseInt(values[0][0]);
+  return itemCount;
+}
+function generateTitlePrompts(
+  projectId,
+  dataset,
+  inputTable,
+  titlePromptPrefix,
+  batchPointer,
+  batchSize
+) {
+  MultiLogger.getInstance().log(`Generating title prompts...`);
+  const idFieldName = getConfigSheetValue(
+    CONFIG.userSettings.bigQuery.inputTableName
+  );
+  const titlePromptsTable = 'title_prompts';
+  const query = `create or replace table \`${dataset}.${titlePromptsTable}\` as (
+  with contexts as (
+    SELECT ${idFieldName}, ROW_NUMBER() OVER() as row_number, TO_JSON_STRING(input) as Context
+    FROM \`${dataset}.${inputTable}\` as input
+    ORDER BY ${idFieldName}
+  )
+  SELECT ${idFieldName},
+    CONCAT("${titlePromptPrefix
+      .replaceAll('\n', '\\n')
+      .replaceAll('"', '\\"')}",Context) as prompt,
+    FROM contexts
+    WHERE row_number >= ${batchPointer}
+      AND row_number < ${batchPointer + batchSize}
+  )`;
+  runQuery(projectId, query);
+  Logger.log(`Table ${titlePromptsTable} Created`);
+}
+function runTitleGeneration(
+  projectId,
+  dataset,
+  modelName,
+  titlePromptsTable,
+  titleResponsesTable,
+  temperature,
+  maxOutputTokens,
+  topK,
+  topP
+) {
+  MultiLogger.getInstance().log(`Generating title responses...`);
+  const idFieldName = getConfigSheetValue(
+    CONFIG.userSettings.bigQuery.inputTableName
+  );
+  const query = `create or replace table \`${dataset}.${titleResponsesTable}\` as
+  select ml_generate_text_result['predictions'][0]['content'] AS generated_text,
+  ml_generate_text_result['predictions'][0]['safetyAttributes'] AS safety_attributes,
+  * EXCEPT (ml_generate_text_result)
+  FROM
+  ML.GENERATE_TEXT(MODEL \`${dataset}.${modelName}\`,
+  (select ${idFieldName}, prompt from \`${dataset}.${titlePromptsTable}\`),
+  struct (${temperature} AS temperature,
+      ${maxOutputTokens} AS max_output_tokens,
+      ${topK} as top_k,
+      ${topP} as top_p)
+  )`;
+  runQuery(projectId, query);
+  Logger.log(`Table ${titleResponsesTable} Created`);
+}
+function processTitleResponses(
+  project,
+  dataset,
+  titleResponsesTable,
+  titlesOutputTable
+) {
+  MultiLogger.getInstance().log(`Processing title responses...`);
+  const idFieldName = getConfigSheetValue(
+    CONFIG.userSettings.feed.itemIdColumnName
+  );
+  const query = `select items.*, responses.generated_text as generated_text,
+  from \`${dataset}.${titleResponsesTable}\` as responses
+  join \`${dataset}.${getConfigSheetValue(
+    CONFIG.userSettings.bigQuery.inputTableName
+  )}\` as items
+  on responses.${idFieldName} = items.${idFieldName}`;
+  const titleFieldName = getConfigSheetValue(
+    CONFIG.userSettings.feed.titleColumnName
+  );
+  const [values, fields] = runQuery(project, query);
+  const result = values.map(row => {
+    return fields.reduce((acc, field, i) => {
+      acc[field] = row[i];
+      return acc;
+    }, {});
+  });
+  const objectsWithTitleGenerationData = result.map(inputObj => {
+    const dataObj = Object.assign({}, inputObj);
+    const origTitle = dataObj[titleFieldName];
+    let res = dataObj['generated_text'];
+    res = res.substring(2, res.length - 1);
+    res = res.replaceAll('\\n', '\n');
+    const {
+      genCategory,
+      origTemplate,
+      genTemplate,
+      genTitle,
+      totalScore,
+      titleChanged,
+      addedAttributes,
+      removedAttributes,
+      newWordsAdded,
+      wordsRemoved,
+      gapAttributesAndValues,
+    } = parseTitleGenerationData(res, dataObj, origTitle);
+    dataObj['genCategory'] = genCategory;
+    dataObj['origTemplate'] = origTemplate;
+    dataObj['genTemplate'] = genTemplate;
+    dataObj['genTitle'] = genTitle;
+    dataObj['totalScore'] = totalScore;
+    dataObj['titleChanged'] = titleChanged;
+    dataObj['addedAttributes'] = addedAttributes;
+    dataObj['removedAttributes'] = removedAttributes;
+    dataObj['newWordsAdded'] = newWordsAdded;
+    dataObj['wordsRemoved'] = wordsRemoved;
+    dataObj['gapAttributesAndValues'] = JSON.stringify(gapAttributesAndValues);
+    return dataObj;
+  });
+  const titleResultsData = objectsWithTitleGenerationData.map(obj => {
+    const output = {};
+    output[idFieldName] = obj[idFieldName];
+    output['genTitle'] = obj['genTitle'];
+    return output;
+  });
+  writeToTable(project, dataset, titlesOutputTable, titleResultsData, true);
+  return objectsWithTitleGenerationData;
+}
+function generateDescriptionPrompts(
+  projectId,
+  dataset,
+  inputTable,
+  descriptionsPromptsTable,
+  descriptionPromptPrefix,
+  batchPointer,
+  batchSize
+) {
+  MultiLogger.getInstance().log(`Generating description prompts...`);
+  const idFieldName = getConfigSheetValue(
+    CONFIG.userSettings.bigQuery.inputTableName
+  );
+  const query = `create or replace table \`${dataset}.${descriptionsPromptsTable}\` as (
+  with contexts as (
+    SELECT ${idFieldName}, ROW_NUMBER() OVER() as row_number, TO_JSON_STRING(input) as Context
+    FROM \`${dataset}.${inputTable}\` as input
+    ORDER BY ${idFieldName}
+  )
+  SELECT ${idFieldName},
+    CONCAT("${descriptionPromptPrefix
+      .replaceAll('\n', '\\n')
+      .replaceAll('"', '\\"')}",Context) as prompt,
+    FROM contexts
+    WHERE row_number >= ${batchPointer}
+      AND row_number < ${batchPointer + batchSize}
+  )`;
+  runQuery(projectId, query);
+  Logger.log(`Table ${descriptionsPromptsTable} Created`);
+}
+function runDescriptionGeneration(
+  projectId,
+  dataset,
+  modelName,
+  descriptionsPromptsTable,
+  descriptionsResponsesTable,
+  temperature,
+  maxOutputTokens,
+  topK,
+  topP
+) {
+  MultiLogger.getInstance().log(`Generating title responses...`);
+  const idFieldName = getConfigSheetValue(
+    CONFIG.userSettings.bigQuery.inputTableName
+  );
+  const query = `create or replace table \`${dataset}.${descriptionsResponsesTable}\` as
+  select ml_generate_text_result['predictions'][0]['content'] AS generated_text,
+  ml_generate_text_result['predictions'][0]['safetyAttributes'] AS safety_attributes,
+  * EXCEPT (ml_generate_text_result)
+  FROM
+  ML.GENERATE_TEXT(MODEL \`${dataset}.${modelName}\`,
+  (select ${idFieldName}, prompt from \`${dataset}.${descriptionsPromptsTable}\`),
+  struct (${temperature} AS temperature,
+      ${maxOutputTokens} AS max_output_tokens,
+      ${topK} as top_k,
+      ${topP} as top_p)
+  )`;
+  runQuery(projectId, query);
+  Logger.log(`Table ${descriptionsResponsesTable} Created`);
+}
+function processDescriptionResponses(
+  project,
+  dataset,
+  descriptionResponsesTable,
+  descriptionsOutputTable
+) {
+  const idFieldName = getConfigSheetValue(
+    CONFIG.userSettings.bigQuery.inputTableName
+  );
+  MultiLogger.getInstance().log(`Processing description responses...`);
+  const query = `select items.*, responses.generated_text as generated_text,
+  from \`${dataset}.${descriptionResponsesTable}\` as responses
+  join \`${dataset}.${getConfigSheetValue(
+    CONFIG.userSettings.bigQuery.inputTableName
+  )}\` as items
+  on responses.${idFieldName} = items.${idFieldName}`;
+  const [values, fields] = runQuery(project, query);
+  const result = values.map(row => {
+    return fields.reduce((acc, field, i) => {
+      acc[field] = row[i];
+      return acc;
+    }, {});
+  });
+  const objectsWithDescriptionGenerationData = result.map(inputObj => {
+    const dataObj = Object.assign({}, inputObj);
+    let res = dataObj['generated_text'];
+    res = res.substring(2, res.length - 1);
+    res = res.replaceAll('\\n', '\n');
+    const { description, score, evaluation } = parseDescriptionResponse(res);
+    dataObj['description'] = description;
+    dataObj['score'] = score.toString();
+    dataObj['evaluation'] = evaluation;
+    return dataObj;
+  });
+  const descriptionResultsData = objectsWithDescriptionGenerationData.map(
+    obj => {
+      const output = {};
+      output[idFieldName] = obj[idFieldName];
+      output['genDescription'] = obj['description'];
+      return output;
+    }
+  );
+  writeToTable(
+    project,
+    dataset,
+    descriptionsOutputTable,
+    descriptionResultsData,
+    true
+  );
+  return objectsWithDescriptionGenerationData;
+}
+function mergeTitlesAndDescriptions(
+  project,
+  dataset,
+  titlesTable,
+  descriptionsTable,
+  outputTable
+) {}
+function storeBatchPointer(batchPointer) {
+  SheetsService.getInstance().setValuesInDefinedRange(
+    CONFIG.sheets.config.name,
+    CONFIG.userSettings.bigQuery.batchPointer.row,
+    CONFIG.userSettings.bigQuery.batchPointer.col,
+    [[batchPointer]]
+  );
+}
+function writeToTable(project, dataset, outputTable, data, overwrite = true) {
+  const jobConfig = {
+    configuration: {
+      load: {
+        destinationTable: {
+          projectId: project,
+          datasetId: dataset,
+          tableId: outputTable,
+        },
+        autodetect: true,
+        writeDisposition: overwrite ? 'WRITE_TRUNCATE' : 'WRITE_APPEND',
+      },
+    },
+  };
+  const first = data[0];
+  const csvRows = [Object.keys(first)].concat(
+    data.map(row =>
+      Object.values(row).map(value =>
+        JSON.stringify(value).replace(/\\"/g, '""')
+      )
+    )
+  );
+  const csvData = csvRows.map(values => values.join(',')).join('\n');
+  const blob = Utilities.newBlob(csvData, 'application/octet-stream');
+  BigQuery?.Jobs?.insert(jobConfig, project, blob);
+}
+function runQuery(projectId, query) {
+  const request = { query: query, useLegacySql: false };
+  MultiLogger.getInstance().log(`Running query: ${query}`);
+  let queryResults = BigQuery.Jobs?.query(request, projectId);
+  const jobId = queryResults?.jobReference?.jobId;
+  if (
+    queryResults === undefined ||
+    queryResults.jobReference === undefined ||
+    jobId === undefined ||
+    BigQuery === undefined ||
+    BigQuery.Jobs === undefined
+  ) {
+    MultiLogger.getInstance().log(`Query failed to run`);
+    return [[], []];
+  }
+  let sleepTimeMs = 500;
+  while (!queryResults?.jobComplete) {
+    Utilities.sleep(sleepTimeMs);
+    sleepTimeMs *= 2;
+    queryResults = BigQuery.Jobs.getQueryResults(projectId, jobId);
+  }
+  let rows = queryResults.rows;
+  if (!rows) {
+    MultiLogger.getInstance().log('No rows returned.');
+    return [[], []];
+  }
+  while (queryResults.pageToken) {
+    queryResults = BigQuery.Jobs.getQueryResults(projectId, jobId, {
+      pageToken: queryResults.pageToken,
+    });
+    if (!queryResults.rows) {
+      MultiLogger.getInstance().log(
+        'Query result page returned null result. Breaking'
+      );
+      break;
+    }
+    rows = rows.concat(queryResults.rows);
+  }
+  const data = rows.map(
+    row => row.f?.map(cell => cell?.v?.toString() || '') || []
+  );
+  return [
+    data,
+    queryResults.schema?.fields?.map(field => field.name || '') || [],
+  ];
+}
+function getConfigSheetValue(field) {
+  return SheetsService.getInstance().getCellValue(
+    CONFIG.sheets.config.name,
+    field.row,
+    field.col
+  );
+}
+
 app;
+bq;

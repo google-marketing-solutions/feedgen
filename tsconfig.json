@@ -2,7 +2,7 @@
   "compilerOptions": {
     "target": "ES2021",
     "module": "ES2020",
-    "lib": ["ES2021"],
+    "lib": ["es2021"],
     "moduleResolution": "node",
     "outDir": "dist",
     "rootDir": ".",

@@ -73,78 +73,145 @@ export const CONFIG = {
         notation: 'D5',
       },
     },
+    bigQuery: {
+      useBigQuery: {
+        row: 7,
+        col: 2,
+        notation: 'B7',
+      },
+      datsetName: {
+        row: 7,
+        col: 3,
+        notation: 'C7',
+      },
+      modelPath: {
+        row: 7,
+        col: 4,
+        notation: 'D7',
+      },
+      inputTableName: {
+        row: 7,
+        col: 5,
+        notation: 'E7',
+      },
+      titlesPromptsTable: {
+        row: 7,
+        col: 6,
+        notation: 'F7',
+      },
+      descriptionsPromptsTable: {
+        row: 7,
+        col: 7,
+        notation: 'G7',
+      },
+      titlesResponsesTable: {
+        row: 7,
+        col: 8,
+        notation: 'H7',
+      },
+      descriptionsResponsesTable: {
+        row: 7,
+        col: 9,
+        notation: 'I7',
+      },
+      batchSize: {
+        row: 9,
+        col: 2,
+        notation: 'B9',
+      },
+      batchPointer: {
+        row: 9,
+        col: 3,
+        notation: 'C9',
+      },
+      outputTable: {
+        row: 9,
+        col: 4,
+        notation: 'D9',
+      },
+      titlesOutputTable: {
+        row: 9,
+        col: 6,
+        notation: 'F9',
+      },
+      descriptionsOutputTable: {
+        row: 9,
+        col: 7,
+        notation: 'G9',
+      },
+    },
     description: {
       fullPrompt: {
-        row: 10,
+        row: 14,
         col: 2,
       },
       minApprovalScore: {
-        row: 8,
+        row: 12,
         col: 6,
       },
       usePageLinkData: {
-        row: 8,
+        row: 12,
         col: 8,
       },
       modelParameters: {
         temperature: {
-          row: 8,
+          row: 12,
           col: 2,
         },
         maxOutputTokens: {
-          row: 8,
+          row: 12,
           col: 3,
         },
         topK: {
-          row: 8,
+          row: 12,
           col: 4,
         },
         topP: {
-          row: 8,
+          row: 12,
           col: 5,
         },
       },
     },
     title: {
       fullPrompt: {
-        row: 16,
-        col: 2,
-      },
-      minApprovalScore: {
-        row: 14,
-        col: 6,
-      },
-      usePageLinkData: {
-        row: 14,
-        col: 8,
-      },
-      preferGeneratedValues: {
-        row: 19,
-        col: 2,
-      },
-      useLlmTitles: {
         row: 20,
         col: 2,
       },
+      minApprovalScore: {
+        row: 18,
+        col: 6,
+      },
+      usePageLinkData: {
+        row: 18,
+        col: 8,
+      },
+      preferGeneratedValues: {
+        row: 23,
+        col: 2,
+      },
+      useLlmTitles: {
+        row: 24,
+        col: 2,
+      },
       allowedWords: {
-        row: 21,
+        row: 25,
         col: 2,
       },
       modelParameters: {
         temperature: {
-          row: 14,
+          row: 18,
           col: 2,
         },
         maxOutputTokens: {
-          row: 14,
+          row: 18,
           col: 3,
         },
         topK: {
-          row: 14,
+          row: 18,
           col: 4,
         },
         topP: {
-          row: 14,
+          row: 18,
           col: 5,
         },
       },

@@ -14,5 +14,7 @@
  * limitations under the License.
  */
 import { app } from './app';
+import { bq } from './bq';
 
 app;
+bq;

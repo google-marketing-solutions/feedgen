@@ -172,6 +172,25 @@ limitations under the License.
       document.getElementById('generate').classList.add('hidden');
       document.getElementById('stop-generating').classList.remove('hidden');
 
+      let useBigQuery = false;
+      useBigQuery = await new Promise((resolve, reject) => {
+        google.script.run
+          .withSuccessHandler(res => run(res))
+          .withFailureHandler(err => log(err))
+          .shouldRunInBigQuery();
+      });
+    }
+
+    async function run(useBigQuery) {
+      if(useBigQuery) {
+        await generateInBigQuery();
+      } else {
+        await generateInSheet();
+      }
+      stopGenerating();
+    }
+
+    async function generateInSheet() {
       const unprocessedInputRows = await new Promise((resolve, reject) => {
         google.script.run
           .withSuccessHandler(rowsString => resolve(JSON.parse(rowsString)))
@@ -202,7 +221,21 @@ limitations under the License.
           })
         );
       }
-      stopGenerating();
+    }
+
+    async function generateInBigQuery(){
+      setStatus(
+          STATUS.running,
+          null,
+          `Running in BigQuery...`)
+      await new Promise((resolve, reject) => {
+        google.script.run
+        .withSuccessHandler(res => {
+          setStatus(STATUS.idle);
+        })
+        .withFailureHandler(err => log(err))
+        .runBigqueryProcess();
+      });
     }
 
     function clearGenerated() {

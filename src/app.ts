@@ -330,8 +330,9 @@ function optimizeRow(
     dataObj[getConfigSheetValue(CONFIG.userSettings.feed.imageColumnName)];
 
   let genTitle = origTitle;
-  const gapAttributesAndValues: Record<string, string> = {};
-  let totalScore = '1';
+  let gapAttributesAndValues: Record<string, string> = {};
+
+  let res = 'N/A';
   let titleChanged = 'FALSE';
   let addedAttributes = '[]';
   let removedAttributes = '[]';
@@ -340,7 +341,7 @@ function optimizeRow(
   let origTemplate = '';
   let genTemplate = '';
   let genCategory = '';
-  let res = 'N/A';
+  let totalScore = '1';
   if (getConfigSheetValue(CONFIG.userSettings.feed.generateTitles)) {
     res = fetchTitleGenerationData(
       dataObj,
@@ -348,179 +349,19 @@ function optimizeRow(
         ? imageUrl
         : null
     );
-    const regexStr =
-      '^.*product attribute keys in original title:(?<origTemplateRow>.*)' +
-      '^product category:(?<genCategoryRow>.*)' +
-      '^product attribute keys:(?<genTemplateRow>.*)' +
-      '^product attribute values:(?<genAttributesRow>.*)';
-    const replacedKeysRegexStr = '^replaced keys:(?<replacedKeysRow>.*)';
-    const generatedTitleRegexStr = '^generated title:(?<genTitleRow>.*)';
-    const completeRegex = new RegExp(
-      regexStr + replacedKeysRegexStr + generatedTitleRegexStr + '$',
-      'ms'
-    );
-    const noReplacedKeysRegex = new RegExp(
-      regexStr + generatedTitleRegexStr + '$',
-      'ms'
-    );
-
-    const matches = res.match(completeRegex) ?? res.match(noReplacedKeysRegex);
-
-    if (!matches || !matches.groups) {
-      throw new Error(
-        `Received an incomplete title response from The API.\nResponse: ${res}`
-      );
-    }
-    const [
-      origTemplateRow,
-      genCategoryRow,
-      genTemplateRow,
-      genAttributesRow,
-      replacedKeysRow,
-      genTitleRow,
-    ] = [
-      matches.groups['origTemplateRow'],
-      matches.groups['genCategoryRow'],
-      matches.groups['genTemplateRow'],
-      matches.groups['genAttributesRow'],
-      matches.groups['replacedKeysRow'],
-      matches.groups['genTitleRow'],
-    ];
-    const replacedKeys = replacedKeysRow
-      ? String(replacedKeysRow)
-          .trim()
-          .split(',')
-          .filter(Boolean)
-          .map((x: string) => x.toLowerCase().trim())
-      : [];
-
-    genCategory = String(genCategoryRow).trim();
-
-    const genAttributes = String(genTemplateRow)
-      .trim()
-      .split(SEPARATOR)
-      .filter(Boolean)
-      .map((x: string) => x.trim());
-
-    const origAttributes = String(origTemplateRow)
-      .trim()
-      .split(SEPARATOR)
-      .filter(Boolean)
-      .map((x: string) => x.trim());
-
-    const genAttributeValues = String(genAttributesRow)
-      .trim()
-      .split(SEPARATOR)
-      .filter(Boolean)
-      .map((x: string) => x.trim());
-
-    // Title advanced settings
-    const [preferGeneratedValues, useLlmTitles, allowedWords] = [
-      getConfigSheetValue(CONFIG.userSettings.title.preferGeneratedValues),
-      getConfigSheetValue(CONFIG.userSettings.title.useLlmTitles),
-      String(getConfigSheetValue(CONFIG.userSettings.title.allowedWords))
-        .split(',')
-        .filter(Boolean)
-        .map((word: string) => word.trim().toLowerCase()),
-    ];
-    const titleFeatures: string[] = [];
-    const validGenAttributes: string[] = [];
-    const extraFeatures = new Set<string>();
-
-    for (const [index, attribute] of genAttributes.entries()) {
-      if (
-        (!dataObj[attribute] && // matches gaps ({color: ""}) AND invented
-          genAttributeValues[index] && // non-empty generated value
-          (!origAttributes.includes(attribute) ||
-            // force include gaps even if in generated template for original title
-            Object.keys(dataObj).includes(attribute))) ||
-        replacedKeys.includes(attribute.toLowerCase())
-      ) {
-        const value = removeEmptyAttributeValues(
-          attribute,
-          genAttributeValues[index],
-          true
-        ).trim();
-        if (value) {
-          gapAttributesAndValues[attribute] = value;
-        }
-      }
-      let value = preferGeneratedValues
-        ? genAttributeValues[index]
-        : typeof dataObj[attribute] !== 'undefined' &&
-          String(dataObj[attribute]).length
-        ? dataObj[attribute]
-        : genAttributeValues[index];
-
-      if (typeof value !== 'undefined' && String(value).trim()) {
-        value = removeEmptyAttributeValues(attribute, value).trim();
-
-        if (value) {
-          validGenAttributes.push(attribute);
-          titleFeatures.push(value);
-
-          if (
-            attribute === 'Image Features' ||
-            attribute === 'Website Features'
-          ) {
-            const extraFeaturesMatches = value.match(WORD_MATCH_REGEX);
-            if (extraFeaturesMatches) {
-              extraFeaturesMatches.forEach((word: string) =>
-                extraFeatures.add(word.toLowerCase())
-              );
-            }
-          }
-        }
-      }
-    }
-
-    origTemplate = origAttributes
-      .filter(Boolean)
-      .map((x: string) => `<${x}>`)
-      .join(' ');
-    genTemplate = validGenAttributes
-      .filter(Boolean)
-      .map((x: string) => `<${x}>`)
-      .join(' ');
-
-    genTitle = titleFeatures.join(' ');
-    if (genTitle.endsWith(',')) {
-      genTitle = genTitle.slice(0, -1);
-    }
-
-    if (useLlmTitles) {
-      genTitle = String(genTitleRow).trim();
-    }
-
-    const inputWords = new Set<string>();
-    for (const [key, value] of Object.entries(dataObj)) {
-      const keyAndValue = [
-        String(key),
-        String(value).replaceAll("'s", ''),
-      ].join(' ');
-      const match = keyAndValue.match(WORD_MATCH_REGEX);
-      if (match) {
-        match.forEach((word: string) => inputWords.add(word.toLowerCase()));
-      }
-    }
-    allowedWords.forEach((word: string) => inputWords.add(word));
-    extraFeatures.forEach((word: string) => inputWords.add(word));
-
-    const metrics = getGenerationMetrics(
-      origTitle,
+    ({
+      genCategory,
+      origTemplate,
+      genTemplate,
       genTitle,
-      new Set(origAttributes),
-      new Set(validGenAttributes),
-      inputWords,
+      totalScore,
+      titleChanged,
+      addedAttributes,
+      removedAttributes,
+      newWordsAdded,
+      wordsRemoved,
       gapAttributesAndValues,
-      dataObj
-    );
-    totalScore = metrics.totalScore;
-    titleChanged = metrics.titleChanged;
-    addedAttributes = metrics.addedAttributes;
-    removedAttributes = metrics.removedAttributes;
-    newWordsAdded = metrics.newWordsAdded;
-    wordsRemoved = metrics.wordsRemoved;
+    } = parseTitleGenerationData(res, dataObj, origTitle));
   }
 
   let genDescription = origDescription;
@@ -587,6 +428,209 @@ function optimizeRow(
     `${res.trim()}\nProduct description: ${genDescription}\nDescription evaluation: Score: ${genDescriptionScore}\n${genDescriptionEvaluation}`, // API response
     JSON.stringify(dataObj),
   ];
+}
+
+export function parseTitleGenerationData(
+  res: string,
+  dataObj: { [k: string]: string },
+  origTitle: string
+) {
+  let totalScore = '1';
+  let titleChanged = 'FALSE';
+  let addedAttributes = '[]';
+  let removedAttributes = '[]';
+  let newWordsAdded = '0';
+  let wordsRemoved = '0';
+  let origTemplate = '';
+  let genTemplate = '';
+  let genCategory = '';
+  let genTitle = origTitle;
+  const gapAttributesAndValues: Record<string, string> = {};
+  const regexStr =
+    '^.*product attribute keys in original title:(?<origTemplateRow>.*)' +
+    '^product category:(?<genCategoryRow>.*)' +
+    '^product attribute keys:(?<genTemplateRow>.*)' +
+    '^product attribute values:(?<genAttributesRow>.*)';
+  const replacedKeysRegexStr = '^replaced keys:(?<replacedKeysRow>.*)';
+  const generatedTitleRegexStr = '^generated title:(?<genTitleRow>.*)';
+  const completeRegex = new RegExp(
+    regexStr + replacedKeysRegexStr + generatedTitleRegexStr + '$',
+    'ms'
+  );
+  const noReplacedKeysRegex = new RegExp(
+    regexStr + generatedTitleRegexStr + '$',
+    'ms'
+  );
+
+  const matches = res.match(completeRegex) ?? res.match(noReplacedKeysRegex);
+
+  if (!matches || !matches.groups) {
+    throw new Error(
+      `Received an incomplete title response from The API.\nResponse: ${res}`
+    );
+  }
+  const [
+    origTemplateRow,
+    genCategoryRow,
+    genTemplateRow,
+    genAttributesRow,
+    replacedKeysRow,
+    genTitleRow,
+  ] = [
+    matches.groups['origTemplateRow'],
+    matches.groups['genCategoryRow'],
+    matches.groups['genTemplateRow'],
+    matches.groups['genAttributesRow'],
+    matches.groups['replacedKeysRow'],
+    matches.groups['genTitleRow'],
+  ];
+  const replacedKeys = replacedKeysRow
+    ? String(replacedKeysRow)
+        .trim()
+        .split(',')
+        .filter(Boolean)
+        .map((x: string) => x.toLowerCase().trim())
+    : [];
+
+  genCategory = String(genCategoryRow).trim();
+
+  const genAttributes = String(genTemplateRow)
+    .trim()
+    .split(SEPARATOR)
+    .filter(Boolean)
+    .map((x: string) => x.trim());
+
+  const origAttributes = String(origTemplateRow)
+    .trim()
+    .split(SEPARATOR)
+    .filter(Boolean)
+    .map((x: string) => x.trim());
+
+  const genAttributeValues = String(genAttributesRow)
+    .trim()
+    .split(SEPARATOR)
+    .filter(Boolean)
+    .map((x: string) => x.trim());
+
+  // Title advanced settings
+  const [preferGeneratedValues, useLlmTitles, allowedWords] = [
+    getConfigSheetValue(CONFIG.userSettings.title.preferGeneratedValues),
+    getConfigSheetValue(CONFIG.userSettings.title.useLlmTitles),
+    String(getConfigSheetValue(CONFIG.userSettings.title.allowedWords))
+      .split(',')
+      .filter(Boolean)
+      .map((word: string) => word.trim().toLowerCase()),
+  ];
+  const titleFeatures: string[] = [];
+  const validGenAttributes: string[] = [];
+  const extraFeatures = new Set<string>();
+
+  for (const [index, attribute] of genAttributes.entries()) {
+    if (
+      (!dataObj[attribute] && // matches gaps ({color: ""}) AND invented
+        genAttributeValues[index] && // non-empty generated value
+        (!origAttributes.includes(attribute) ||
+          // force include gaps even if in generated template for original title
+          Object.keys(dataObj).includes(attribute))) ||
+      replacedKeys.includes(attribute.toLowerCase())
+    ) {
+      const value = removeEmptyAttributeValues(
+        attribute,
+        genAttributeValues[index],
+        true
+      ).trim();
+      if (value) {
+        gapAttributesAndValues[attribute] = value;
+      }
+    }
+    let value = preferGeneratedValues
+      ? genAttributeValues[index]
+      : typeof dataObj[attribute] !== 'undefined' &&
+        String(dataObj[attribute]).length
+      ? dataObj[attribute]
+      : genAttributeValues[index];
+
+    if (typeof value !== 'undefined' && String(value).trim()) {
+      value = removeEmptyAttributeValues(attribute, value).trim();
+
+      if (value) {
+        validGenAttributes.push(attribute);
+        titleFeatures.push(value);
+
+        if (
+          attribute === 'Image Features' ||
+          attribute === 'Website Features'
+        ) {
+          const extraFeaturesMatches = value.match(WORD_MATCH_REGEX);
+          if (extraFeaturesMatches) {
+            extraFeaturesMatches.forEach((word: string) =>
+              extraFeatures.add(word.toLowerCase())
+            );
+          }
+        }
+      }
+    }
+  }
+
+  origTemplate = origAttributes
+    .filter(Boolean)
+    .map((x: string) => `<${x}>`)
+    .join(' ');
+  genTemplate = validGenAttributes
+    .filter(Boolean)
+    .map((x: string) => `<${x}>`)
+    .join(' ');
+
+  genTitle = titleFeatures.join(' ');
+  if (genTitle.endsWith(',')) {
+    genTitle = genTitle.slice(0, -1);
+  }
+
+  if (useLlmTitles) {
+    genTitle = String(genTitleRow).trim();
+  }
+
+  const inputWords = new Set<string>();
+  for (const [key, value] of Object.entries(dataObj)) {
+    const keyAndValue = [String(key), String(value).replaceAll("'s", '')].join(
+      ' '
+    );
+    const match = keyAndValue.match(WORD_MATCH_REGEX);
+    if (match) {
+      match.forEach((word: string) => inputWords.add(word.toLowerCase()));
+    }
+  }
+  allowedWords.forEach((word: string) => inputWords.add(word));
+  extraFeatures.forEach((word: string) => inputWords.add(word));
+
+  const metrics = getGenerationMetrics(
+    origTitle,
+    genTitle,
+    new Set(origAttributes),
+    new Set(validGenAttributes),
+    inputWords,
+    gapAttributesAndValues,
+    dataObj
+  );
+  totalScore = metrics.totalScore;
+  titleChanged = metrics.titleChanged;
+  addedAttributes = metrics.addedAttributes;
+  removedAttributes = metrics.removedAttributes;
+  newWordsAdded = metrics.newWordsAdded;
+  wordsRemoved = metrics.wordsRemoved;
+  return {
+    genCategory,
+    origTemplate,
+    genTemplate,
+    genTitle,
+    totalScore,
+    titleChanged,
+    addedAttributes,
+    removedAttributes,
+    newWordsAdded,
+    wordsRemoved,
+    gapAttributesAndValues,
+  };
 }
 
 function removeEmptyAttributeValues(
@@ -775,6 +819,14 @@ function fetchDescriptionGenerationData(
       imageUrl
     )
   );
+  return parseDescriptionResponse(res);
+}
+
+export function parseDescriptionResponse(res: string): {
+  description: string;
+  score: number;
+  evaluation: string;
+} {
   const regex =
     /^.*description:(?<description>.*)^score:(?<score>.*)^reasoning:(?<evaluation>.*)$/ms;
   const matches = res.match(regex);
@@ -791,6 +843,7 @@ function fetchDescriptionGenerationData(
   description = String(description).trim();
   score = String(score).trim();
   evaluation = String(evaluation).trim();
+
   return {
     description: description,
     score: parseFloat(score),
