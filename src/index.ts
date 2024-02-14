@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 import { app } from './app';
-import { bq } from './bq';
+import { bqConf } from './bq';
 
 app;
-bq;
+bqConf;
