@@ -29,36 +29,257 @@ import { parseTitleGenerationData, parseDescriptionResponse } from './app';
  */
 export const bq = null;
 
-interface BQConf {
-  batchSize: number;
-  batchPointer: number;
-  projectId: string;
-  dataset: string;
-  connectionPath: string;
-  idFieldName: string;
-  inputTable: string;
-  modelName: string;
-  titlePromptPrefix: string;
-  titlePromptsTable: string;
-  title_temperature: number;
-  title_topK: number;
-  title_topP: number;
-  title_maxOutputTokens: number;
-  titleResponsesTable: string;
-  titleOutputsTable: string;
-  itemCount: number;
-  descriptionPromptPrefix: string;
-  descriptionPromptsTable: string;
-  description_temperature: number;
-  description_topK: number;
-  description_topP: number;
-  description_maxOutputTokens: number;
-  descriptionResponsesTable: string;
-  descriptionOutputsTable: string;
-  outputsTable: string;
+class BQConf {
+  private _batchSize!: number;
+  private _batchPointer!: number;
+  private _projectId!: string;
+  private _dataset!: string;
+  private _connectionPath!: string;
+  private _idFieldName!: string;
+  private _titleFieldName!: string;
+  private _inputTable!: string;
+  private _modelName!: string;
+  private _titlePromptPrefix!: string;
+  private _titlePromptsTable!: string;
+  private _title_temperature!: number;
+  private _title_topK!: number;
+  private _title_topP!: number;
+  private _title_maxOutputTokens!: number;
+  private _titleResponsesTable!: string;
+  private _titleOutputsTable!: string;
+  private _descriptionPromptPrefix!: string;
+  private _descriptionPromptsTable!: string;
+  private _description_temperature!: number;
+  private _description_topK!: number;
+  private _description_topP!: number;
+  private _description_maxOutputTokens!: number;
+  private _descriptionResponsesTable!: string;
+  private _descriptionOutputsTable!: string;
+  private _outputsTable!: string;
+  private _inputSize!: number;
+
+  getBatchSize() {
+    return (
+      this._batchSize ??
+      (this._batchSize = getConfigSheetValue(
+        CONFIG.userSettings.bigQuery.batchSize
+      ))
+    );
+  }
+
+  getBatchPointer() {
+    return (
+      this._batchPointer ??
+      (this._batchPointer = getConfigSheetValue(
+        CONFIG.userSettings.bigQuery.batchPointer
+      ))
+    );
+  }
+
+  getProjectId() {
+    return (
+      this._projectId ??
+      (this._projectId = getConfigSheetValue(
+        CONFIG.userSettings.vertexAi.gcpProjectId
+      ))
+    );
+  }
+  getDataset() {
+    return (
+      this._dataset ??
+      (this._dataset = getConfigSheetValue(
+        CONFIG.userSettings.bigQuery.datsetName
+      ))
+    );
+  }
+  getConnectionPath() {
+    return (
+      this._connectionPath ??
+      (this._connectionPath = getConfigSheetValue(
+        CONFIG.userSettings.bigQuery.modelPath
+      ))
+    );
+  }
+  getIdFieldName() {
+    return (
+      this._idFieldName ??
+      (this._idFieldName = getConfigSheetValue(
+        CONFIG.userSettings.feed.itemIdColumnName
+      ))
+    );
+  }
+  getInputTable() {
+    return (
+      this._inputTable ??
+      (this._inputTable = getConfigSheetValue(
+        CONFIG.userSettings.bigQuery.inputTableName
+      ))
+    );
+  }
+  getModelName() {
+    return (
+      this._modelName ??
+      (this._modelName = getConfigSheetValue(
+        CONFIG.userSettings.vertexAi.languageModelId
+      ))
+    );
+  }
+  getTitlePromptPrefix() {
+    return (
+      this._titlePromptPrefix ??
+      (this._titlePromptPrefix = getConfigSheetValue(
+        CONFIG.userSettings.title.fullPrompt
+      ))
+    );
+  }
+  getTitlePromptsTable() {
+    return (
+      this._titlePromptsTable ??
+      (this._titlePromptsTable = getConfigSheetValue(
+        CONFIG.userSettings.bigQuery.titlesPromptsTable
+      ))
+    );
+  }
+  getTitle_temperature() {
+    return (
+      this._title_temperature ??
+      (this._title_temperature = getConfigSheetValue(
+        CONFIG.userSettings.title.modelParameters.temperature
+      ))
+    );
+  }
+  getTitle_topK() {
+    return (
+      this._title_topK ??
+      (this._title_topK = getConfigSheetValue(
+        CONFIG.userSettings.title.modelParameters.topK
+      ))
+    );
+  }
+  getTitle_topP() {
+    return (
+      this._title_topP ??
+      (this._title_topP = getConfigSheetValue(
+        CONFIG.userSettings.title.modelParameters.topP
+      ))
+    );
+  }
+  getTitle_maxOutputTokens() {
+    return (
+      this._title_maxOutputTokens ??
+      (this._title_maxOutputTokens = getConfigSheetValue(
+        CONFIG.userSettings.title.modelParameters.maxOutputTokens
+      ))
+    );
+  }
+  getTitleResponsesTable() {
+    return (
+      this._titleResponsesTable ??
+      (this._titleResponsesTable = getConfigSheetValue(
+        CONFIG.userSettings.bigQuery.titlesResponsesTable
+      ))
+    );
+  }
+  getTitleOutputsTable() {
+    return (
+      this._titleOutputsTable ??
+      (this._titleOutputsTable = getConfigSheetValue(
+        CONFIG.userSettings.bigQuery.titlesOutputTable
+      ))
+    );
+  }
+  getDescriptionPromptPrefix() {
+    return (
+      this._descriptionPromptPrefix ??
+      (this._descriptionPromptPrefix = getConfigSheetValue(
+        CONFIG.userSettings.description.fullPrompt
+      ))
+    );
+  }
+  getDescriptionPromptsTable() {
+    return (
+      this._descriptionPromptsTable ??
+      (this._descriptionPromptsTable = getConfigSheetValue(
+        CONFIG.userSettings.bigQuery.descriptionsPromptsTable
+      ))
+    );
+  }
+  getDescription_temperature() {
+    return (
+      this._description_temperature ??
+      (this._description_temperature = getConfigSheetValue(
+        CONFIG.userSettings.description.modelParameters.temperature
+      ))
+    );
+  }
+  getDescription_topK() {
+    return (
+      this._description_topK ??
+      (this._description_topK = getConfigSheetValue(
+        CONFIG.userSettings.description.modelParameters.topK
+      ))
+    );
+  }
+  getDescription_topP() {
+    return (
+      this._description_topP ??
+      (this._description_topP = getConfigSheetValue(
+        CONFIG.userSettings.description.modelParameters.topP
+      ))
+    );
+  }
+  getDescription_maxOutputTokens() {
+    return (
+      this._description_maxOutputTokens ??
+      (this._description_maxOutputTokens = getConfigSheetValue(
+        CONFIG.userSettings.description.modelParameters.maxOutputTokens
+      ))
+    );
+  }
+  getDescriptionResponsesTable() {
+    return (
+      this._descriptionResponsesTable ??
+      (this._descriptionResponsesTable = getConfigSheetValue(
+        CONFIG.userSettings.bigQuery.descriptionsResponsesTable
+      ))
+    );
+  }
+  getDescriptionOutputsTable() {
+    return (
+      this._descriptionOutputsTable ??
+      (this._descriptionOutputsTable = getConfigSheetValue(
+        CONFIG.userSettings.bigQuery.descriptionsOutputTable
+      ))
+    );
+  }
+  getOutputsTable() {
+    return (
+      this._outputsTable ??
+      (this._outputsTable = getConfigSheetValue(
+        CONFIG.userSettings.bigQuery.outputTable
+      ))
+    );
+  }
+  getTitleFieldName() {
+    return (
+      this._titleFieldName ??
+      (this._titleFieldName = getConfigSheetValue(
+        CONFIG.userSettings.feed.titleColumnName
+      ))
+    );
+  }
+  getInputSize() {
+    return this._inputSize ?? (this._inputSize = this._readInputSize());
+  }
+  private _readInputSize(): number {
+    const query = `select count(*) as totalRows from \`${this.getDataset()}.${this.getInputTable()}\``;
+    const [values] = runQuery(query);
+    const itemCount = parseInt(values[0][0]);
+    return itemCount;
+  }
 }
 
-let bqConf: BQConf;
+const bqConf: BQConf = new BQConf();
 
 export function shouldRunInBigQuery() {
   const useBq = getConfigSheetValue(CONFIG.userSettings.bigQuery.useBigQuery);
@@ -67,114 +288,24 @@ export function shouldRunInBigQuery() {
 }
 
 export function getBatchSizeAndPointerAndInputSize() {
-  bqConf.batchSize = getConfigSheetValue(
-    CONFIG.userSettings.bigQuery.batchSize
-  );
-  bqConf.batchPointer = getConfigSheetValue(
-    CONFIG.userSettings.bigQuery.batchPointer
-  );
-  bqConf.projectId = getConfigSheetValue(
-    CONFIG.userSettings.vertexAi.gcpProjectId
-  );
-  bqConf.dataset = getConfigSheetValue(CONFIG.userSettings.bigQuery.datsetName);
-  const itemCount = readInputSize();
   MultiLogger.getInstance().log(
-    `Batch size: ${bqConf.batchSize}, batch pointer: ${bqConf.batchPointer}, input size: ${bqConf.itemCount}`
+    `Batch size: ${bqConf.getBatchSize()}, batch pointer: ${bqConf.getBatchPointer()}, input size: ${bqConf.getInputSize()}`
   );
-  return [bqConf.batchSize, bqConf.batchPointer, itemCount];
-}
-
-function readBqConfig() {
-  bqConf = {
-    projectId: getConfigSheetValue(CONFIG.userSettings.vertexAi.gcpProjectId),
-    dataset = getConfigSheetValue(CONFIG.userSettings.bigQuery.datsetName),
-    // connectionPath = getConfigSheetValue(
-    //     CONFIG.userSettings.bigQuery.connectionPath
-    //   ),
-    itemCount = readInputSize(),
-    connectionPath = getConfigSheetValue(
-      CONFIG.userSettings.bigQuery.modelPath
-    ),
-    batchSize = getConfigSheetValue(CONFIG.userSettings.bigQuery.batchSize),
-    batchPointer = getConfigSheetValue(
-      CONFIG.userSettings.bigQuery.batchPointer
-    ),
-    idFieldName = getConfigSheetValue(
-      CONFIG.userSettings.feed.itemIdColumnName
-    ),
-    inputTable = getConfigSheetValue(
-      CONFIG.userSettings.bigQuery.inputTableName
-    ),
-    modelName = getConfigSheetValue(
-      CONFIG.userSettings.vertexAi.languageModelId
-    ),
-    titlePromptPrefix = getConfigSheetValue(
-      CONFIG.userSettings.title.fullPrompt
-    ),
-    descriptionPromptPrefix = getConfigSheetValue(
-      CONFIG.userSettings.description.fullPrompt
-    ),
-
-    titlePromptsTable = getConfigSheetValue(
-      CONFIG.userSettings.bigQuery.titlesPromptsTable
-    ),
-    title_temperature = getConfigSheetValue(
-      CONFIG.userSettings.title.modelParameters.temperature
-    ),
-    title_topK = getConfigSheetValue(
-      CONFIG.userSettings.title.modelParameters.topK
-    ),
-    title_topP = getConfigSheetValue(
-      CONFIG.userSettings.title.modelParameters.topP
-    ),
-    title_maxOutputTokens = getConfigSheetValue(
-      CONFIG.userSettings.title.modelParameters.maxOutputTokens
-    ),
-    titleResponsesTable = getConfigSheetValue(
-      CONFIG.userSettings.bigQuery.titlesOutputTable
-    ),
-    titleOutputsTable = getConfigSheetValue(
-      CONFIG.userSettings.bigQuery.titlesOutputTable
-    ),
-
-    descriptionPromptsTable = getConfigSheetValue(
-      CONFIG.userSettings.bigQuery.descriptionsPromptsTable
-    ),
-    description_temperature = getConfigSheetValue(
-      CONFIG.userSettings.description.modelParameters.temperature
-    ),
-    description_topK = getConfigSheetValue(
-      CONFIG.userSettings.description.modelParameters.topK
-    ),
-    description_topP = getConfigSheetValue(
-      CONFIG.userSettings.description.modelParameters.topP
-    ),
-    description_maxOutputTokens = getConfigSheetValue(
-      CONFIG.userSettings.description.modelParameters.maxOutputTokens
-    ),
-    descriptionResponsesTable = getConfigSheetValue(
-      CONFIG.userSettings.bigQuery.descriptionsOutputTable
-    ),
-    descriptionOutputsTable = getConfigSheetValue(
-      CONFIG.userSettings.bigQuery.descriptionsOutputTable
-    ),
-
-    outputsTable = getConfigSheetValue(
-      CONFIG.userSettings.bigQuery.outputTable
-    ),
-  };
+  return [
+    bqConf.getBatchSize(),
+    bqConf.getBatchPointer(),
+    bqConf.getInputSize(),
+  ];
 }
 
 //TODO batch pointer and size as params
 export function runBigqueryProcess() {
-  readBqConfig();
-
   MultiLogger.getInstance().log(
-    `Running BQ process against ${bqConf.modelName} model`
+    `Running BQ process against ${bqConf.getModelName()} model`
   );
-  if (bqConf.modelName in ['text-bison', 'text-bison-32k']) {
+  if (bqConf.getModelName() in ['text-bison', 'text-bison-32k']) {
     throw new Error(
-      `Model ${bqConf.modelName} cannot be used in BigQuery. Choose text-bison or text-bison-32k instead.`
+      `Model ${bqConf.getModelName()} cannot be used in BigQuery. Choose text-bison or text-bison-32k instead.`
     );
   }
 
@@ -192,82 +323,71 @@ export function runBigqueryProcess() {
 }
 
 export function createModelInBq() {
-  MultiLogger.getInstance().log(`(re-)Creating model ${bqConf.modelName}...`);
-  const query = `CREATE OR REPLACE MODEL \`${bqConf.dataset}.${bqConf.modelName}\`
-   REMOTE WITH CONNECTION \`${bqConf.connectionPath}\`
-  OPTIONS (ENDPOINT = '${bqConf.modelName}')`;
+  MultiLogger.getInstance().log(
+    `(re-)Creating model ${bqConf.getModelName()}...`
+  );
+  const query = `CREATE OR REPLACE MODEL \`${bqConf.getDataset()}.${bqConf.getModelName()}\`
+   REMOTE WITH CONNECTION \`${bqConf.getConnectionPath()}\`
+  OPTIONS (ENDPOINT = '${bqConf.getModelName()}')`;
   runQuery(query);
-  Logger.log(`Model ${bqConf.modelName} Created`);
-}
-
-function readInputSize(): number {
-  MultiLogger.getInstance().log(`Reading input size...`);
-  const query = `select count(*) as totalRows from \`${bqConf.dataset}.${bqConf.inputTable}\``;
-  const [values] = runQuery(query);
-  const itemCount = parseInt(values[0][0]);
-  return itemCount;
+  Logger.log(`Model ${bqConf.getModelName()} Created`);
 }
 
 function generateTitlePrompts() {
   MultiLogger.getInstance().log(
-    `Generating title prompts into ${bqConf.titlePromptsTable}..`
+    `Generating title prompts into ${bqConf.getTitlePromptsTable()}..`
   );
-  const query = `create or replace table \`${bqConf.dataset}.${
-    bqConf.titlePromptsTable
-  }\` as (
+  const query = `create or replace table \`${bqConf.getDataset()}.${bqConf.getTitlePromptsTable()}\` as (
   with contexts as (
-    SELECT ${
-      bqConf.idFieldName
-    }, ROW_NUMBER() OVER() as row_number, TO_JSON_STRING(input) as Context
-    FROM \`${bqConf.dataset}.${bqConf.inputTable}\` as input
-    ORDER BY ${bqConf.idFieldName}
+    SELECT ${bqConf.getIdFieldName()}, ROW_NUMBER() OVER() as row_number, TO_JSON_STRING(input) as Context
+    FROM \`${bqConf.getDataset()}.${bqConf.getInputTable()}\` as input
+    ORDER BY ${bqConf.getIdFieldName()}
   )
-  SELECT ${bqConf.idFieldName},
-    CONCAT("${bqConf.titlePromptPrefix
+  SELECT ${bqConf.getIdFieldName()},
+    CONCAT("${bqConf
+      .getTitlePromptPrefix()
       .replaceAll('\n', '\\n')
       .replaceAll('"', '\\"')}\\n\\n Context: ",Context) as prompt,
     FROM contexts
-    WHERE row_number >= ${bqConf.batchPointer}
-      AND row_number < ${bqConf.batchPointer + bqConf.batchSize}
+    WHERE row_number >= ${bqConf.getBatchPointer()}
+      AND row_number < ${bqConf.getBatchPointer() + bqConf.getBatchSize()}
   )`;
   runQuery(query);
-  Logger.log(`Table ${bqConf.titlePromptsTable} Created`);
+  Logger.log(`Table ${bqConf.getTitlePromptsTable()} Created`);
 }
 
 function runTitleGeneration() {
   MultiLogger.getInstance().log(
-    `Generating title responses into ${bqConf.titleResponsesTable}...`
+    `Generating title responses into ${bqConf.getTitleResponsesTable()}...`
   );
-  const query = `create or replace table \`${bqConf.dataset}.${bqConf.titleResponsesTable}\` as
+  const query = `create or replace table \`${bqConf.getDataset()}.${bqConf.getTitleResponsesTable()}\` as
   select ml_generate_text_result['predictions'][0]['content'] AS generated_text,
   ml_generate_text_result['predictions'][0]['safetyAttributes'] AS safety_attributes,
   * EXCEPT (ml_generate_text_result)
   FROM
-  ML.GENERATE_TEXT(MODEL \`${bqConf.dataset}.${bqConf.modelName}\`,
-  (select ${bqConf.idFieldName}, prompt from \`${bqConf.dataset}.${bqConf.titlePromptsTable}\`),
-  struct (${bqConf.title_temperature} AS temperature,
-      ${bqConf.title_maxOutputTokens} AS max_output_tokens,
-      ${bqConf.title_topK} as top_k,
-      ${bqConf.title_topP} as top_p)
+  ML.GENERATE_TEXT(MODEL \`${bqConf.getDataset()}.${bqConf.getModelName()}\`,
+  (select ${bqConf.getIdFieldName()}, prompt from \`${bqConf.getDataset()}.${bqConf.getTitlePromptsTable()}\`),
+  struct (${bqConf.getTitle_temperature()} AS temperature,
+      ${bqConf.getTitle_maxOutputTokens()} AS max_output_tokens,
+      ${bqConf.getTitle_topK()} as top_k,
+      ${bqConf.getTitle_topP()} as top_p)
   )`;
   runQuery(query);
-  Logger.log(`Table ${bqConf.titleResponsesTable} Created`);
+  Logger.log(`Table ${bqConf.getTitleResponsesTable()} Created`);
 }
 
 function processTitleResponses() {
   MultiLogger.getInstance().log(
-    `Processing title responses into ${bqConf.titleOutputsTable}}...`
+    `Processing title responses into ${bqConf.getTitleOutputsTable}()}...`
   );
   const idFieldName = getConfigSheetValue(
     CONFIG.userSettings.feed.itemIdColumnName
   );
   const query = `select items.*, responses.generated_text as generated_text,
-  from \`${bqConf.dataset}.${bqConf.titleResponsesTable}\` as responses
-  join \`${bqConf.dataset}.${bqConf.inputTable}\` as items
-  on responses.${bqConf.idFieldName} = items.${bqConf.idFieldName}`;
-  const titleFieldName = getConfigSheetValue(
-    CONFIG.userSettings.feed.titleColumnName
-  );
+  from \`${bqConf.getDataset()}.${bqConf.getTitleResponsesTable()}\` as responses
+  join \`${bqConf.getDataset()}.${bqConf.getInputTable()}\` as items
+  on responses.${bqConf.getIdFieldName()} = items.${bqConf.getIdFieldName()}`;
+
   const [values, fields] = runQuery(query);
 
   const result: Record<string, string>[] = values.map(row => {
@@ -279,35 +399,43 @@ function processTitleResponses() {
 
   const objectsWithTitleGenerationData = result.map(inputObj => {
     const dataObj = Object.assign({}, inputObj);
-    const origTitle = dataObj[titleFieldName];
+    const origTitle = dataObj[bqConf.getTitleFieldName()];
     let res = dataObj['generated_text'];
     res = res.substring(2, res.length - 1);
     res = res.replaceAll('\\n', '\n');
-    const {
-      genCategory,
-      origTemplate,
-      genTemplate,
-      genTitle,
-      totalScore,
-      titleChanged,
-      addedAttributes,
-      removedAttributes,
-      newWordsAdded,
-      wordsRemoved,
-      gapAttributesAndValues,
-    } = parseTitleGenerationData(res, dataObj, origTitle);
-    dataObj['genCategory'] = genCategory;
-    dataObj['origTemplate'] = origTemplate;
-    dataObj['genTemplate'] = genTemplate;
-    dataObj['genTitle'] = genTitle;
-    dataObj['totalScore'] = totalScore;
-    dataObj['titleChanged'] = titleChanged;
-    dataObj['addedAttributes'] = addedAttributes;
-    dataObj['removedAttributes'] = removedAttributes;
-    dataObj['newWordsAdded'] = newWordsAdded;
-    dataObj['wordsRemoved'] = wordsRemoved;
-    dataObj['gapAttributesAndValues'] = JSON.stringify(gapAttributesAndValues);
-
+    try {
+      const {
+        genCategory,
+        origTemplate,
+        genTemplate,
+        genTitle,
+        totalScore,
+        titleChanged,
+        addedAttributes,
+        removedAttributes,
+        newWordsAdded,
+        wordsRemoved,
+        gapAttributesAndValues,
+      } = parseTitleGenerationData(res, dataObj, origTitle);
+      dataObj['genCategory'] = genCategory;
+      dataObj['origTemplate'] = origTemplate;
+      dataObj['genTemplate'] = genTemplate;
+      dataObj['genTitle'] = genTitle;
+      dataObj['totalScore'] = totalScore;
+      dataObj['titleChanged'] = titleChanged;
+      dataObj['addedAttributes'] = addedAttributes;
+      dataObj['removedAttributes'] = removedAttributes;
+      dataObj['newWordsAdded'] = newWordsAdded;
+      dataObj['wordsRemoved'] = wordsRemoved;
+      dataObj['gapAttributesAndValues'] = JSON.stringify(
+        gapAttributesAndValues
+      );
+    } catch (e: unknown) {
+      MultiLogger.getInstance().log(
+        `Error parsing title generation data for ${dataObj[idFieldName]}: ${e}`
+      );
+      dataObj['genTitle'] = '#ERROR';
+    }
     return dataObj;
   });
 
@@ -318,55 +446,52 @@ function processTitleResponses() {
     return output;
   });
 
-  writeToTable(bqConf.titleOutputsTable, titleResultsData, true);
+  writeToTable(bqConf.getTitleOutputsTable(), titleResultsData, true);
 
   return objectsWithTitleGenerationData;
 }
 
 function generateDescriptionPrompts() {
   MultiLogger.getInstance().log(
-    `Generating description prompts into ${bqConf.descriptionPromptsTable}}...`
+    `Generating description prompts into ${bqConf.getDescriptionPromptsTable()}...`
   );
-  const query = `create or replace table \`${bqConf.dataset}.${
-    bqConf.descriptionPromptsTable
-  }\` as (
+  const query = `create or replace table \`${bqConf.getDataset()}.${bqConf.getDescriptionPromptsTable()}\` as (
   with contexts as (
-    SELECT ${
-      bqConf.idFieldName
-    }, ROW_NUMBER() OVER() as row_number, TO_JSON_STRING(input) as Context
-    FROM \`${bqConf.dataset}.${bqConf.inputTable}\` as input
-    ORDER BY ${bqConf.idFieldName}
+    SELECT ${bqConf.getIdFieldName()}, ROW_NUMBER() OVER() as row_number, TO_JSON_STRING(input) as Context
+    FROM \`${bqConf.getDataset()}.${bqConf.getInputTable()}\` as input
+    ORDER BY ${bqConf.getIdFieldName()}
   )
-  SELECT ${bqConf.idFieldName},
-    CONCAT("${bqConf.descriptionPromptPrefix
+  SELECT ${bqConf.getIdFieldName()},
+    CONCAT("${bqConf
+      .getDescriptionPromptPrefix()
       .replaceAll('\n', '\\n')
       .replaceAll('"', '\\"')}\\n\\n Context: ",Context) as prompt,
     FROM contexts
-    WHERE row_number >= ${bqConf.batchPointer}
-      AND row_number < ${bqConf.batchPointer + bqConf.batchSize}
+    WHERE row_number >= ${bqConf.getBatchPointer()}
+      AND row_number < ${bqConf.getBatchPointer() + bqConf.getBatchSize()}
   )`;
   runQuery(query);
-  Logger.log(`Table ${bqConf.descriptionPromptsTable} Created`);
+  Logger.log(`Table ${bqConf.getDescriptionPromptsTable()} Created`);
 }
 
 function runDescriptionGeneration() {
   MultiLogger.getInstance().log(
-    `Generating description responses into ${bqConf.descriptionResponsesTable}}...`
+    `Generating description responses into ${bqConf.getDescriptionResponsesTable}()}...`
   );
-  const query = `create or replace table \`${bqConf.dataset}.${bqConf.descriptionResponsesTable}\` as
+  const query = `create or replace table \`${bqConf.getDataset()}.${bqConf.getDescriptionResponsesTable()}\` as
   select ml_generate_text_result['predictions'][0]['content'] AS generated_text,
   ml_generate_text_result['predictions'][0]['safetyAttributes'] AS safety_attributes,
   * EXCEPT (ml_generate_text_result)
   FROM
-  ML.GENERATE_TEXT(MODEL \`${bqConf.dataset}.${bqConf.modelName}\`,
-  (select ${bqConf.idFieldName}, prompt from \`${bqConf.dataset}.${bqConf.descriptionPromptsTable}\`),
-  struct (${bqConf.description_temperature} AS temperature,
-      ${bqConf.description_maxOutputTokens} AS max_output_tokens,
-      ${bqConf.description_topK} as top_k,
-      ${bqConf.description_topP} as top_p)
+  ML.GENERATE_TEXT(MODEL \`${bqConf.getDataset()}.${bqConf.getModelName()}\`,
+  (select ${bqConf.getIdFieldName()}, prompt from \`${bqConf.getDataset()}.${bqConf.getDescriptionPromptsTable()}\`),
+  struct (${bqConf.getDescription_temperature()} AS temperature,
+      ${bqConf.getDescription_maxOutputTokens()} AS max_output_tokens,
+      ${bqConf.getDescription_topK()} as top_k,
+      ${bqConf.getDescription_topP()} as top_p)
   )`;
   runQuery(query);
-  Logger.log(`Table ${bqConf.descriptionResponsesTable} Created`);
+  Logger.log(`Table ${bqConf.getDescriptionResponsesTable()} Created`);
 }
 
 function processDescriptionResponses() {
@@ -375,12 +500,12 @@ function processDescriptionResponses() {
   );
 
   MultiLogger.getInstance().log(
-    `Processing description responses into ${bqConf.descriptionOutputsTable}...`
+    `Processing description responses into ${bqConf.getDescriptionOutputsTable()}...`
   );
   const query = `select items.*, responses.generated_text as generated_text,
-  from \`${bqConf.dataset}.${bqConf.descriptionResponsesTable}\` as responses
-  join \`${bqConf.dataset}.${bqConf.inputTable}\` as items
-  on responses.${bqConf.idFieldName} = items.${bqConf.idFieldName}`;
+  from \`${bqConf.getDataset()}.${bqConf.getDescriptionResponsesTable()}\` as responses
+  join \`${bqConf.getDataset()}.${bqConf.getInputTable()}\` as items
+  on responses.${bqConf.getIdFieldName()} = items.${bqConf.getIdFieldName()}`;
 
   const [values, fields] = runQuery(query);
 
@@ -396,10 +521,19 @@ function processDescriptionResponses() {
     let res = dataObj['generated_text'];
     res = res.substring(2, res.length - 1);
     res = res.replaceAll('\\n', '\n');
-    const { description, score, evaluation } = parseDescriptionResponse(res);
-    dataObj['description'] = description;
-    dataObj['score'] = score.toString();
-    dataObj['evaluation'] = evaluation;
+    try {
+      const { description, score, evaluation } = parseDescriptionResponse(res);
+      dataObj['description'] = description;
+      dataObj['score'] = score.toString();
+      dataObj['evaluation'] = evaluation;
+    } catch (e) {
+      dataObj['description'] = '#ERROR';
+      dataObj['score'] = '#ERROR';
+      dataObj['evaluation'] = '#ERROR';
+      MultiLogger.getInstance().log(
+        `Error parsing description generation data for ${dataObj[idFieldName]}: ${e}`
+      );
+    }
     return dataObj;
   });
 
@@ -412,19 +546,24 @@ function processDescriptionResponses() {
     }
   );
 
-  writeToTable(bqConf.descriptionOutputsTable, descriptionResultsData, true);
+  writeToTable(
+    bqConf.getDescriptionOutputsTable(),
+    descriptionResultsData,
+    true
+  );
 
   return objectsWithDescriptionGenerationData;
 }
 
 function mergeTitlesAndDescriptions() {
-  const query = `insert into \`${bqConf.dataset}.${bqConf.outputsTable}\`
+  // const query = `insert into \`${bqConf.getDataset()}.${bqConf.getOutputsTable()}\`
+  const query = `create or replace table \`${bqConf.getDataset()}.${bqConf.getOutputsTable()}\` as (
   select input.* , titles.genTitle as generated_title, descriptions.genDescription as generated_description,  
-  from \`${bqConf.dataset}.${bqConf.titleOutputsTable} as titles\`
-  join \`${bqConf.dataset}.${bqConf.inputTable}\ as input on input.${bqConf.idFieldName} = titles.${bqConf.idFieldName}
-  join \`${bqConf.dataset}.${bqConf.descriptionOutputsTable}\` as descriptions in input.${bqConf.idFieldName} = descriptions.${bqConf.idFieldName}};`;
+  from \`${bqConf.getDataset()}.${bqConf.getTitleOutputsTable()}\` as titles
+  join \`${bqConf.getDataset()}.${bqConf.getInputTable()}\` as input on input.${bqConf.getIdFieldName()} = titles.${bqConf.getIdFieldName()}
+  join \`${bqConf.getDataset()}.${bqConf.getDescriptionOutputsTable()}\` as descriptions on input.${bqConf.getIdFieldName()} = descriptions.${bqConf.getIdFieldName()})`;
   runQuery(query);
-  Logger.log(`Table ${bqConf.outputsTable} Created`);
+  Logger.log(`Table ${bqConf.getOutputsTable()} Created`);
 }
 
 export function storeBatchPointer(batchPointer: number) {
@@ -446,8 +585,8 @@ function writeToTable(
     configuration: {
       load: {
         destinationTable: {
-          projectId: bqConf.projectId,
-          datasetId: bqConf.dataset,
+          projectId: bqConf.getProjectId(),
+          datasetId: bqConf.getDataset(),
           tableId: outputTable,
         },
         autodetect: true,
@@ -467,13 +606,13 @@ function writeToTable(
 
   const csvData = csvRows.map(values => values.join(',')).join('\n');
   const blob = Utilities.newBlob(csvData, 'application/octet-stream');
-  BigQuery?.Jobs?.insert(jobConfig, bqConf.projectId, blob);
+  BigQuery?.Jobs?.insert(jobConfig, bqConf.getProjectId(), blob);
 }
 
 function runQuery(query: string): [string[][], string[]] {
   const request = { query: query, useLegacySql: false };
   MultiLogger.getInstance().log(`Running query: ${query}`);
-  let queryResults = BigQuery.Jobs?.query(request, bqConf.projectId);
+  let queryResults = BigQuery.Jobs?.query(request, bqConf.getProjectId());
   const jobId = queryResults?.jobReference?.jobId;
   if (
     queryResults === undefined ||
@@ -490,7 +629,7 @@ function runQuery(query: string): [string[][], string[]] {
   while (!queryResults?.jobComplete) {
     Utilities.sleep(sleepTimeMs);
     sleepTimeMs *= 2;
-    queryResults = BigQuery.Jobs.getQueryResults(bqConf.projectId, jobId);
+    queryResults = BigQuery.Jobs.getQueryResults(bqConf.getProjectId(), jobId);
   }
 
   // Get all the rows of results.
@@ -500,7 +639,7 @@ function runQuery(query: string): [string[][], string[]] {
     return [[], []];
   }
   while (queryResults.pageToken) {
-    queryResults = BigQuery.Jobs.getQueryResults(bqConf.projectId, jobId, {
+    queryResults = BigQuery.Jobs.getQueryResults(bqConf.getProjectId(), jobId, {
       pageToken: queryResults.pageToken,
     });
     if (!queryResults.rows) {
