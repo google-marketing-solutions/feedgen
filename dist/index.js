@@ -543,7 +543,10 @@ class VertexHelper {
       if (candidate.error) {
         throw new Error(JSON.stringify(res));
       }
-      if ('SAFETY' === candidate.candidates[0].finishReason) {
+      if (
+        'SAFETY' === candidate.candidates[0].finishReason ||
+        'BLOCKLIST' === candidate.candidates[0].finishReason
+      ) {
         throw new Error(
           `Request was blocked as it triggered API safety filters. ${message}`
         );
