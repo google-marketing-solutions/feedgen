@@ -377,8 +377,12 @@ class Util {
     try {
       const response = UrlFetchApp.fetch(url);
       if (response.getResponseCode() === 200) {
-        return Util.extractTextFromHtml(response.getContentText());
+        const headers = response.getHeaders();
+        if ('application/json' === headers['Content-Type']) {
+          return response.getContentText();
+        }
       }
+      return Util.extractTextFromHtml(response.getContentText());
     } catch (e) {
       MultiLogger.getInstance().log(String(e));
     }
@@ -606,7 +610,7 @@ function onEdit(event) {
   }
   if (
     isModelIdCell &&
-    range.getValue() !== 'gemini-pro-vision' &&
+    !range.getValue().endsWith('-vision') &&
     useImageUnderstanding
   ) {
     SheetsService.getInstance().clearCellContents(

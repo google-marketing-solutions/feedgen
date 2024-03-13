@@ -51,8 +51,14 @@ export class Util {
       const response = UrlFetchApp.fetch(url);
 
       if (response.getResponseCode() === 200) {
-        return Util.extractTextFromHtml(response.getContentText());
+        const headers = <GoogleAppsScript.URL_Fetch.HttpHeaders>(
+          response.getHeaders()
+        );
+        if ('application/json' === headers['Content-Type']) {
+          return response.getContentText();
+        }
       }
+      return Util.extractTextFromHtml(response.getContentText());
     } catch (e) {
       MultiLogger.getInstance().log(String(e));
     }

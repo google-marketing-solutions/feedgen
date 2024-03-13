@@ -31,6 +31,9 @@ limitations under the License.
 
 ## Updates
 
+* [March 2024]
+  * Renamed Gemini models to `gemini-1.0-pro` and `gemini-1.0-pro-vision`
+  * Added support for retrieving JSON web pages
 * [January 2024]: Added support for fetching product web page information and
   using it for higher quality title and description generation
 * [December 2023]
@@ -132,8 +135,9 @@ If a web page link is provided in the input feed, you may also check the
 the product's web page into the prompt. All `span` and `p` tags are extracted
 from the fetched HTML content and concatenated together to form an additional
 paragraph of information that is passed to the LLM in the prompt, along with
-dedicated instructions on how to use this additional information. Furthermore,
-fetched web page information is cached using Apps Script's
+dedicated instructions on how to use this additional information. JSON web
+responses will be used as-is without additional parsing. Furthermore, fetched
+web page information is cached using Apps Script's
 [CacheService](https://developers.google.com/apps-script/reference/cache) for a
 period of 60 seconds in order to avoid refetching and reparsing the content for
 the generation of titles (which is a separate call to the Vertex AI API).

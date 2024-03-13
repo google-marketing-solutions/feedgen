@@ -76,7 +76,7 @@ export function onEdit(event: GoogleAppsScript.Events.SheetsOnEdit) {
   }
   if (
     isModelIdCell &&
-    range.getValue() !== 'gemini-pro-vision' &&
+    !range.getValue().endsWith('-vision') &&
     useImageUnderstanding
   ) {
     SheetsService.getInstance().clearCellContents(
