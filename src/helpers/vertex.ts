@@ -207,7 +207,7 @@ export class VertexHelper {
       }
     }
 
-    MultiLogger.getInstance().log(request);
+    console.log(request);
 
     const res = this.fetchJson(
       endpoint,
