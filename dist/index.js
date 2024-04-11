@@ -535,7 +535,7 @@ class VertexHelper {
         }
       }
     }
-    MultiLogger.getInstance().log(request);
+    console.log(request);
     const res = this.fetchJson(endpoint, this.addAuth(request));
     MultiLogger.getInstance().log(res);
     const content = [];
@@ -613,8 +613,9 @@ function onEdit(event) {
   }
   if (
     isModelIdCell &&
+    useImageUnderstanding &&
     !range.getValue().endsWith('-vision') &&
-    useImageUnderstanding
+    !range.getValue().startsWith('gemini-1.5')
   ) {
     SheetsService.getInstance().clearCellContents(
       CONFIG.userSettings.feed.imageUnderstanding.notation
@@ -1196,7 +1197,7 @@ function fetchDescriptionGenerationData(data, generatedTitle, imageUrl) {
     )
   );
   const regex =
-    /^.*description:(?<description>.*)^score:(?<score>.*)^reasoning:(?<evaluation>.*)$/ms;
+    /^.*description:\**(?<description>.*)^.*score:\**(?<score>.*)^.*reasoning:\**(?<evaluation>.*)$/ms;
   const matches = res.match(regex);
   if (!matches) {
     throw new Error(

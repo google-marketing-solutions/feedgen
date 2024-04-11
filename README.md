@@ -31,6 +31,9 @@ limitations under the License.
 
 ## Updates
 
+* [April 2024]
+  * **IMPORTANT**: As of April 9 and as per the updated [Merchant Center product data specification](https://support.google.com/merchants/answer/14784710?hl=en) please use `structured_title` and `structured_description` when importing FeedGen's output into Merchant Center instead of `title` and `description` respectively. This change should be done by users directly in FeedGen's **Output Feed** tab.
+  * Added support for Gemini 1.5 pro (preview): `gemini-1.5-pro-preview-0409`. Please note that the model name may (breakingly) change in the future.
 * [March 2024]
   * Renamed Gemini models to `gemini-1.0-pro` and `gemini-1.0-pro-vision`
   * Added support for retrieving JSON web pages
