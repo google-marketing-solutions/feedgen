@@ -350,19 +350,19 @@ function optimizeRow(
         : null
     );
     const regexStr =
-      '^.*product attribute keys in original title:(?<origTemplateRow>.*)' +
-      '^product category:(?<genCategoryRow>.*)' +
-      '^product attribute keys:(?<genTemplateRow>.*)' +
-      '^product attribute values:(?<genAttributesRow>.*)';
-    const replacedKeysRegexStr = '^replaced keys:(?<replacedKeysRow>.*)';
-    const generatedTitleRegexStr = '^generated title:(?<genTitleRow>.*)';
+      '^.*product attribute keys in original title:\\**(?<origTemplateRow>.*)' +
+      '^.*product category:\\**(?<genCategoryRow>.*)' +
+      '^.*product attribute keys:\\**(?<genTemplateRow>.*)' +
+      '^.*product attribute values:\\**(?<genAttributesRow>.*)';
+    const replacedKeysRegexStr = '^.*replaced keys:\\**(?<replacedKeysRow>.*)';
+    const generatedTitleRegexStr = '^.*generated title:\\**(?<genTitleRow>.*)';
     const completeRegex = new RegExp(
       regexStr + replacedKeysRegexStr + generatedTitleRegexStr + '$',
-      'ms'
+      'ims'
     );
     const noReplacedKeysRegex = new RegExp(
       regexStr + generatedTitleRegexStr + '$',
-      'ms'
+      'ims'
     );
 
     const matches = res.match(completeRegex) ?? res.match(noReplacedKeysRegex);
@@ -777,7 +777,7 @@ function fetchDescriptionGenerationData(
     )
   );
   const regex =
-    /^.*description:\**(?<description>.*)^.*score:\**(?<score>.*)^.*reasoning:\**(?<evaluation>.*)$/ms;
+    /.*description:\**(?<description>.*)\n+.*score:\**(?<score>.*)\n+.*reasoning:\**(?<evaluation>.*)/ims;
   const matches = res.match(regex);
   if (!matches) {
     throw new Error(
