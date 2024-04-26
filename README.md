@@ -32,7 +32,7 @@ limitations under the License.
 ## Updates
 
 * [April 2024]
-  * **IMPORTANT**: As of April 9 and as per the updated [Merchant Center product data specification](https://support.google.com/merchants/answer/14784710?hl=en) please use `structured_title` and `structured_description` when importing FeedGen's output into Merchant Center instead of `title` and `description` respectively. This change should be done by users directly in FeedGen's **Output Feed** tab.
+  * **IMPORTANT**: As of April 9 and as per the updated [Merchant Center product data specification](https://support.google.com/merchants/answer/14784710) please use `structured_title` and `structured_description` when importing FeedGen's output into Merchant Center instead of `title` and `description` respectively. Refer to [these instructions](#using-structured_title-and-structured_description) for details.
   * Added support for Gemini 1.5 pro (preview): `gemini-1.5-pro-preview-0409`. Please note that the model name may (breakingly) change in the future.
 * [March 2024]
   * Renamed Gemini models to `gemini-1.0-pro` and `gemini-1.0-pro-vision`
@@ -446,6 +446,26 @@ We also suggest the following:
 * Provide as many product attributes as possible for enriching **description** generation.
 * Use **size**, **color**, and **gender / age group** for title generation, if available.
 * Do **NOT** use model numbers, prices or promotional text in titles.
+
+### Using structured_title and structured_description
+
+As of April 9, 2024 and as per the updated [Merchant Center product data specification](https://support.google.com/merchants/answer/14784710), users need to disclose whether generative AI was used to curate the text content for titles and descriptions.
+The main challenge with this is that users cannot send both `title` and `structured_title`, or `description` and `structuted_description` in the same feed, as the original column values will always trump the `structured_` variants.
+Therefore, users need to perform an additional series of steps *after* exporting the approved generations into FeedGen's **Output Feed** tab:
+
+1. Connect the FeedGen spreadsheet to Merchant Center as a [supplemental feed](https://support.google.com/merchants/answer/7439058).
+1. Create feed rules to **clear** the title and description values along with the FeedGen supplemental feed.
+   1. You have to create 2 distinct feed rules as shown below:
+   <img src='./img/feed_rule_title.png' width="300px" />
+   <img src='./img/feed_rule_description.png' width="300px" />
+1. Rename the `title` and `description` columns in the **Output Feed** tab of FeedGen to `structured_title` and `structured_description`, respectively.
+1. Add the prefix `trained_algorithmic_media:` to all generated content.
+   <img src='./img/output_feed_adjustment.png' width="300px" />
+   Refer to the detailed [structured_title](https://support.google.com/merchants/answer/6324415) and [structured_description](https://support.google.com/merchants/answer/6324468) attribute specs for more information and examples.
+   1. For example, you'd need to wrap the generated content with double quotes (e.g. `trained_algorithmic_media:"This is AI generated"`) and escape any double-quotes in the content itself (e.g. `trained_algorithmic_media:"This is AI-generated with an escaped 5"" value"`).
+
+We will be automating Steps #3 and #4 for you soon - stay tuned!
+*Note: credits to [Glen Wilson](https://www.linkedin.com/in/glenmwilson/) and the team at [Solutions-8](https://sol8.com/) for the details and images.*
 
 ### Vertex AI Pricing and Quotas
 
