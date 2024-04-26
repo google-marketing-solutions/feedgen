@@ -469,7 +469,6 @@ Therefore, users need to perform an additional series of steps *after* exporting
 1. Add the prefix `trained_algorithmic_media:` to all generated content.
    <br/><img src='./img/output_feed_adjustment.png' width="300px" /><br/>
    Refer to the detailed [structured_title](https://support.google.com/merchants/answer/6324415) and [structured_description](https://support.google.com/merchants/answer/6324468) attribute specs for more information.
-   1. For example, you need to wrap the generated content with double quotes (e.g. `trained_algorithmic_media:"This is AI generated"`) and escape any double-quotes in the content itself (e.g. `trained_algorithmic_media:"This is AI-generated with an escaped 5"" value"`).
 
 We will be automating Steps #3 and #4 for you soon - stay tuned!<br/>
 *Credits to [Glen Wilson](https://www.linkedin.com/in/glenmwilson/) and the team at [Solutions-8](https://sol8.com/) for the details and images.*
