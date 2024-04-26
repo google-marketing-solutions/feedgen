@@ -457,15 +457,15 @@ Therefore, users need to perform an additional series of steps *after* exporting
 1. Create feed rules to **clear** the title and description values along with the FeedGen supplemental feed.
    1. You have to create 2 distinct feed rules as shown below:
    <img src='./img/feed_rule_title.png' width="300px" />
-   <img src='./img/feed_rule_description.png' width="300px" />
+   <img src='./img/feed_rule_description.png' width="289.5px" />
 1. Rename the `title` and `description` columns in the **Output Feed** tab of FeedGen to `structured_title` and `structured_description`, respectively.
 1. Add the prefix `trained_algorithmic_media:` to all generated content.
-   <img src='./img/output_feed_adjustment.png' width="300px" />
-   Refer to the detailed [structured_title](https://support.google.com/merchants/answer/6324415) and [structured_description](https://support.google.com/merchants/answer/6324468) attribute specs for more information and examples.
-   1. For example, you'd need to wrap the generated content with double quotes (e.g. `trained_algorithmic_media:"This is AI generated"`) and escape any double-quotes in the content itself (e.g. `trained_algorithmic_media:"This is AI-generated with an escaped 5"" value"`).
+   <br/><img src='./img/output_feed_adjustment.png' width="300px" /><br/>
+   Refer to the detailed [structured_title](https://support.google.com/merchants/answer/6324415) and [structured_description](https://support.google.com/merchants/answer/6324468) attribute specs for more information.
+   1. For example, you need to wrap the generated content with double quotes (e.g. `trained_algorithmic_media:"This is AI generated"`) and escape any double-quotes in the content itself (e.g. `trained_algorithmic_media:"This is AI-generated with an escaped 5"" value"`).
 
-We will be automating Steps #3 and #4 for you soon - stay tuned!
-*Note: credits to [Glen Wilson](https://www.linkedin.com/in/glenmwilson/) and the team at [Solutions-8](https://sol8.com/) for the details and images.*
+We will be automating Steps #3 and #4 for you soon - stay tuned!<br/>
+*Credits to [Glen Wilson](https://www.linkedin.com/in/glenmwilson/) and the team at [Solutions-8](https://sol8.com/) for the details and images.*
 
 ### Vertex AI Pricing and Quotas
 
