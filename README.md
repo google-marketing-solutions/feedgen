@@ -447,6 +447,13 @@ We also suggest the following:
 * Use **size**, **color**, and **gender / age group** for title generation, if available.
 * Do **NOT** use model numbers, prices or promotional text in titles.
 
+### Vertex AI Pricing and Quotas
+
+Please refer to the Vertex AI
+[Pricing](https://cloud.google.com/vertex-ai/pricing#generative_ai_models) and
+[Quotas and Limits](https://cloud.google.com/vertex-ai/docs/quotas#request_quotas)
+guides for more information.
+
 ### Using structured_title and structured_description
 
 As of April 9, 2024 and as per the updated [Merchant Center product data specification](https://support.google.com/merchants/answer/14784710), users need to disclose whether generative AI was used to curate the text content for titles and descriptions.
@@ -454,7 +461,7 @@ The main challenge with this is that users cannot send both `title` and `structu
 Therefore, users need to perform an additional series of steps *after* exporting the approved generations into FeedGen's **Output Feed** tab:
 
 1. Connect the FeedGen spreadsheet to Merchant Center as a [supplemental feed](https://support.google.com/merchants/answer/7439058).
-1. Create feed rules to **clear** the title and description values along with the FeedGen supplemental feed.
+1. Create [feed rules](https://support.google.com/merchants/answer/7450276) to **clear** the title and description values along with the FeedGen supplemental feed.
    1. You have to create 2 distinct feed rules as shown below:
    <img src='./img/feed_rule_title.png' width="300px" />
    <img src='./img/feed_rule_description.png' width="289.5px" />
@@ -466,13 +473,6 @@ Therefore, users need to perform an additional series of steps *after* exporting
 
 We will be automating Steps #3 and #4 for you soon - stay tuned!<br/>
 *Credits to [Glen Wilson](https://www.linkedin.com/in/glenmwilson/) and the team at [Solutions-8](https://sol8.com/) for the details and images.*
-
-### Vertex AI Pricing and Quotas
-
-Please refer to the Vertex AI
-[Pricing](https://cloud.google.com/vertex-ai/pricing#generative_ai_models) and
-[Quotas and Limits](https://cloud.google.com/vertex-ai/docs/quotas#request_quotas)
-guides for more information.
 
 ## How to Contribute
 
