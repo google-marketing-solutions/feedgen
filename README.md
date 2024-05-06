@@ -457,7 +457,7 @@ guides for more information.
 ### Using structured_title and structured_description
 
 As of April 9, 2024 and as per the updated [Merchant Center product data specification](https://support.google.com/merchants/answer/14784710), users need to disclose whether generative AI was used to curate the text content for titles and descriptions.
-The main challenge with this is that users cannot send both `title` and `structured_title`, or `description` and `structuted_description` in the same feed, as the original column values will always trump the `structured_` variants.
+The main challenge with this is that users cannot send both `title` and `structured_title`, or `description` and `structured_description` in the same feed, as the original column values will always trump the `structured_` variants.
 Therefore, users need to perform an additional series of steps *after* exporting the approved generations into FeedGen's **Output Feed** tab:
 
 1. Connect the FeedGen spreadsheet to Merchant Center as a [supplemental feed](https://support.google.com/merchants/answer/7439058).
