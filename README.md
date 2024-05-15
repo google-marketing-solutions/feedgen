@@ -31,6 +31,7 @@ limitations under the License.
 
 ## Updates
 
+* [May 2024]: Added support for `gemini-1.5-pro-preview-0514` and `gemini-1.5-flash-preview-0514`
 * [April 2024]
   * **IMPORTANT**: As of April 9 and as per the updated [Merchant Center product data specification](https://support.google.com/merchants/answer/14784710) please use `structured_title` and `structured_description` when importing FeedGen's output into Merchant Center instead of `title` and `description` respectively. Refer to [these instructions](#using-structured_title-and-structured_description) for details.
   * Added support for Gemini 1.5 pro (preview): `gemini-1.5-pro-preview-0409`. Please note that the model name may (breakingly) change in the future.
