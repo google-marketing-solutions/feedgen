@@ -22,6 +22,8 @@ limitations under the License.
 
 **Disclaimer: This is not an official Google product.**
 
+*FeedGen works best for up to 30k items. Looking to scale further? Onboard with **Product Studio API alpha**, reach out to hsjd@google.com.*
+
 [Overview](#overview) •
 [Get started](#get-started) •
 [What it solves](#challenges) •
