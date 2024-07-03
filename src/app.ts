@@ -657,12 +657,17 @@ function fetchLandingPageInfo(
   }
   if (landingPageInfo) {
     landingPageInfo = `Website: ${landingPageInfo}\n\n`;
-    console.log(`Adding landing page to cache for ${itemId}`);
-    CacheService.getScriptCache().put(
-      `${CONFIG.caching.keyPrefix}${itemId}`,
-      landingPageInfo,
-      CONFIG.caching.defaultExpiration
-    );
+    try {
+      console.log(`Adding landing page to cache for ${itemId}`);
+      CacheService.getScriptCache().put(
+        `${CONFIG.caching.keyPrefix}${itemId}`,
+        landingPageInfo,
+        CONFIG.caching.defaultExpiration
+      );
+    } catch (e) {
+      console.error(e);
+      console.log(`Could not add landing page to cache for ${itemId}!`);
+    }
   }
   return landingPageInfo;
 }
