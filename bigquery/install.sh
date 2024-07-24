@@ -17,7 +17,6 @@ read -p "Location (e.g. \"eu\"): " LOCATION
 read -p "Dataset name: " DATASET
 read -p "Connection name: " CONNECTION
 
-# Verify inputs (optional, but recommended for production use)
 if [ -z "$PROJECT" ] || [ -z "$DATASET" ] || [ -z "$CONNECTION" ] || [ -z "$LOCATION" ]; then
   echo "Error: All parameters are required."
   exit 1

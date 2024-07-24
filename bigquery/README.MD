@@ -18,7 +18,7 @@ limitations under the License.
 
 For [FeedGen](https://github.com/google-marketing-solutions/feedgen)'s core purpose of applying LLM prompts at scale, BigQuery's ML.GENERATE\_TEXT() function is an obvious option: provided that the source feed is available in a BQ table, the generation of titles and descriptions can be done entirely using BQ scripts.
 
-[This Guide](./GUIDE.MD) describes how to do this, with a focus on one-time generation of titles & descriptions for a given set of products.
+[This Guide](./GUIDE.md) describes how to do this, with a focus on one-time generation of titles & descriptions for a given set of products.
 
 It does **not** cover:
 * how to facilitate recurring processing of newly added products,

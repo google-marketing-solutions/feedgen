@@ -40,11 +40,11 @@ Let's first look at some examples of how to write good titles:""",
     "\n\nExample output product titles (adhering to all seven rules):\n\n", ARRAY_TO_STRING(
       (SELECT ARRAY_AGG(CONCAT(id, ': ', title)) FROM UNNEST(EXAMPLES)), '\n', ''),
     """\n\nBefore getting to the actual task at hand, let's remember the rules by looking at some bad examples for titles and how they would be corrected:
-- "McDonald's Hamburger; great hamburger for evenings; with 200g meat, ketchup & salad" – this violates rule 3, as it has duplication and makes claims that are not objective attributes, and rule 6, as it uses semicolons instead of commas. Better: "McDonald's Hamburger, with 200g meat, ketchup & salad"
-- "Siemens dishwasher DW45, 50 x 50 x 70 cm, (1231254)" – this violates rule 4, as it mentions a useless ID, and rule 7, as it uses spaces inside the dimensions. Better: "Siemens dishwasher DW45, 50×50×70cm"
-- "Walkation runners' shoes, Xtra-large, beige, vegan leather" – this violates rule 5, as the named size attribute is not prefixed, nor abbreviated. Better: "Walkation runners' shoes, Size XL, beige, vegan leather"
-- "IKEA - Hemnes Bed, 210 x 100cm, birch, reinforced frame" – this violates rule 6, as it separates the brand from the product name with a dash instead of a comma, and rule 7, as it has spaces between the dimensions. Better: "IKEA Hemnes Bed, 210×100cm, birch, reinforced frame"
-- "axion Kinesio Tape Rolle Pink – 500 x 5 cm, 1 St" – this violates rule 6, as it separates the brand from the product name with a dash instead of a comma, and rule 7, as it has spaces between the dimensions. Better: "axion Kinesio Tape Rolle, pink, 500×5cm, 1 St"
+- "ABC's Hamburger; great hamburger for evenings; with 200g meat, ketchup & salad" – this violates rule 3, as it has duplication and makes claims that are not objective attributes, and rule 6, as it uses semicolons instead of commas. Better: "ABC's Hamburger, with 200g meat, ketchup & salad"
+- "Company dishwasher DW45, 50 x 50 x 70 cm, (1231254)" – this violates rule 4, as it mentions a useless ID, and rule 7, as it uses spaces inside the dimensions. Better: "Company dishwasher DW45, 50×50×70cm"
+- "Fast runners' shoes, Xtra-large, beige, vegan leather" – this violates rule 5, as the named size attribute is not prefixed, nor abbreviated. Better: "Fast runners' shoes, Size XL, beige, vegan leather"
+- "Woodpecker – Night-time Bed, 210 x 100cm, birch, reinforced frame" – this violates rule 6, as it separates the brand from the product name with a dash instead of a comma, and rule 7, as it has spaces between the dimensions. Better: "Woodpecker Night-time Bed, 210×100cm, birch, reinforced frame"
+- "Tapy Tape Roll Pink – 500 x 5 cm, 1 St" – this violates rule 6, as it separates the brand from the product name with a dash instead of a comma, and rule 7, as it has spaces between the dimensions. Better: "Tapy Tape Roll, pink, 500×5cm, 1 St"
 
 
 Now let's tackle the actual task at hand:""",
