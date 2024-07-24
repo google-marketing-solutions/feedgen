@@ -22,7 +22,7 @@ limitations under the License.
 
 **Disclaimer: This is not an official Google product.**
 
-*FeedGen works best for up to 30k items. Looking to scale further? Onboard with **Product Studio API alpha**, reach out to hsjd@google.com.*
+*FeedGen works best for up to 30k items. Looking to scale further? Onboard with **Product Studio API alpha** (reach out to hsjd@google.com) or consider [processing your feed in BigQuery](bigquery/README.MD).*
 
 [Overview](#overview) •
 [Get started](#get-started) •
@@ -33,6 +33,7 @@ limitations under the License.
 
 ## Updates
 
+* [July 2024]: Added guide to [feed optimisation using BigQuery](bigquery/README.MD).
 * [May 2024]: Added support for `gemini-1.5-pro` and `gemini-1.5-flash`
 * [April 2024]
   * **IMPORTANT**: As of April 9 and as per the updated [Merchant Center product data specification](https://support.google.com/merchants/answer/14784710) please use `structured_title` and `structured_description` when importing FeedGen's output into Merchant Center instead of `title` and `description` respectively. Refer to [these instructions](#using-structured_title-and-structured_description) for details.
