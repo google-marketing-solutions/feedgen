@@ -45,6 +45,8 @@ The following factors determine the throughput you can expect:
 
 Assuming that the first three factors let us max out 200 requests per minute and we process 10 products per title/desription prompt, we could process 200×10÷2 \= 1000 products per minute. In practice, it will be much less than that, unless the amount of records processed in parallel is increased.
 
+⚠️ Note: BigQuery has a [limit](https://cloud.google.com/bigquery/quotas\#standard_tables) on the number of table operations per day, which equates to about one per minute. If quotas are increased so that table modifications might happen too often, this can be counteracted by increasing the number of products processed per query (see "LIMIT 600" in [here](generation.sql)). While there is also a limit on [rows per query](https://cloud.google.com/bigquery/quotas#cloud_ai_service_functions), that is over 20k, compared with about 60 resulting from the default 600 input records per query when grouping 10 products per prompt. The reason to keep this figure low is rather that progress is then saved more frequently.
+
 ## Cost
 
 The [Vertex AI costs](https://cloud.google.com/vertex-ai/generative-ai/pricing) of this approach should rather be less than those of FeedGen, as titles and descriptions are processed in batches, so the static parts of prompts are evaluated less often. Prominently, one needs to choose between the Flash and Pro models that have a price factor of 10 between them (as of July 2024). The additional [BigQuery costs](https://cloud.google.com/bigquery/pricing) should be rather low at the scale of usual product feeds.
