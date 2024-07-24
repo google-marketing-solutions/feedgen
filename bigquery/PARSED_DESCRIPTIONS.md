@@ -16,7 +16,9 @@ limitations under the License.
 
 # Parsing web shops for product descriptions
 
-The following Bash/Python script fills the table `InputFilteredWeb` with product descriptions from the web. The line defining the variable "content" is key, as it needs to be adapted to where in the HTML the actual description can be found. It is a bad idea to simply get the whole page content, as that will dilute the content, may sabotage the prompt and ultimately lead to the maximal number of input tokens to be exceeded.
+The following Bash/Python script fills the table `InputFilteredWeb` with product descriptions from the web. The line defining the variable "content" is key, as it needs to be adapted to where in the HTML the actual description can be found: the example assumes it to be in a div with class "👉product-description".
+
+It would be simpler to get the whole page content, but that will dilute it with navigational elements etc., may structurally sabotage the prompt and ultimately lead to the maximal number of input tokens to be exceeded.
 
 ```bash
 dataset="[👉DATASET]"

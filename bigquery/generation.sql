@@ -12,7 +12,6 @@
  */
 
 
-
 CREATE OR REPLACE FUNCTION `[DATASET]`.TitlesPrompt(
   LANGUAGE STRING,
   EXAMPLES ARRAY<STRUCT<id STRING, properties STRING, title STRING, description STRING>>,
@@ -91,7 +90,7 @@ CREATE OR REPLACE PROCEDURE `[DATASET].BatchedUpdateTitles`(
   IDS ARRAY<STRING>)
 BEGIN
   DECLARE EXAMPLES ARRAY<STRUCT<id STRING, properties STRING, title STRING, description STRING>> DEFAULT (
-    SELECT ARRAY_AGG(Examples) FROM fg_me2.Examples
+    SELECT ARRAY_AGG(Examples) FROM `[DATASET]`.Examples
   );
   LOOP
     IF (
@@ -169,7 +168,7 @@ CREATE OR REPLACE PROCEDURE `[DATASET].BatchedUpdateDescriptions`(
   IDS ARRAY<STRING>)
 BEGIN
   DECLARE EXAMPLES ARRAY<STRUCT<id STRING, properties STRING, title STRING, description STRING>> DEFAULT (
-    SELECT ARRAY_AGG(Examples) FROM fg_me2.Examples
+    SELECT ARRAY_AGG(Examples) FROM `[DATASET]`.Examples
   );
   LOOP
     IF (
