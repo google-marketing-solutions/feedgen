@@ -30,7 +30,7 @@ bq mk --connection --location=$LOCATION --project_id=$PROJECT --connection_type=
 
 # Grant Vertex AI User to the BQ service account
 SERVICEACCOUNT=`bq show --connection $LOCATION.$CONNECTION | grep -oP '(?<="serviceAccountId": ")[^"]+'`
-gcloud projects add-iam-policy-binding $PROJECT --member=user:$SERVICEACCOUNT --role=roles/aiplatform.user
+gcloud projects add-iam-policy-binding $PROJECT --member=serviceAccount:$SERVICEACCOUNT --role=roles/aiplatform.user
 
 # Create model
 echo "CREATE OR REPLACE MODEL \`$DATASET\`.GeminiFlash REMOTE WITH CONNECTION \`$LOCATION.$CONNECTION\` OPTIONS (endpoint = 'gemini-1.5-flash-001');" | bq query --use_legacy_sql=false
