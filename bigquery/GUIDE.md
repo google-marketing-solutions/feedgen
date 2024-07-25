@@ -45,11 +45,11 @@ The following describes how that table might be filled. You don't have to follow
 
 1. *Optional: Add product descriptions from a website into `InputFilteredWeb`.*
 
-   This requires non-SQL scripts to obtain and parse the data – see [Parsing web shops for product descriptions](./PARSED_DESCRIPTIONS.md).
+   This requires non-SQL scripts to obtain and parse the data – see [Parsing web shops for product descriptions](./parsed_descriptions.md).
 
 1. *Optional: Add descriptions of product images into `InputFilteredImages`.*
 
-   This requires several steps on the command line – see [Describing images in BigQuery](./IMAGE_DESCRIPTIONS.md).
+   This requires several steps on the command line – see [Describing images in BigQuery](./image_descriptions.md).
 
 1. Merge all data into `InputProcessing`.
 
@@ -156,20 +156,19 @@ Once the input data has been made available, the actual processing can start wit
 
 Parameters:
 
-* `ITEMS_PER_PROMPT`: The number of records to group into a single LLM request to increase throughput – see [Performance](./README.md#performance) for thoughts on reasonable upper limits. For efficiency reasons, this should be a divisor of the number of products processed per loop (hard-coded, currently set to 600).
+* `ITEMS_PER_PROMPT`: The number of records to group into a single LLM request to increase throughput – see [Performance](./README.md#performance) for thoughts on reasonable upper limits. For efficiency reasons, this should be a divisor of the number of products processed per loop (hard-coded, currently set to 600 in [here](generation.sql)).
 * `LANGUAGE`: The language in which to generate the texts, as an English word.
 * `PARTS`: Together with the next parameter, this allows the parallel processing of different parts of the feed. This parameter denotes the number of parts. Consider the [maximally allowed](https://cloud.google.com/bigquery/quotas\#cloud\_ai\_service\_functions) parallelisation for `ML.GENERATE_TEXT` as well as any other queries that you may be running with that function. Use NULL if you don't want any such partitioning.
 * `PART`: This denotes which of the parts (0 up to `PARTS`–1) to compute.
 * `IDS`: This is NULL for the default scaled execution, but if specific items' texts are to be (re-)generated, their item IDs can be provided in this array.
 
-Example calls, one of them with the example-enrichment function presented in the previous section:
+Here are two example calls, one with partitioning, one without:
 ```
-CALL `[👉DATASET]`.BatchedUpdateDescription(10, '👉English', 4, 2, NULL);
+CALL `[👉DATASET]`.BatchedUpdateDescriptions(10, '👉English', 4, 2, NULL);
 CALL `[👉DATASET]`.BatchedUpdateTitles(15, '👉German', NULL, NULL, NULL);
 ```
 
 ⚠️ Note: In case the table `Output` still has data from a previous execution, it should be re-initialised as shown [here](#4-prepare-output-table).
-⚠️ Note: The aforementioned number of products processed per loop ("LIMIT 600" in the stored procedures BatchedUpdateTitles and BatchedUpdateDescriptions) influences how many table modifications will be needed to process the whole feed. The [limit](https://cloud.google.com/bigquery/quotas\#standard\_tables) for this is 1500 per day, which will be easily surpassed with long feeds. Hence, that 600 may be increased after initial testing.
 
 ## 6. Export to Merchant Center
 
