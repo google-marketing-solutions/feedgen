@@ -16,11 +16,11 @@ limitations under the License.
 
 # Improving Product Feeds with BigQuery
 
-For [FeedGen](https://github.com/google-marketing-solutions/feedgen)'s core purpose of applying LLM prompts at scale, BigQuery's ML.GENERATE\_TEXT() function is an obvious option: provided that the source feed is available in a BQ table, the generation of titles and descriptions can be done entirely using BQ scripts.
+For [FeedGen](https://github.com/google-marketing-solutions/feedgen)'s core purpose of applying LLM prompts at scale, BigQuery's ML.GENERATE\_TEXT() function is an obvious option: provided that the source feed is available in BigQuery, the generation of titles and descriptions can be done entirely there. [This Guide](./GUIDE.md) describes how to do this, with a focus on one-time generation of titles & descriptions for a given set of products.
 
-[This Guide](./GUIDE.md) describes how to do this, with a focus on one-time generation of titles & descriptions for a given set of products.
+⚠️ Note: To match FeedGen's functionality of incorporating product descriptions obtained from [web shops](./parsed_descriptions.md) or [images](./image_descriptions.md), steps outside BigQuery are needed – see those linked pages.
 
-It does **not** cover:
+⚠️ This does **not** cover:
 * how to facilitate recurring processing of newly added products,
 * how to extract product attributes (like [FeedGen](../README.md) does),
 * how to use the Product Studio API from BigQuery, or
@@ -33,9 +33,9 @@ The following factors determine the throughput you can expect:
 1. **Prompting frequency**\
    This limit defaults to 60 requests per minute for Gemini 1.5 Pro and 200 for Flash. To increase this, both of the following need to be changed:
    1. [General Vertex AI limits](https://cloud.google.com/vertex-ai/generative-ai/docs/quotas\#quotas\_by\_region\_and\_model) ([how to change](https://cloud.google.com/docs/quotas/view-manage\#requesting\_higher\_quota))
-   1. [BQ-specific limits](https://cloud.google.com/bigquery/quotas\#cloud\_ai\_service\_functions) (for ML.GENERATE\_TEXT)
+   1. [BQ-specific limits](https://cloud.google.com/bigquery/quotas\#cloud\_ai\_service\_functions) (for ML.GENERATE\_TEXT, request changes at bqml-feedback@google.com)
 1. **Response latency / Records processed in parallel**\
-   Each prompt may take several seconds to be processed, so processing them sequentially would force throughput drastically below the above limits. Hence, by default, for Pro 3 records are processed in parallel, and 5 for Flash. Increases can be requested from bqml-feedback@google.com.
+   Each prompt may take several seconds to be processed, so processing them sequentially would force throughput drastically below the above limits. Hence, by default, for Pro 3 records are processed in parallel, and 5 for Flash. Increases can be requested at bqml-feedback@google.com.
 1. **Queries processed in parallel**\
    This [limit](https://cloud.google.com/bigquery/quotas\#cloud\_ai\_service\_functions) is 5 for both Pro and Flash. In practice, it appears that the 5th execution might fail, but 4 seem safe to use.
 1. **Prompts needed per product**\
