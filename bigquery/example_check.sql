@@ -19,17 +19,19 @@ CREATE OR REPLACE MODEL `[DATASET]`.GeckoEmbedding
 REMOTE WITH CONNECTION `[CONNECTION]`
 OPTIONS (ENDPOINT = 'textembedding-gecko');
 
+CREATE TEMP TABLE Generated AS
+  SELECT id, title AS content
+  FROM `[DATASET]`.Output
+  WHERE title IS NOT NULL
+  ORDER BY RAND()
+  LIMIT 1000;
+
+CREATE TEMP TABLE Input AS
+  SELECT id, I.title AS content
+  FROM `[DATASET]`.InputProcessing AS I
+  WHERE EXISTS (SELECT * FROM Generated AS G WHERE G.id = I.id);
+
 WITH
-  Generated AS (
-    SELECT id, title AS content
-    FROM `[DATASET]`.Output
-    WHERE title IS NOT NULL
-  ),
-  Input AS (
-    SELECT id, I.title AS content
-    FROM `[DATASET]`.InputProcessing AS I
-    WHERE EXISTS (SELECT * FROM Generated AS G WHERE G.id = I.id)
-  ),
   EmbeddingsGenerated AS (
     SELECT id, content, ml_generate_embedding_result
     FROM ML.GENERATE_EMBEDDING(
