@@ -77,7 +77,6 @@ interface VertexAiGeminiResponseCandidate {
 }
 
 export class VertexHelper {
-  private static instance: VertexHelper;
   private projectId: string;
   private modelId: string;
   private modelParams: VertexAiModelParams;
@@ -252,22 +251,19 @@ export class VertexHelper {
   }
 
   /**
-   * Returns the VertexHelper instance, initializing it if it does not exist yet.
+   * Returns an instance of VertexHelper.
    *
    * @param {string} projectId
    * @param {string} endpoint
    * @param {string} modelId
    * @param {VertexAiModelParams} modelParams
-   * @returns {!VertexHelper} The initialized SheetsService instance
+   * @returns {!VertexHelper} The initialized VertexHelper instance
    */
   static getInstance(
     projectId: string,
     modelId: string,
     modelParams: VertexAiModelParams
   ) {
-    if (typeof this.instance === 'undefined') {
-      this.instance = new VertexHelper(projectId, modelId, modelParams);
-    }
-    return this.instance;
+    return new VertexHelper(projectId, modelId, modelParams);
   }
 }

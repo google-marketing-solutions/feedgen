@@ -570,10 +570,7 @@ class VertexHelper {
     return [imageData, mime];
   }
   static getInstance(projectId, modelId, modelParams) {
-    if (typeof this.instance === 'undefined') {
-      this.instance = new VertexHelper(projectId, modelId, modelParams);
-    }
-    return this.instance;
+    return new VertexHelper(projectId, modelId, modelParams);
   }
 }
 
