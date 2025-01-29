@@ -77,8 +77,7 @@ export function onEdit(event: GoogleAppsScript.Events.SheetsOnEdit) {
   if (
     isModelIdCell &&
     useImageUnderstanding &&
-    !range.getValue().endsWith('-vision') &&
-    !range.getValue().startsWith('gemini-1.5')
+    !range.getValue().startsWith('gemini-')
   ) {
     SheetsService.getInstance().clearCellContents(
       CONFIG.userSettings.feed.imageUnderstanding.notation
