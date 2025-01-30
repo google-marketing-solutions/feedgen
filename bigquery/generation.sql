@@ -14,7 +14,7 @@
 
 CREATE OR REPLACE FUNCTION `[DATASET]`.TitlesPrompt(
   LANGUAGE STRING,
-  EXAMPLES ARRAY<STRUCT<id STRING, properties STRING, title STRING, description STRING>>,
+  EXAMPLES ARRAY<STRUCT<id STRING, title STRING, description STRING, properties STRING>>,
   PROPERTIES ARRAY<STRING>) AS (
   CONCAT(
     """You are a leading digital marketer working for a top retail organisation.
@@ -55,7 +55,7 @@ Now let's tackle the actual task at hand:""",
 
 CREATE OR REPLACE FUNCTION `[DATASET]`.DescriptionsPrompt(
   LANGUAGE STRING,
-  EXAMPLES ARRAY<STRUCT<id STRING, properties STRING, title STRING, description STRING>>,
+  EXAMPLES ARRAY<STRUCT<id STRING, title STRING, description STRING, properties STRING>>,
   PROPERTIES ARRAY<STRING>) AS (
   CONCAT(
     """You are a leading digital marketer working for a top retail organisation.
