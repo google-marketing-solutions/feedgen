@@ -104,9 +104,9 @@ WITH Examples AS (
 )
 SELECT
   id,
+  TO_JSON_STRING((SELECT AS STRUCT * EXCEPT(id) FROM UNNEST([I]))) AS properties,
   E.title,
-  E.description,
-  TO_JSON_STRING((SELECT AS STRUCT * EXCEPT(id) FROM UNNEST([I]))) AS properties
+  E.description
 FROM Examples AS E
 INNER JOIN `[👉DATASET]`.InputProcessing AS I USING (id);
 ```
@@ -118,8 +118,10 @@ You can pick some already well-performing examples from the source feed as follo
 ```sql
 CREATE OR REPLACE TABLE `[👉DATASET]`.Examples AS
 SELECT
-  id, title, description,
+  id,
   TO_JSON_STRING((SELECT AS STRUCT * EXCEPT(id) FROM UNNEST([I]))) AS properties
+  title,
+  description  
 FROM `[👉DATASET]`.InputProcessing AS I
 WHERE id IN ('👉1234567', '👉2345678')
 ```
@@ -131,9 +133,11 @@ Of course, the well-performing products may not even be present in `InputProcess
 ```sql
 CREATE OR REPLACE TABLE `[👉DATASET]`.Examples AS
 SELECT
-  id, title, description,
+  id,
   TO_JSON_STRING(STRUCT(
-    `👉title`, `👉description`, `👉specifications` AS `👉specs`, `👉...`)) AS properties
+    `👉title`, `👉description`, `👉specifications` AS `👉specs`, `👉...`)) AS properties,
+  title
+  description
 FROM `[👉DATASET]`.InputRaw
 ORDER BY `👉clicks` DESC
 LIMIT 3;
