@@ -33,7 +33,7 @@ SERVICEACCOUNT=`bq show --connection $LOCATION.$CONNECTION | grep -oP '(?<="serv
 gcloud projects add-iam-policy-binding $PROJECT --member=serviceAccount:$SERVICEACCOUNT --role=roles/aiplatform.user
 
 # Create model
-echo "CREATE OR REPLACE MODEL \`$DATASET\`.GeminiFlash REMOTE WITH CONNECTION \`$LOCATION.$CONNECTION\` OPTIONS (endpoint = 'gemini-1.5-flash-001');" | bq query --use_legacy_sql=false
+echo "CREATE OR REPLACE MODEL \`$DATASET\`.GeminiFlash REMOTE WITH CONNECTION \`$LOCATION.$CONNECTION\` OPTIONS (endpoint = 'gemini-2.0-flash-lite');" | bq query --use_legacy_sql=false
 
 # Install stored functions & procedures
 sed "s/\[DATASET\]/$DATASET/" generation.sql | bq query --use_legacy_sql=false
