@@ -511,15 +511,11 @@ class VertexHelper {
     const message =
       `Prompt: ${prompt}` + (imageUrl ? `\nImage URL: ${imageUrl}` : '');
     MultiLogger.getInstance().log(message);
-<<<<<<< Updated upstream
-    const endpoint = `https://${CONFIG.vertexAi.endpoint}/v1/projects/${this.projectId}/locations/${CONFIG.vertexAi.location}/publishers/google/models/${this.modelId}:streamGenerateContent`;
-=======
     const host =
       this.location === 'global'
         ? CONFIG.vertexAi.endpoint
         : `${this.location}-${CONFIG.vertexAi.endpoint}`;
     const endpoint = `https://${host}/v1/projects/${this.projectId}/locations/${this.location}/publishers/google/models/${this.modelId}:streamGenerateContent`;
->>>>>>> Stashed changes
     const request = {
       contents: {
         role: 'user',
@@ -579,17 +575,11 @@ class VertexHelper {
           `Request was blocked as it triggered API safety filters. ${message}`
         );
       }
-<<<<<<< Updated upstream
-      const textPart = candidate.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (textPart) {
-        content.push(textPart);
-=======
       const parts = firstCandidate.content?.parts ?? [];
       for (const part of parts) {
         if (!part.thought && part.text) {
           content.push(part.text);
         }
->>>>>>> Stashed changes
       }
     });
     const contentText = content.join('');
@@ -634,8 +624,6 @@ const [
     .trim() || CONFIG.vertexAi.location,
 ];
 
-<<<<<<< Updated upstream
-=======
 const TITLE_GENERATION_RESPONSE_REGEX = new RegExp(
   'product attribute keys in original title\\**:[\\s*]*(?<origTemplateRow>.*?)' +
     '[\\s*]*product category\\**:[\\s*]*(?<genCategoryRow>.*?)' +
@@ -646,7 +634,6 @@ const TITLE_GENERATION_RESPONSE_REGEX = new RegExp(
   'is'
 );
 
->>>>>>> Stashed changes
 function onOpen() {
   SpreadsheetApp.getUi()
     .createMenu('FeedGen')
@@ -886,20 +873,7 @@ function optimizeRow(headers, data) {
         ? imageUrl
         : null
     );
-<<<<<<< Updated upstream
-    const completeRegex = new RegExp(
-      'product attribute keys in original title:[\\s*]*?(?<origTemplateRow>.*?)' +
-        '[\\s*]*product category:[\\s*]*?(?<genCategoryRow>.*?)' +
-        '[\\s*]*product attribute keys:[\\s*]*?(?<genTemplateRow>.*?)' +
-        '(?:[\\s*]*product attribute values:[\\s*]*?(?<genAttributesRow>.*?))?' +
-        '(?:[\\s*]*replaced keys:[\\s*]*?(?<replacedKeysRow>.*?))?' +
-        '[\\s*]*generated title:[\\s*]*?(?<genTitleRow>.*)$',
-      'is'
-    );
-    const matches = res.match(completeRegex);
-=======
     const matches = res.match(TITLE_GENERATION_RESPONSE_REGEX);
->>>>>>> Stashed changes
     if (!matches || !matches.groups) {
       throw new Error(
         `Received an incomplete title response from The API.\nResponse: ${res}`
@@ -1198,13 +1172,6 @@ function fetchTitleGenerationData(data, imageUrl) {
         '"Title Prompt Settings" section then immediately deleting it.'
     );
   }
-<<<<<<< Updated upstream
-  const res = Util.executeWithRetry(CONFIG.vertexAi.maxRetries, () =>
-    VertexHelper.getInstance(vertexAiGcpProjectId, vertexAiLanguageModelId, {
-      maxOutputTokens: 8192,
-      thinkingConfig: { thinkingLevel: 'LOW' },
-    }).generate(
-=======
   const res = Util.executeWithRetry(CONFIG.vertexAi.maxRetries, () => {
     const response = VertexHelper.getInstance(
       vertexAiGcpProjectId,
@@ -1230,7 +1197,6 @@ function fetchTitleGenerationData(data, imageUrl) {
       },
       vertexAiLocation
     ).generate(
->>>>>>> Stashed changes
       getConfigSheetValue(CONFIG.userSettings.vertexAi.languageModelId),
       prompt,
       imageUrl
@@ -1271,12 +1237,6 @@ function fetchDescriptionGenerationData(data, generatedTitle, imageUrl) {
     );
   }
   const res = Util.executeWithRetry(CONFIG.vertexAi.maxRetries, () =>
-<<<<<<< Updated upstream
-    VertexHelper.getInstance(vertexAiGcpProjectId, vertexAiLanguageModelId, {
-      maxOutputTokens: 8192,
-      thinkingConfig: { thinkingLevel: 'LOW' },
-    }).generate(
-=======
     VertexHelper.getInstance(
       vertexAiGcpProjectId,
       vertexAiLanguageModelId,
@@ -1305,18 +1265,13 @@ function fetchDescriptionGenerationData(data, generatedTitle, imageUrl) {
       },
       vertexAiLocation
     ).generate(
->>>>>>> Stashed changes
       getConfigSheetValue(CONFIG.userSettings.vertexAi.languageModelId),
       prompt,
       imageUrl
     )
   );
   const regex =
-<<<<<<< Updated upstream
-    /description:[\s*]*?(?<description>.*?)[\s*]*score:[\s*]*?(?<score>.*?)[\s*]*reasoning:[\s*]*?(?<evaluation>.*)/is;
-=======
     /description\**:[\s*]*(?<description>.*?)[\s*]*score\**:[\s*]*(?<score>.*?)[\s*]*reasoning\**:[\s*]*(?<evaluation>.*)/is;
->>>>>>> Stashed changes
   const matches = res.match(regex);
   if (!matches) {
     throw new Error(
