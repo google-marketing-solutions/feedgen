@@ -912,13 +912,11 @@ function optimizeRow(headers, data) {
       .split(SEPARATOR)
       .filter(Boolean)
       .map(x => x.trim());
-    const genAttributeValues = genAttributesRow
-      ? String(genAttributesRow)
-          .trim()
-          .split(genAttributesRow.includes(SEPARATOR) ? SEPARATOR : ',')
-          .filter(Boolean)
-          .map(x => x.trim())
-      : [];
+    const genAttributeValues = String(genAttributesRow)
+      .trim()
+      .split(SEPARATOR)
+      .filter(Boolean)
+      .map(x => x.trim());
     const [preferGeneratedValues, useLlmTitles, allowedWords] = [
       getConfigSheetValue(CONFIG.userSettings.title.preferGeneratedValues),
       getConfigSheetValue(CONFIG.userSettings.title.useLlmTitles),
@@ -984,7 +982,7 @@ function optimizeRow(headers, data) {
     if (genTitle.endsWith(',')) {
       genTitle = genTitle.slice(0, -1);
     }
-    if (useLlmTitles || !genAttributesRow) {
+    if (useLlmTitles) {
       genTitle = String(genTitleRow).trim();
     }
     const inputWords = new Set();
@@ -1163,8 +1161,6 @@ function fetchTitleGenerationData(data, imageUrl) {
   if (landingPageInfo) {
     prompt += landingPageInfo;
   }
-  prompt +=
-    '\nIMPORTANT: Always include "product attribute values:" (separated by |) before "replaced keys:" and "generated title:".';
   if (isErroneousPrompt(prompt)) {
     throw new Error(
       'Could not read the title prompt from the "Config" sheet. ' +
