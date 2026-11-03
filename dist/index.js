@@ -73,6 +73,10 @@ const CONFIG = {
         col: 4,
         notation: 'D5',
       },
+      location: {
+        row: 5,
+        col: 10,
+      },
     },
     description: {
       fullPrompt: {
@@ -434,10 +438,16 @@ var SafetyThreshold;
 })(SafetyThreshold || (SafetyThreshold = {}));
 
 class VertexHelper {
-  constructor(projectId, modelId, modelParams) {
+  constructor(
+    projectId,
+    modelId,
+    modelParams,
+    location = CONFIG.vertexAi.location
+  ) {
     this.projectId = projectId;
     this.modelId = modelId;
     this.modelParams = modelParams;
+    this.location = location;
   }
   addAuth(params) {
     const baseParams = {
@@ -471,7 +481,11 @@ class VertexHelper {
   }
   predict(prompt) {
     MultiLogger.getInstance().log(`Prompt: ${prompt}`);
-    const predictEndpoint = `https://${CONFIG.vertexAi.location}-${CONFIG.vertexAi.endpoint}/v1/projects/${this.projectId}/locations/${CONFIG.vertexAi.location}/publishers/google/models/${this.modelId}:predict`;
+    const host =
+      this.location === 'global'
+        ? CONFIG.vertexAi.endpoint
+        : `${this.location}-${CONFIG.vertexAi.endpoint}`;
+    const predictEndpoint = `https://${host}/v1/projects/${this.projectId}/locations/${this.location}/publishers/google/models/${this.modelId}:predict`;
     const res = this.fetchJson(
       predictEndpoint,
       this.addAuth({
@@ -497,7 +511,15 @@ class VertexHelper {
     const message =
       `Prompt: ${prompt}` + (imageUrl ? `\nImage URL: ${imageUrl}` : '');
     MultiLogger.getInstance().log(message);
+<<<<<<< Updated upstream
     const endpoint = `https://${CONFIG.vertexAi.endpoint}/v1/projects/${this.projectId}/locations/${CONFIG.vertexAi.location}/publishers/google/models/${this.modelId}:streamGenerateContent`;
+=======
+    const host =
+      this.location === 'global'
+        ? CONFIG.vertexAi.endpoint
+        : `${this.location}-${CONFIG.vertexAi.endpoint}`;
+    const endpoint = `https://${host}/v1/projects/${this.projectId}/locations/${this.location}/publishers/google/models/${this.modelId}:streamGenerateContent`;
+>>>>>>> Stashed changes
     const request = {
       contents: {
         role: 'user',
@@ -545,17 +567,29 @@ class VertexHelper {
       if (candidate.error) {
         throw new Error(JSON.stringify(res));
       }
+      const firstCandidate = candidate.candidates?.[0];
+      if (!firstCandidate) {
+        return;
+      }
       if (
-        'SAFETY' === candidate.candidates[0].finishReason ||
-        'BLOCKLIST' === candidate.candidates[0].finishReason
+        firstCandidate.finishReason === 'SAFETY' ||
+        firstCandidate.finishReason === 'BLOCKLIST'
       ) {
         throw new Error(
           `Request was blocked as it triggered API safety filters. ${message}`
         );
       }
+<<<<<<< Updated upstream
       const textPart = candidate.candidates?.[0]?.content?.parts?.[0]?.text;
       if (textPart) {
         content.push(textPart);
+=======
+      const parts = firstCandidate.content?.parts ?? [];
+      for (const part of parts) {
+        if (!part.thought && part.text) {
+          content.push(part.text);
+        }
+>>>>>>> Stashed changes
       }
     });
     const contentText = content.join('');
@@ -574,8 +608,13 @@ class VertexHelper {
     }
     return [imageData, mime];
   }
-  static getInstance(projectId, modelId, modelParams) {
-    return new VertexHelper(projectId, modelId, modelParams);
+  static getInstance(
+    projectId,
+    modelId,
+    modelParams,
+    location = CONFIG.vertexAi.location
+  ) {
+    return new VertexHelper(projectId, modelId, modelParams, location);
   }
 }
 
@@ -584,11 +623,30 @@ const SEPARATOR = '|';
 const WORD_MATCH_REGEX = /[A-Za-zÀ-ÖØ-öø-ÿ0-9]+/g;
 const TITLE_MAX_LENGTH = 150;
 const DESCRIPTION_MAX_LENGTH = 5000;
-const [vertexAiGcpProjectId, vertexAiLanguageModelId] = [
+const [
+  vertexAiGcpProjectId,
+  vertexAiLanguageModelId,
+  vertexAiLocation,
+] = [
   getConfigSheetValue(CONFIG.userSettings.vertexAi.gcpProjectId),
   getConfigSheetValue(CONFIG.userSettings.vertexAi.languageModelId),
+  String(getConfigSheetValue(CONFIG.userSettings.vertexAi.location) || '')
+    .trim() || CONFIG.vertexAi.location,
 ];
 
+<<<<<<< Updated upstream
+=======
+const TITLE_GENERATION_RESPONSE_REGEX = new RegExp(
+  'product attribute keys in original title\\**:[\\s*]*(?<origTemplateRow>.*?)' +
+    '[\\s*]*product category\\**:[\\s*]*(?<genCategoryRow>.*?)' +
+    '[\\s*]*product attribute keys\\**:[\\s*]*(?<genTemplateRow>.*?)' +
+    '[\\s*]*product attribute values\\**:[\\s*]*(?<genAttributesRow>.*?)' +
+    '(?:[\\s*]*replaced keys\\**:[\\s*]*(?<replacedKeysRow>.*?))?' +
+    '[\\s*]*generated title\\**:[\\s*]*(?<genTitleRow>.*)$',
+  'is'
+);
+
+>>>>>>> Stashed changes
 function onOpen() {
   SpreadsheetApp.getUi()
     .createMenu('FeedGen')
@@ -828,6 +886,7 @@ function optimizeRow(headers, data) {
         ? imageUrl
         : null
     );
+<<<<<<< Updated upstream
     const completeRegex = new RegExp(
       'product attribute keys in original title:[\\s*]*?(?<origTemplateRow>.*?)' +
         '[\\s*]*product category:[\\s*]*?(?<genCategoryRow>.*?)' +
@@ -838,6 +897,9 @@ function optimizeRow(headers, data) {
       'is'
     );
     const matches = res.match(completeRegex);
+=======
+    const matches = res.match(TITLE_GENERATION_RESPONSE_REGEX);
+>>>>>>> Stashed changes
     if (!matches || !matches.groups) {
       throw new Error(
         `Received an incomplete title response from The API.\nResponse: ${res}`
@@ -1136,16 +1198,50 @@ function fetchTitleGenerationData(data, imageUrl) {
         '"Title Prompt Settings" section then immediately deleting it.'
     );
   }
+<<<<<<< Updated upstream
   const res = Util.executeWithRetry(CONFIG.vertexAi.maxRetries, () =>
     VertexHelper.getInstance(vertexAiGcpProjectId, vertexAiLanguageModelId, {
       maxOutputTokens: 8192,
       thinkingConfig: { thinkingLevel: 'LOW' },
     }).generate(
+=======
+  const res = Util.executeWithRetry(CONFIG.vertexAi.maxRetries, () => {
+    const response = VertexHelper.getInstance(
+      vertexAiGcpProjectId,
+      vertexAiLanguageModelId,
+      {
+        temperature: Number(
+          getConfigSheetValue(
+            CONFIG.userSettings.title.modelParameters.temperature
+          )
+        ),
+        maxOutputTokens: Number(
+          getConfigSheetValue(
+            CONFIG.userSettings.title.modelParameters.maxOutputTokens
+          )
+        ),
+        topK: Number(
+          getConfigSheetValue(CONFIG.userSettings.title.modelParameters.topK)
+        ),
+        topP: Number(
+          getConfigSheetValue(CONFIG.userSettings.title.modelParameters.topP)
+        ),
+        thinkingConfig: { thinkingLevel: 'LOW' },
+      },
+      vertexAiLocation
+    ).generate(
+>>>>>>> Stashed changes
       getConfigSheetValue(CONFIG.userSettings.vertexAi.languageModelId),
       prompt,
       imageUrl
-    )
-  );
+    );
+    if (!TITLE_GENERATION_RESPONSE_REGEX.test(response)) {
+      throw new Error(
+        `Received an incomplete title response from The API.\nResponse: ${response}`
+      );
+    }
+    return response;
+  });
   return res;
 }
 
@@ -1175,17 +1271,52 @@ function fetchDescriptionGenerationData(data, generatedTitle, imageUrl) {
     );
   }
   const res = Util.executeWithRetry(CONFIG.vertexAi.maxRetries, () =>
+<<<<<<< Updated upstream
     VertexHelper.getInstance(vertexAiGcpProjectId, vertexAiLanguageModelId, {
       maxOutputTokens: 8192,
       thinkingConfig: { thinkingLevel: 'LOW' },
     }).generate(
+=======
+    VertexHelper.getInstance(
+      vertexAiGcpProjectId,
+      vertexAiLanguageModelId,
+      {
+        temperature: Number(
+          getConfigSheetValue(
+            CONFIG.userSettings.description.modelParameters.temperature
+          )
+        ),
+        maxOutputTokens: Number(
+          getConfigSheetValue(
+            CONFIG.userSettings.description.modelParameters.maxOutputTokens
+          )
+        ),
+        topK: Number(
+          getConfigSheetValue(
+            CONFIG.userSettings.description.modelParameters.topK
+          )
+        ),
+        topP: Number(
+          getConfigSheetValue(
+            CONFIG.userSettings.description.modelParameters.topP
+          )
+        ),
+        thinkingConfig: { thinkingLevel: 'LOW' },
+      },
+      vertexAiLocation
+    ).generate(
+>>>>>>> Stashed changes
       getConfigSheetValue(CONFIG.userSettings.vertexAi.languageModelId),
       prompt,
       imageUrl
     )
   );
   const regex =
+<<<<<<< Updated upstream
     /description:[\s*]*?(?<description>.*?)[\s*]*score:[\s*]*?(?<score>.*?)[\s*]*reasoning:[\s*]*?(?<evaluation>.*)/is;
+=======
+    /description\**:[\s*]*(?<description>.*?)[\s*]*score\**:[\s*]*(?<score>.*?)[\s*]*reasoning\**:[\s*]*(?<evaluation>.*)/is;
+>>>>>>> Stashed changes
   const matches = res.match(regex);
   if (!matches) {
     throw new Error(

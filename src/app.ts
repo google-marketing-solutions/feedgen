@@ -35,10 +35,26 @@ const WORD_MATCH_REGEX = /[A-Za-zÀ-ÖØ-öø-ÿ0-9]+/g;
 const TITLE_MAX_LENGTH = 150;
 const DESCRIPTION_MAX_LENGTH = 5000;
 
-const [vertexAiGcpProjectId, vertexAiLanguageModelId] = [
+const [
+  vertexAiGcpProjectId,
+  vertexAiLanguageModelId,
+  vertexAiLocation,
+] = [
   getConfigSheetValue(CONFIG.userSettings.vertexAi.gcpProjectId),
   getConfigSheetValue(CONFIG.userSettings.vertexAi.languageModelId),
+  String(getConfigSheetValue(CONFIG.userSettings.vertexAi.location) || '')
+    .trim() || CONFIG.vertexAi.location,
 ];
+
+const TITLE_GENERATION_RESPONSE_REGEX = new RegExp(
+  'product attribute keys in original title\\**:[\\s*]*(?<origTemplateRow>.*?)' +
+    '[\\s*]*product category\\**:[\\s*]*(?<genCategoryRow>.*?)' +
+    '[\\s*]*product attribute keys\\**:[\\s*]*(?<genTemplateRow>.*?)' +
+    '[\\s*]*product attribute values\\**:[\\s*]*(?<genAttributesRow>.*?)' +
+    '(?:[\\s*]*replaced keys\\**:[\\s*]*(?<replacedKeysRow>.*?))?' +
+    '[\\s*]*generated title\\**:[\\s*]*(?<genTitleRow>.*)$',
+  'is'
+);
 
 /**
  * Handle 'onOpen' Sheets event to show menu.
@@ -348,23 +364,7 @@ function optimizeRow(
         ? imageUrl
         : null
     );
-    const regexStr =
-      '^.*product attribute keys in original title:\\**(?<origTemplateRow>.*)' +
-      '^.*product category:\\**(?<genCategoryRow>.*)' +
-      '^.*product attribute keys:\\**(?<genTemplateRow>.*)' +
-      '^.*product attribute values:\\**(?<genAttributesRow>.*)';
-    const replacedKeysRegexStr = '^.*replaced keys:\\**(?<replacedKeysRow>.*)';
-    const generatedTitleRegexStr = '^.*generated title:\\**(?<genTitleRow>.*)';
-    const completeRegex = new RegExp(
-      regexStr + replacedKeysRegexStr + generatedTitleRegexStr + '$',
-      'ims'
-    );
-    const noReplacedKeysRegex = new RegExp(
-      regexStr + generatedTitleRegexStr + '$',
-      'ims'
-    );
-
-    const matches = res.match(completeRegex) ?? res.match(noReplacedKeysRegex);
+    const matches = res.match(TITLE_GENERATION_RESPONSE_REGEX);
 
     if (!matches || !matches.groups) {
       throw new Error(
@@ -694,30 +694,42 @@ function fetchTitleGenerationData(
         '"Title Prompt Settings" section then immediately deleting it.'
     );
   }
-  const res = Util.executeWithRetry(CONFIG.vertexAi.maxRetries, () =>
-    VertexHelper.getInstance(vertexAiGcpProjectId, vertexAiLanguageModelId, {
-      temperature: Number(
-        getConfigSheetValue(
-          CONFIG.userSettings.title.modelParameters.temperature
-        )
-      ),
-      maxOutputTokens: Number(
-        getConfigSheetValue(
-          CONFIG.userSettings.title.modelParameters.maxOutputTokens
-        )
-      ),
-      topK: Number(
-        getConfigSheetValue(CONFIG.userSettings.title.modelParameters.topK)
-      ),
-      topP: Number(
-        getConfigSheetValue(CONFIG.userSettings.title.modelParameters.topP)
-      ),
-    }).generate(
+  const res = Util.executeWithRetry(CONFIG.vertexAi.maxRetries, () => {
+    const response = VertexHelper.getInstance(
+      vertexAiGcpProjectId,
+      vertexAiLanguageModelId,
+      {
+        temperature: Number(
+          getConfigSheetValue(
+            CONFIG.userSettings.title.modelParameters.temperature
+          )
+        ),
+        maxOutputTokens: Number(
+          getConfigSheetValue(
+            CONFIG.userSettings.title.modelParameters.maxOutputTokens
+          )
+        ),
+        topK: Number(
+          getConfigSheetValue(CONFIG.userSettings.title.modelParameters.topK)
+        ),
+        topP: Number(
+          getConfigSheetValue(CONFIG.userSettings.title.modelParameters.topP)
+        ),
+        thinkingConfig: { thinkingLevel: 'LOW' },
+      },
+      vertexAiLocation
+    ).generate(
       getConfigSheetValue(CONFIG.userSettings.vertexAi.languageModelId),
       prompt,
       imageUrl
-    )
-  );
+    );
+    if (!TITLE_GENERATION_RESPONSE_REGEX.test(response)) {
+      throw new Error(
+        `Received an incomplete title response from The API.\nResponse: ${response}`
+      );
+    }
+    return response;
+  });
   return res;
 }
 
@@ -753,35 +765,41 @@ function fetchDescriptionGenerationData(
     );
   }
   const res = Util.executeWithRetry(CONFIG.vertexAi.maxRetries, () =>
-    VertexHelper.getInstance(vertexAiGcpProjectId, vertexAiLanguageModelId, {
-      temperature: Number(
-        getConfigSheetValue(
-          CONFIG.userSettings.description.modelParameters.temperature
-        )
-      ),
-      maxOutputTokens: Number(
-        getConfigSheetValue(
-          CONFIG.userSettings.description.modelParameters.maxOutputTokens
-        )
-      ),
-      topK: Number(
-        getConfigSheetValue(
-          CONFIG.userSettings.description.modelParameters.topK
-        )
-      ),
-      topP: Number(
-        getConfigSheetValue(
-          CONFIG.userSettings.description.modelParameters.topP
-        )
-      ),
-    }).generate(
+    VertexHelper.getInstance(
+      vertexAiGcpProjectId,
+      vertexAiLanguageModelId,
+      {
+        temperature: Number(
+          getConfigSheetValue(
+            CONFIG.userSettings.description.modelParameters.temperature
+          )
+        ),
+        maxOutputTokens: Number(
+          getConfigSheetValue(
+            CONFIG.userSettings.description.modelParameters.maxOutputTokens
+          )
+        ),
+        topK: Number(
+          getConfigSheetValue(
+            CONFIG.userSettings.description.modelParameters.topK
+          )
+        ),
+        topP: Number(
+          getConfigSheetValue(
+            CONFIG.userSettings.description.modelParameters.topP
+          )
+        ),
+        thinkingConfig: { thinkingLevel: 'LOW' },
+      },
+      vertexAiLocation
+    ).generate(
       getConfigSheetValue(CONFIG.userSettings.vertexAi.languageModelId),
       prompt,
       imageUrl
     )
   );
   const regex =
-    /.*description:\**(?<description>.*)\n+.*score:\**(?<score>.*)\n+.*reasoning:\**(?<evaluation>.*)/ims;
+    /description\**:[\s*]*(?<description>.*?)[\s*]*score\**:[\s*]*(?<score>.*?)[\s*]*reasoning\**:[\s*]*(?<evaluation>.*)/is;
   const matches = res.match(regex);
   if (!matches) {
     throw new Error(

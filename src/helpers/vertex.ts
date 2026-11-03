@@ -21,6 +21,9 @@ interface VertexAiModelParams {
   maxOutputTokens: number;
   topK: number;
   topP: number;
+  thinkingConfig?: {
+    thinkingLevel: 'LOW';
+  };
 }
 
 interface VertexAiPalmPrediction {
@@ -67,8 +70,11 @@ interface VertexAiGeminiRequestSafetyThreshold {
 interface VertexAiGeminiResponseCandidate {
   candidates?: [
     {
-      content: {
-        parts: [{ text: string }];
+      content?: {
+        parts?: {
+          text?: string;
+          thought?: boolean;
+        }[];
       };
       finishReason?: string;
     }
@@ -80,15 +86,18 @@ export class VertexHelper {
   private projectId: string;
   private modelId: string;
   private modelParams: VertexAiModelParams;
+  private location: string;
 
   constructor(
     projectId: string,
     modelId: string,
-    modelParams: VertexAiModelParams
+    modelParams: VertexAiModelParams,
+    location = CONFIG.vertexAi.location
   ) {
     this.projectId = projectId;
     this.modelId = modelId;
     this.modelParams = modelParams;
+    this.location = location;
   }
 
   addAuth(params: unknown) {
@@ -132,7 +141,11 @@ export class VertexHelper {
   predict(prompt: string) {
     MultiLogger.getInstance().log(`Prompt: ${prompt}`);
 
-    const predictEndpoint = `https://${CONFIG.vertexAi.location}-${CONFIG.vertexAi.endpoint}/v1/projects/${this.projectId}/locations/${CONFIG.vertexAi.location}/publishers/google/models/${this.modelId}:predict`;
+    const host =
+      this.location === 'global'
+        ? CONFIG.vertexAi.endpoint
+        : `${this.location}-${CONFIG.vertexAi.endpoint}`;
+    const predictEndpoint = `https://${host}/v1/projects/${this.projectId}/locations/${this.location}/publishers/google/models/${this.modelId}:predict`;
 
     const res = this.fetchJson(
       predictEndpoint,
@@ -163,7 +176,11 @@ export class VertexHelper {
       `Prompt: ${prompt}` + (imageUrl ? `\nImage URL: ${imageUrl}` : '');
     MultiLogger.getInstance().log(message);
 
-    const endpoint = `https://${CONFIG.vertexAi.location}-${CONFIG.vertexAi.endpoint}/v1/projects/${this.projectId}/locations/${CONFIG.vertexAi.location}/publishers/google/models/${this.modelId}:streamGenerateContent`;
+    const host =
+      this.location === 'global'
+        ? CONFIG.vertexAi.endpoint
+        : `${this.location}-${CONFIG.vertexAi.endpoint}`;
+    const endpoint = `https://${host}/v1/projects/${this.projectId}/locations/${this.location}/publishers/google/models/${this.modelId}:streamGenerateContent`;
 
     const request: VertexAiGeminiRequest = {
       contents: {
@@ -219,15 +236,24 @@ export class VertexHelper {
       if (candidate.error) {
         throw new Error(JSON.stringify(res));
       }
+      const firstCandidate = candidate.candidates?.[0];
+      if (!firstCandidate) {
+        return;
+      }
       if (
-        'SAFETY' === candidate.candidates![0].finishReason ||
-        'BLOCKLIST' === candidate.candidates![0].finishReason
+        firstCandidate.finishReason === 'SAFETY' ||
+        firstCandidate.finishReason === 'BLOCKLIST'
       ) {
         throw new Error(
           `Request was blocked as it triggered API safety filters. ${message}`
         );
       }
-      content.push(candidate.candidates![0].content.parts[0].text);
+      const parts = firstCandidate.content?.parts ?? [];
+      for (const part of parts) {
+        if (!part.thought && part.text) {
+          content.push(part.text);
+        }
+      }
     });
 
     const contentText = content.join('');
@@ -262,8 +288,9 @@ export class VertexHelper {
   static getInstance(
     projectId: string,
     modelId: string,
-    modelParams: VertexAiModelParams
+    modelParams: VertexAiModelParams,
+    location = CONFIG.vertexAi.location
   ) {
-    return new VertexHelper(projectId, modelId, modelParams);
+    return new VertexHelper(projectId, modelId, modelParams, location);
   }
 }

@@ -72,6 +72,10 @@ export const CONFIG = {
         col: 4,
         notation: 'D5',
       },
+      location: {
+        row: 5,
+        col: 10,
+      },
     },
     description: {
       fullPrompt: {
@@ -203,7 +207,7 @@ export const CONFIG = {
   },
   vertexAi: {
     endpoint: 'aiplatform.googleapis.com',
-    location: 'us-central1',
+    location: 'global',
     maxRetries: 3,
     quotaLimitDelay: 30 * 1000, // 30s
   },
