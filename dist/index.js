@@ -20,6 +20,7 @@ var Status;
   Status['FAILED'] = 'Failed';
   Status['NON_COMPLIANT'] = 'Failed compliance checks';
 })(Status || (Status = {}));
+
 const CONFIG = {
   userSettings: {
     feed: {
@@ -71,6 +72,10 @@ const CONFIG = {
         row: 5,
         col: 4,
         notation: 'D5',
+      },
+      location: {
+        row: 5,
+        col: 9,
       },
     },
     description: {
@@ -203,7 +208,7 @@ const CONFIG = {
   },
   vertexAi: {
     endpoint: 'aiplatform.googleapis.com',
-    location: 'us-central1',
+    location: 'global',
     maxRetries: 3,
     quotaLimitDelay: 30 * 1000,
   },
@@ -431,11 +436,18 @@ var SafetyThreshold;
   SafetyThreshold[(SafetyThreshold['BLOCK_ONLY_HIGH'] = 3)] = 'BLOCK_ONLY_HIGH';
   SafetyThreshold[(SafetyThreshold['BLOCK_NONE'] = 4)] = 'BLOCK_NONE';
 })(SafetyThreshold || (SafetyThreshold = {}));
+
 class VertexHelper {
-  constructor(projectId, modelId, modelParams) {
+  constructor(
+    projectId,
+    modelId,
+    modelParams,
+    location = CONFIG.vertexAi.location
+  ) {
     this.projectId = projectId;
     this.modelId = modelId;
     this.modelParams = modelParams;
+    this.location = location;
   }
   addAuth(params) {
     const baseParams = {
@@ -469,7 +481,11 @@ class VertexHelper {
   }
   predict(prompt) {
     MultiLogger.getInstance().log(`Prompt: ${prompt}`);
-    const predictEndpoint = `https://${CONFIG.vertexAi.location}-${CONFIG.vertexAi.endpoint}/v1/projects/${this.projectId}/locations/${CONFIG.vertexAi.location}/publishers/google/models/${this.modelId}:predict`;
+    const host =
+      this.location === 'global'
+        ? CONFIG.vertexAi.endpoint
+        : `aiplatform.${this.location}.rep.googleapis.com`;
+    const predictEndpoint = `https://${host}/v1/projects/${this.projectId}/locations/${this.location}/publishers/google/models/${this.modelId}:predict`;
     const res = this.fetchJson(
       predictEndpoint,
       this.addAuth({
@@ -495,7 +511,11 @@ class VertexHelper {
     const message =
       `Prompt: ${prompt}` + (imageUrl ? `\nImage URL: ${imageUrl}` : '');
     MultiLogger.getInstance().log(message);
-    const endpoint = `https://${CONFIG.vertexAi.location}-${CONFIG.vertexAi.endpoint}/v1/projects/${this.projectId}/locations/${CONFIG.vertexAi.location}/publishers/google/models/${this.modelId}:streamGenerateContent`;
+    const host =
+      this.location === 'global'
+        ? CONFIG.vertexAi.endpoint
+        : `aiplatform.${this.location}.rep.googleapis.com`;
+    const endpoint = `https://${host}/v1/projects/${this.projectId}/locations/${this.location}/publishers/google/models/${this.modelId}:streamGenerateContent`;
     const request = {
       contents: {
         role: 'user',
@@ -543,15 +563,24 @@ class VertexHelper {
       if (candidate.error) {
         throw new Error(JSON.stringify(res));
       }
+      const firstCandidate = candidate.candidates?.[0];
+      if (!firstCandidate) {
+        return;
+      }
       if (
-        'SAFETY' === candidate.candidates[0].finishReason ||
-        'BLOCKLIST' === candidate.candidates[0].finishReason
+        firstCandidate.finishReason === 'SAFETY' ||
+        firstCandidate.finishReason === 'BLOCKLIST'
       ) {
         throw new Error(
           `Request was blocked as it triggered API safety filters. ${message}`
         );
       }
-      content.push(candidate.candidates[0].content.parts[0].text);
+      const parts = firstCandidate.content?.parts ?? [];
+      for (const part of parts) {
+        if (!part.thought && part.text) {
+          content.push(part.text);
+        }
+      }
     });
     const contentText = content.join('');
     if (!contentText) {
@@ -569,8 +598,13 @@ class VertexHelper {
     }
     return [imageData, mime];
   }
-  static getInstance(projectId, modelId, modelParams) {
-    return new VertexHelper(projectId, modelId, modelParams);
+  static getInstance(
+    projectId,
+    modelId,
+    modelParams,
+    location = CONFIG.vertexAi.location
+  ) {
+    return new VertexHelper(projectId, modelId, modelParams, location);
   }
 }
 
@@ -579,16 +613,35 @@ const SEPARATOR = '|';
 const WORD_MATCH_REGEX = /[A-Za-zÀ-ÖØ-öø-ÿ0-9]+/g;
 const TITLE_MAX_LENGTH = 150;
 const DESCRIPTION_MAX_LENGTH = 5000;
-const [vertexAiGcpProjectId, vertexAiLanguageModelId] = [
+const [
+  vertexAiGcpProjectId,
+  vertexAiLanguageModelId,
+  vertexAiLocation,
+] = [
   getConfigSheetValue(CONFIG.userSettings.vertexAi.gcpProjectId),
   getConfigSheetValue(CONFIG.userSettings.vertexAi.languageModelId),
+  String(getConfigSheetValue(CONFIG.userSettings.vertexAi.location) || '')
+    .trim()
+    .toLowerCase() || CONFIG.vertexAi.location,
 ];
+
+const TITLE_GENERATION_RESPONSE_REGEX = new RegExp(
+  'product attribute keys in original title\\**:[\\s*]*(?<origTemplateRow>.*?)' +
+    '[\\s*]*product category\\**:[\\s*]*(?<genCategoryRow>.*?)' +
+    '[\\s*]*product attribute keys\\**:[\\s*]*(?<genTemplateRow>.*?)' +
+    '[\\s*]*product attribute values\\**:[\\s*]*(?<genAttributesRow>.*?)' +
+    '(?:[\\s*]*replaced keys\\**:[\\s*]*(?<replacedKeysRow>.*?))?' +
+    '[\\s*]*generated title\\**:[\\s*]*(?<genTitleRow>.*)$',
+  'is'
+);
+
 function onOpen() {
   SpreadsheetApp.getUi()
     .createMenu('FeedGen')
     .addItem('Launch', 'showSidebar')
     .addToUi();
 }
+
 function onEdit(event) {
   const sheet = event.source.getActiveSheet();
   const range = event.range;
@@ -611,24 +664,26 @@ function onEdit(event) {
   if (
     isModelIdCell &&
     useImageUnderstanding &&
-    !range.getValue().endsWith('-vision') &&
-    !range.getValue().startsWith('gemini-1.5')
+    !range.getValue().startsWith('gemini-')
   ) {
     SheetsService.getInstance().clearCellContents(
       CONFIG.userSettings.feed.imageUnderstanding.notation
     );
   }
 }
+
 function init() {
   SpreadsheetApp.getActiveSpreadsheet()
     .getSheetByName(CONFIG.sheets.config.name)
     ?.getDataRange();
 }
+
 function showSidebar() {
   const html = HtmlService.createTemplateFromFile('static/index').evaluate();
   html.setTitle('FeedGen');
   SpreadsheetApp.getUi().showSidebar(html);
 }
+
 function FEEDGEN_CREATE_CONTEXT_JSON(itemId) {
   const inputSheet = SpreadsheetApp.getActive().getSheetByName(
     CONFIG.sheets.input.name
@@ -647,6 +702,7 @@ function FEEDGEN_CREATE_CONTEXT_JSON(itemId) {
   );
   return JSON.stringify(contextObject);
 }
+
 function getUnprocessedInputRows(filterProcessed = true) {
   refreshConfigSheet();
   const inputSheet = SpreadsheetApp.getActive().getSheetByName(
@@ -680,6 +736,7 @@ function getUnprocessedInputRows(filterProcessed = true) {
   }
   return JSON.stringify(inputRows);
 }
+
 function generateRow(headers, row) {
   const rowIndex = Number(row.pop());
   let outputRow = [];
@@ -702,6 +759,7 @@ function generateRow(headers, row) {
     [outputRow]
   );
 }
+
 function getGenerationMetrics(
   origTitle,
   genTitle,
@@ -774,6 +832,7 @@ function getGenerationMetrics(
     wordsRemoved: [...wordsRemoved].join(` ${SEPARATOR} `),
   };
 }
+
 function getConfigSheetValue(field) {
   return SheetsService.getInstance().getCellValue(
     CONFIG.sheets.config.name,
@@ -781,6 +840,7 @@ function getConfigSheetValue(field) {
     field.col
   );
 }
+
 function optimizeRow(headers, data) {
   const dataObj = Object.fromEntries(
     data.map((item, index) => [headers[index], item])
@@ -814,22 +874,7 @@ function optimizeRow(headers, data) {
         ? imageUrl
         : null
     );
-    const regexStr =
-      '^.*product attribute keys in original title:\\**(?<origTemplateRow>.*)' +
-      '^.*product category:\\**(?<genCategoryRow>.*)' +
-      '^.*product attribute keys:\\**(?<genTemplateRow>.*)' +
-      '^.*product attribute values:\\**(?<genAttributesRow>.*)';
-    const replacedKeysRegexStr = '^.*replaced keys:\\**(?<replacedKeysRow>.*)';
-    const generatedTitleRegexStr = '^.*generated title:\\**(?<genTitleRow>.*)';
-    const completeRegex = new RegExp(
-      regexStr + replacedKeysRegexStr + generatedTitleRegexStr + '$',
-      'ims'
-    );
-    const noReplacedKeysRegex = new RegExp(
-      regexStr + generatedTitleRegexStr + '$',
-      'ims'
-    );
-    const matches = res.match(completeRegex) ?? res.match(noReplacedKeysRegex);
+    const matches = res.match(TITLE_GENERATION_RESPONSE_REGEX);
     if (!matches || !matches.groups) {
       throw new Error(
         `Received an incomplete title response from The API.\nResponse: ${res}`
@@ -1032,6 +1077,7 @@ function optimizeRow(headers, data) {
     JSON.stringify(dataObj),
   ];
 }
+
 function removeEmptyAttributeValues(key, value, removeTrailingComma = false) {
   const val = String(value).trim();
   if (
@@ -1046,9 +1092,11 @@ function removeEmptyAttributeValues(key, value, removeTrailingComma = false) {
   }
   return removeTrailingComma && val.endsWith(',') ? val.slice(0, -1) : val;
 }
+
 function isErroneousPrompt(prompt) {
   return prompt.startsWith(CONFIG.sheets.formulaError);
 }
+
 function refreshConfigSheet() {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(
     CONFIG.sheets.config.name
@@ -1066,6 +1114,7 @@ function refreshConfigSheet() {
     Utilities.sleep(5000);
   }
 }
+
 function fetchLandingPageInfo(data, useLandingPageInfo) {
   if (!useLandingPageInfo) {
     return '';
@@ -1101,6 +1150,7 @@ function fetchLandingPageInfo(data, useLandingPageInfo) {
   }
   return landingPageInfo;
 }
+
 function fetchTitleGenerationData(data, imageUrl) {
   const dataContext = `Context: ${JSON.stringify(data)}\n\n`;
   const landingPageInfo = fetchLandingPageInfo(
@@ -1119,32 +1169,45 @@ function fetchTitleGenerationData(data, imageUrl) {
         '"Title Prompt Settings" section then immediately deleting it.'
     );
   }
-  const res = Util.executeWithRetry(CONFIG.vertexAi.maxRetries, () =>
-    VertexHelper.getInstance(vertexAiGcpProjectId, vertexAiLanguageModelId, {
-      temperature: Number(
-        getConfigSheetValue(
-          CONFIG.userSettings.title.modelParameters.temperature
-        )
-      ),
-      maxOutputTokens: Number(
-        getConfigSheetValue(
-          CONFIG.userSettings.title.modelParameters.maxOutputTokens
-        )
-      ),
-      topK: Number(
-        getConfigSheetValue(CONFIG.userSettings.title.modelParameters.topK)
-      ),
-      topP: Number(
-        getConfigSheetValue(CONFIG.userSettings.title.modelParameters.topP)
-      ),
-    }).generate(
+  const res = Util.executeWithRetry(CONFIG.vertexAi.maxRetries, () => {
+    const response = VertexHelper.getInstance(
+      vertexAiGcpProjectId,
+      vertexAiLanguageModelId,
+      {
+        temperature: Number(
+          getConfigSheetValue(
+            CONFIG.userSettings.title.modelParameters.temperature
+          )
+        ),
+        maxOutputTokens: Number(
+          getConfigSheetValue(
+            CONFIG.userSettings.title.modelParameters.maxOutputTokens
+          )
+        ),
+        topK: Number(
+          getConfigSheetValue(CONFIG.userSettings.title.modelParameters.topK)
+        ),
+        topP: Number(
+          getConfigSheetValue(CONFIG.userSettings.title.modelParameters.topP)
+        ),
+        thinkingConfig: { thinkingLevel: 'LOW' },
+      },
+      vertexAiLocation
+    ).generate(
       getConfigSheetValue(CONFIG.userSettings.vertexAi.languageModelId),
       prompt,
       imageUrl
-    )
-  );
+    );
+    if (!TITLE_GENERATION_RESPONSE_REGEX.test(response)) {
+      throw new Error(
+        `Received an incomplete title response from The API.\nResponse: ${response}`
+      );
+    }
+    return response;
+  });
   return res;
 }
+
 function fetchDescriptionGenerationData(data, generatedTitle, imageUrl) {
   const modifiedData = Object.assign(
     {
@@ -1171,35 +1234,41 @@ function fetchDescriptionGenerationData(data, generatedTitle, imageUrl) {
     );
   }
   const res = Util.executeWithRetry(CONFIG.vertexAi.maxRetries, () =>
-    VertexHelper.getInstance(vertexAiGcpProjectId, vertexAiLanguageModelId, {
-      temperature: Number(
-        getConfigSheetValue(
-          CONFIG.userSettings.description.modelParameters.temperature
-        )
-      ),
-      maxOutputTokens: Number(
-        getConfigSheetValue(
-          CONFIG.userSettings.description.modelParameters.maxOutputTokens
-        )
-      ),
-      topK: Number(
-        getConfigSheetValue(
-          CONFIG.userSettings.description.modelParameters.topK
-        )
-      ),
-      topP: Number(
-        getConfigSheetValue(
-          CONFIG.userSettings.description.modelParameters.topP
-        )
-      ),
-    }).generate(
+    VertexHelper.getInstance(
+      vertexAiGcpProjectId,
+      vertexAiLanguageModelId,
+      {
+        temperature: Number(
+          getConfigSheetValue(
+            CONFIG.userSettings.description.modelParameters.temperature
+          )
+        ),
+        maxOutputTokens: Number(
+          getConfigSheetValue(
+            CONFIG.userSettings.description.modelParameters.maxOutputTokens
+          )
+        ),
+        topK: Number(
+          getConfigSheetValue(
+            CONFIG.userSettings.description.modelParameters.topK
+          )
+        ),
+        topP: Number(
+          getConfigSheetValue(
+            CONFIG.userSettings.description.modelParameters.topP
+          )
+        ),
+        thinkingConfig: { thinkingLevel: 'LOW' },
+      },
+      vertexAiLocation
+    ).generate(
       getConfigSheetValue(CONFIG.userSettings.vertexAi.languageModelId),
       prompt,
       imageUrl
     )
   );
   const regex =
-    /.*description:\**(?<description>.*)\n+.*score:\**(?<score>.*)\n+.*reasoning:\**(?<evaluation>.*)/ims;
+    /description\**:[\s*]*(?<description>.*?)[\s*]*score\**:[\s*]*(?<score>.*?)[\s*]*reasoning\**:[\s*]*(?<evaluation>.*)/is;
   const matches = res.match(regex);
   if (!matches) {
     throw new Error(
@@ -1216,6 +1285,7 @@ function fetchDescriptionGenerationData(data, generatedTitle, imageUrl) {
     evaluation: evaluation,
   };
 }
+
 function getGeneratedRows() {
   return SheetsService.getInstance().getRangeData(
     CONFIG.sheets.generated.name,
@@ -1223,6 +1293,7 @@ function getGeneratedRows() {
     1
   );
 }
+
 function writeGeneratedRows(rows, withHeader = false) {
   const offset = withHeader ? 0 : 1;
   SheetsService.getInstance().setValuesInDefinedRange(
@@ -1232,6 +1303,7 @@ function writeGeneratedRows(rows, withHeader = false) {
     rows
   );
 }
+
 function writeApprovedData(header, rows) {
   MultiLogger.getInstance().log('Writing approved data...');
   SheetsService.getInstance().setValuesInDefinedRange(
@@ -1247,6 +1319,7 @@ function writeApprovedData(header, rows) {
     rows
   );
 }
+
 function clearApprovedData() {
   MultiLogger.getInstance().log('Clearing approved data...');
   SheetsService.getInstance().clearDefinedRange(
@@ -1260,6 +1333,7 @@ function clearApprovedData() {
     1
   );
 }
+
 function clearGeneratedRows() {
   MultiLogger.getInstance().log('Clearing generated rows...');
   MultiLogger.getInstance().clear();
@@ -1269,6 +1343,7 @@ function clearGeneratedRows() {
     1
   );
 }
+
 function approveFiltered() {
   MultiLogger.getInstance().log('Approving filtered rows...');
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(
@@ -1287,6 +1362,7 @@ function approveFiltered() {
   writeGeneratedRows(rows);
   MultiLogger.getInstance().log('Writing approved rows...');
 }
+
 function getGapAndInventedAttributes(rows) {
   const filledInGapAttributes = [
     ...new Set(
@@ -1320,6 +1396,7 @@ function getGapAndInventedAttributes(rows) {
   );
   return [inventedAttributes, gapAttributes];
 }
+
 function exportApproved() {
   MultiLogger.getInstance().log('Exporting approved rows...');
   const feedGenRows = getGeneratedRows().filter(
