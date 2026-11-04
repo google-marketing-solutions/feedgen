@@ -144,7 +144,7 @@ export class VertexHelper {
     const host =
       this.location === 'global'
         ? CONFIG.vertexAi.endpoint
-        : `${this.location}-${CONFIG.vertexAi.endpoint}`;
+        : `aiplatform.${this.location}.rep.googleapis.com`;
     const predictEndpoint = `https://${host}/v1/projects/${this.projectId}/locations/${this.location}/publishers/google/models/${this.modelId}:predict`;
 
     const res = this.fetchJson(
@@ -179,7 +179,7 @@ export class VertexHelper {
     const host =
       this.location === 'global'
         ? CONFIG.vertexAi.endpoint
-        : `${this.location}-${CONFIG.vertexAi.endpoint}`;
+        : `aiplatform.${this.location}.rep.googleapis.com`;
     const endpoint = `https://${host}/v1/projects/${this.projectId}/locations/${this.location}/publishers/google/models/${this.modelId}:streamGenerateContent`;
 
     const request: VertexAiGeminiRequest = {

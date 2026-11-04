@@ -74,7 +74,7 @@ export const CONFIG = {
       },
       location: {
         row: 5,
-        col: 10,
+        col: 9,
       },
     },
     description: {
