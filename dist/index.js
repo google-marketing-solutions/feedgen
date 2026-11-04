@@ -621,7 +621,8 @@ const [
   getConfigSheetValue(CONFIG.userSettings.vertexAi.gcpProjectId),
   getConfigSheetValue(CONFIG.userSettings.vertexAi.languageModelId),
   String(getConfigSheetValue(CONFIG.userSettings.vertexAi.location) || '')
-    .trim() || CONFIG.vertexAi.location,
+    .trim()
+    .toLowerCase() || CONFIG.vertexAi.location,
 ];
 
 const TITLE_GENERATION_RESPONSE_REGEX = new RegExp(
