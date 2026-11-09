@@ -33,6 +33,7 @@ limitations under the License.
 
 ## Updates
 
+* [November 2026] : Added support for `gemini-3.8-flash`
 * [July 2024]: Added guide to [feed optimisation using BigQuery](bigquery/README.md).
 * [May 2024]: Added support for `gemini-1.5-pro` and `gemini-1.5-flash`
 * [April 2024]

@@ -20,7 +20,6 @@ var Status;
   Status['FAILED'] = 'Failed';
   Status['NON_COMPLIANT'] = 'Failed compliance checks';
 })(Status || (Status = {}));
-
 const CONFIG = {
   userSettings: {
     feed: {
@@ -209,6 +208,12 @@ const CONFIG = {
   vertexAi: {
     endpoint: 'aiplatform.googleapis.com',
     location: 'global',
+    locations: ['global', 'eu', 'us'],
+    modelFamilies: ['♊ Gemini'],
+    models: ['gemini-3.8-flash'],
+    modelPricing: [
+      ['♊ Gemini', 'gemini-3.8-flash', 0.0015, 0.0075, 0.0015, 167232, 65536],
+    ],
     maxRetries: 3,
     quotaLimitDelay: 30 * 1000,
   },
@@ -436,7 +441,6 @@ var SafetyThreshold;
   SafetyThreshold[(SafetyThreshold['BLOCK_ONLY_HIGH'] = 3)] = 'BLOCK_ONLY_HIGH';
   SafetyThreshold[(SafetyThreshold['BLOCK_NONE'] = 4)] = 'BLOCK_NONE';
 })(SafetyThreshold || (SafetyThreshold = {}));
-
 class VertexHelper {
   constructor(
     projectId,
@@ -613,18 +617,13 @@ const SEPARATOR = '|';
 const WORD_MATCH_REGEX = /[A-Za-zÀ-ÖØ-öø-ÿ0-9]+/g;
 const TITLE_MAX_LENGTH = 150;
 const DESCRIPTION_MAX_LENGTH = 5000;
-const [
-  vertexAiGcpProjectId,
-  vertexAiLanguageModelId,
-  vertexAiLocation,
-] = [
+const [vertexAiGcpProjectId, vertexAiLanguageModelId, vertexAiLocation] = [
   getConfigSheetValue(CONFIG.userSettings.vertexAi.gcpProjectId),
   getConfigSheetValue(CONFIG.userSettings.vertexAi.languageModelId),
   String(getConfigSheetValue(CONFIG.userSettings.vertexAi.location) || '')
     .trim()
     .toLowerCase() || CONFIG.vertexAi.location,
 ];
-
 const TITLE_GENERATION_RESPONSE_REGEX = new RegExp(
   'product attribute keys in original title\\**:[\\s*]*(?<origTemplateRow>.*?)' +
     '[\\s*]*product category\\**:[\\s*]*(?<genCategoryRow>.*?)' +
@@ -634,14 +633,12 @@ const TITLE_GENERATION_RESPONSE_REGEX = new RegExp(
     '[\\s*]*generated title\\**:[\\s*]*(?<genTitleRow>.*)$',
   'is'
 );
-
 function onOpen() {
   SpreadsheetApp.getUi()
     .createMenu('FeedGen')
     .addItem('Launch', 'showSidebar')
     .addToUi();
 }
-
 function onEdit(event) {
   const sheet = event.source.getActiveSheet();
   const range = event.range;
@@ -671,19 +668,39 @@ function onEdit(event) {
     );
   }
 }
-
 function init() {
-  SpreadsheetApp.getActiveSpreadsheet()
-    .getSheetByName(CONFIG.sheets.config.name)
-    ?.getDataRange();
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(
+    CONFIG.sheets.config.name
+  );
+  if (!sheet) return;
+  const setDropdown = (cell, values, defaultValue) => {
+    const range = sheet.getRange(cell);
+    const rule = SpreadsheetApp.newDataValidation()
+      .requireValueInList(values, true)
+      .setAllowInvalid(false)
+      .build();
+    range.setDataValidation(rule);
+    if (!values.includes(String(range.getValue()).trim())) {
+      range.setValue(defaultValue);
+    }
+  };
+  sheet.getRange('I4').setValue('Location');
+  sheet
+    .getRange(2, 17, CONFIG.vertexAi.modelPricing.length, 7)
+    .setValues(CONFIG.vertexAi.modelPricing);
+  setDropdown(
+    'C5',
+    CONFIG.vertexAi.modelFamilies,
+    CONFIG.vertexAi.modelFamilies[0]
+  );
+  setDropdown('D5', CONFIG.vertexAi.models, CONFIG.vertexAi.models[0]);
+  setDropdown('I5', CONFIG.vertexAi.locations, CONFIG.vertexAi.location);
 }
-
 function showSidebar() {
   const html = HtmlService.createTemplateFromFile('static/index').evaluate();
   html.setTitle('FeedGen');
   SpreadsheetApp.getUi().showSidebar(html);
 }
-
 function FEEDGEN_CREATE_CONTEXT_JSON(itemId) {
   const inputSheet = SpreadsheetApp.getActive().getSheetByName(
     CONFIG.sheets.input.name
@@ -702,7 +719,6 @@ function FEEDGEN_CREATE_CONTEXT_JSON(itemId) {
   );
   return JSON.stringify(contextObject);
 }
-
 function getUnprocessedInputRows(filterProcessed = true) {
   refreshConfigSheet();
   const inputSheet = SpreadsheetApp.getActive().getSheetByName(
@@ -736,7 +752,6 @@ function getUnprocessedInputRows(filterProcessed = true) {
   }
   return JSON.stringify(inputRows);
 }
-
 function generateRow(headers, row) {
   const rowIndex = Number(row.pop());
   let outputRow = [];
@@ -759,7 +774,6 @@ function generateRow(headers, row) {
     [outputRow]
   );
 }
-
 function getGenerationMetrics(
   origTitle,
   genTitle,
@@ -832,7 +846,6 @@ function getGenerationMetrics(
     wordsRemoved: [...wordsRemoved].join(` ${SEPARATOR} `),
   };
 }
-
 function getConfigSheetValue(field) {
   return SheetsService.getInstance().getCellValue(
     CONFIG.sheets.config.name,
@@ -840,7 +853,6 @@ function getConfigSheetValue(field) {
     field.col
   );
 }
-
 function optimizeRow(headers, data) {
   const dataObj = Object.fromEntries(
     data.map((item, index) => [headers[index], item])
@@ -1077,7 +1089,6 @@ function optimizeRow(headers, data) {
     JSON.stringify(dataObj),
   ];
 }
-
 function removeEmptyAttributeValues(key, value, removeTrailingComma = false) {
   const val = String(value).trim();
   if (
@@ -1092,11 +1103,9 @@ function removeEmptyAttributeValues(key, value, removeTrailingComma = false) {
   }
   return removeTrailingComma && val.endsWith(',') ? val.slice(0, -1) : val;
 }
-
 function isErroneousPrompt(prompt) {
   return prompt.startsWith(CONFIG.sheets.formulaError);
 }
-
 function refreshConfigSheet() {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(
     CONFIG.sheets.config.name
@@ -1114,7 +1123,6 @@ function refreshConfigSheet() {
     Utilities.sleep(5000);
   }
 }
-
 function fetchLandingPageInfo(data, useLandingPageInfo) {
   if (!useLandingPageInfo) {
     return '';
@@ -1150,7 +1158,6 @@ function fetchLandingPageInfo(data, useLandingPageInfo) {
   }
   return landingPageInfo;
 }
-
 function fetchTitleGenerationData(data, imageUrl) {
   const dataContext = `Context: ${JSON.stringify(data)}\n\n`;
   const landingPageInfo = fetchLandingPageInfo(
@@ -1207,7 +1214,6 @@ function fetchTitleGenerationData(data, imageUrl) {
   });
   return res;
 }
-
 function fetchDescriptionGenerationData(data, generatedTitle, imageUrl) {
   const modifiedData = Object.assign(
     {
@@ -1285,7 +1291,6 @@ function fetchDescriptionGenerationData(data, generatedTitle, imageUrl) {
     evaluation: evaluation,
   };
 }
-
 function getGeneratedRows() {
   return SheetsService.getInstance().getRangeData(
     CONFIG.sheets.generated.name,
@@ -1293,7 +1298,6 @@ function getGeneratedRows() {
     1
   );
 }
-
 function writeGeneratedRows(rows, withHeader = false) {
   const offset = withHeader ? 0 : 1;
   SheetsService.getInstance().setValuesInDefinedRange(
@@ -1303,7 +1307,6 @@ function writeGeneratedRows(rows, withHeader = false) {
     rows
   );
 }
-
 function writeApprovedData(header, rows) {
   MultiLogger.getInstance().log('Writing approved data...');
   SheetsService.getInstance().setValuesInDefinedRange(
@@ -1319,7 +1322,6 @@ function writeApprovedData(header, rows) {
     rows
   );
 }
-
 function clearApprovedData() {
   MultiLogger.getInstance().log('Clearing approved data...');
   SheetsService.getInstance().clearDefinedRange(
@@ -1333,7 +1335,6 @@ function clearApprovedData() {
     1
   );
 }
-
 function clearGeneratedRows() {
   MultiLogger.getInstance().log('Clearing generated rows...');
   MultiLogger.getInstance().clear();
@@ -1343,7 +1344,6 @@ function clearGeneratedRows() {
     1
   );
 }
-
 function approveFiltered() {
   MultiLogger.getInstance().log('Approving filtered rows...');
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(
@@ -1362,7 +1362,6 @@ function approveFiltered() {
   writeGeneratedRows(rows);
   MultiLogger.getInstance().log('Writing approved rows...');
 }
-
 function getGapAndInventedAttributes(rows) {
   const filledInGapAttributes = [
     ...new Set(
@@ -1396,7 +1395,6 @@ function getGapAndInventedAttributes(rows) {
   );
   return [inventedAttributes, gapAttributes];
 }
-
 function exportApproved() {
   MultiLogger.getInstance().log('Exporting approved rows...');
   const feedGenRows = getGeneratedRows().filter(
