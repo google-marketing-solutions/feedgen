@@ -208,6 +208,12 @@ export const CONFIG = {
   vertexAi: {
     endpoint: 'aiplatform.googleapis.com',
     location: 'global',
+    locations: ['global', 'eu', 'us'],
+    modelFamilies: ['♊ Gemini'],
+    models: ['gemini-3.8-flash'],
+    modelPricing: [
+      ['♊ Gemini', 'gemini-3.8-flash', 0.0015, 0.0075, 0.0015, 167232, 65536],
+    ],
     maxRetries: 3,
     quotaLimitDelay: 30 * 1000, // 30s
   },

@@ -35,11 +35,7 @@ const WORD_MATCH_REGEX = /[A-Za-zÀ-ÖØ-öø-ÿ0-9]+/g;
 const TITLE_MAX_LENGTH = 150;
 const DESCRIPTION_MAX_LENGTH = 5000;
 
-const [
-  vertexAiGcpProjectId,
-  vertexAiLanguageModelId,
-  vertexAiLocation,
-] = [
+const [vertexAiGcpProjectId, vertexAiLanguageModelId, vertexAiLocation] = [
   getConfigSheetValue(CONFIG.userSettings.vertexAi.gcpProjectId),
   getConfigSheetValue(CONFIG.userSettings.vertexAi.languageModelId),
   String(getConfigSheetValue(CONFIG.userSettings.vertexAi.location) || '')
@@ -103,18 +99,49 @@ export function onEdit(event: GoogleAppsScript.Events.SheetsOnEdit) {
 }
 
 /**
- * Initialises context triggering Apps Script auth if not already done.
+ * Initialises context triggering Apps Script auth if not already done,
+ * and writes Config tab fields and dropdown rules from CONFIG constants.
  */
 export function init() {
-  SpreadsheetApp.getActiveSpreadsheet()
-    .getSheetByName(CONFIG.sheets.config.name)
-    ?.getDataRange();
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(
+    CONFIG.sheets.config.name
+  );
+  if (!sheet) return;
+
+  const setDropdown = (
+    cell: string,
+    values: string[],
+    defaultValue: string
+  ) => {
+    const range = sheet.getRange(cell);
+    const rule = SpreadsheetApp.newDataValidation()
+      .requireValueInList(values, true)
+      .setAllowInvalid(false)
+      .build();
+    range.setDataValidation(rule);
+    if (!values.includes(String(range.getValue()).trim())) {
+      range.setValue(defaultValue);
+    }
+  };
+
+  sheet.getRange('I4').setValue('Location');
+  sheet
+    .getRange(2, 17, CONFIG.vertexAi.modelPricing.length, 7)
+    .setValues(CONFIG.vertexAi.modelPricing);
+  setDropdown(
+    'C5',
+    CONFIG.vertexAi.modelFamilies,
+    CONFIG.vertexAi.modelFamilies[0]
+  );
+  setDropdown('D5', CONFIG.vertexAi.models, CONFIG.vertexAi.models[0]);
+  setDropdown('I5', CONFIG.vertexAi.locations, CONFIG.vertexAi.location);
 }
 
 /**
  * Open sidebar.
  */
 export function showSidebar() {
+  init();
   const html = HtmlService.createTemplateFromFile('static/index').evaluate();
   html.setTitle('FeedGen');
   SpreadsheetApp.getUi().showSidebar(html);
