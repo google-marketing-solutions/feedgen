@@ -673,10 +673,10 @@ function init() {
     CONFIG.sheets.config.name
   );
   if (!sheet) return;
-  const setDropdown = (cell, values, defaultValue) => {
+  const setDropdown = ({ cell, values, defaultValue }) => {
     const range = sheet.getRange(cell);
     const rule = SpreadsheetApp.newDataValidation()
-      .requireValueInList(values, true)
+      .requireValueInList([...values], true)
       .setAllowInvalid(false)
       .build();
     range.setDataValidation(rule);
@@ -685,18 +685,34 @@ function init() {
     }
   };
   sheet.getRange('I4').setValue('Location');
-  sheet
-    .getRange(2, 17, CONFIG.vertexAi.modelPricing.length, 7)
-    .setValues(CONFIG.vertexAi.modelPricing);
-  setDropdown(
-    'C5',
-    CONFIG.vertexAi.modelFamilies,
-    CONFIG.vertexAi.modelFamilies[0]
-  );
-  setDropdown('D5', CONFIG.vertexAi.models, CONFIG.vertexAi.models[0]);
-  setDropdown('I5', CONFIG.vertexAi.locations, CONFIG.vertexAi.location);
+  if (CONFIG.vertexAi.modelPricing.length > 0) {
+    sheet
+      .getRange(
+        2,
+        17,
+        CONFIG.vertexAi.modelPricing.length,
+        CONFIG.vertexAi.modelPricing[0].length
+      )
+      .setValues(CONFIG.vertexAi.modelPricing);
+  }
+  setDropdown({
+    cell: 'C5',
+    values: CONFIG.vertexAi.modelFamilies,
+    defaultValue: CONFIG.vertexAi.modelFamilies[0],
+  });
+  setDropdown({
+    cell: 'D5',
+    values: CONFIG.vertexAi.models,
+    defaultValue: CONFIG.vertexAi.models[0],
+  });
+  setDropdown({
+    cell: 'I5',
+    values: CONFIG.vertexAi.locations,
+    defaultValue: CONFIG.vertexAi.location,
+  });
 }
 function showSidebar() {
+  init();
   const html = HtmlService.createTemplateFromFile('static/index').evaluate();
   html.setTitle('FeedGen');
   SpreadsheetApp.getUi().showSidebar(html);
